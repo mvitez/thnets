@@ -1,4 +1,5 @@
 #include <float.h>
+#include "thvector.h"
 #ifdef MEMORYDEBUG
 #include "memory.h"
 #endif
@@ -213,7 +214,6 @@ void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc);
 void THFloatTensor_free(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
 float *THFloatTensor_data(THFloatTensor *tensor);
-void THFloatVector_fill(float *x, float c, long n);
 double THExpMinusApprox(double x);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
 void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *vec1, THFloatTensor *vec2);

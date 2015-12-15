@@ -237,21 +237,6 @@ THFloatTensor *THFloatTensor_newWithTensor(THFloatTensor *tensor)
 	return self;
 }
 
-void THFloatVector_fill(float *x, float c, long n)
-{
-	long i = 0;
-	for(; i < n-4; i += 4)
-	{
-		x[i] = c;
-		x[i+1] = c;
-		x[i+2] = c;
-		x[i+3] = c;
-	}
-
-	for(; i < n; i++)
-		x[i] = c;
-}
-
 void THFloatTensor_zero(THFloatTensor *t)
 {
 	memset(t->storage->data, 0, THFloatTensor_nElement(t) * sizeof(*t->storage->data));
@@ -615,22 +600,6 @@ void printtensor(THFloatTensor *t)
 			printf("\n");
 		}
 	} else printf("printtensor: nDimension not implemented\n");
-}
-
-static inline void THFloatVector_add(float *y, const float *x, const float c, const long n)
-{
-	long i = 0;
-
-	for(;i < n-4; i += 4)
-	{
-		y[i] += c * x[i];
-		y[i+1] += c * x[i+1];
-		y[i+2] += c * x[i+2];
-		y[i+3] += c * x[i+3];
-	}
-
-	for(; i < n; i++)
-		y[i] += c * x[i];
 }
 
 void THFloatTensor_validXCorr2Dptr(float *r_,
