@@ -3,6 +3,7 @@
 ## Installation
 
 Requirements for library: OpenBLAS
+
 Requirements for test: libpng and libjpeg
 
 Make with "make"
