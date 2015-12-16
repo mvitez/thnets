@@ -31,16 +31,16 @@ int main(int argc, char **argv)
 	float *result;
 	int i, rc, outwidth, outheight;
 
-	if(argc != 3)
+	if(argc != 4)
 	{
-		fprintf(stderr, "Syntax: loadtorch <models directory> <input file>\n");
+		fprintf(stderr, "Syntax: loadtorch <models directory> <input file> <UseMM>\n");
 		return -1;
 	}
 	net = THLoadNetwork(argv[1]);
 	if(net)
 	{
 		THMakeSpatial(net);
-		//THUseSpatialConvolutionMM(net, 0);
+		if (!argv[3]) { THUseSpatialConvolutionMM(net, 0); };
 		if(strstr(argv[2], ".t7"))
 		{
 			struct thobject input_o;
