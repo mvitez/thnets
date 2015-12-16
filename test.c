@@ -40,7 +40,8 @@ int main(int argc, char **argv)
 	if(net)
 	{
 		THMakeSpatial(net);
-		if (!argv[3]) { THUseSpatialConvolutionMM(net, 0); };
+		if(argv[3][0] == '0')
+			THUseSpatialConvolutionMM(net, 0);
 		if(strstr(argv[2], ".t7"))
 		{
 			struct thobject input_o;
