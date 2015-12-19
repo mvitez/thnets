@@ -31,7 +31,7 @@ enum thtype {
    TYPE_DOUBLE   = 106,
    TYPE_STORAGE  = 200,
    TYPE_TENSOR   = 201,
-   TYPE_NNMODULE  =202
+   TYPE_NNMODULE = 202
 };
 
 struct thobject;
@@ -163,7 +163,7 @@ enum moduletype {
 	MT_View,
 	MT_Dropout,
 	MT_SpatialZeroPadding,
-	MT_Reshape
+	MT_Reshape,
 };
 
 struct module
@@ -185,7 +185,7 @@ struct module
 
 struct network
 {
-	int nelem;
+	int nelem, cuda;
 	struct module *modules;
 };
 
@@ -249,16 +249,22 @@ THFloatTensor *nn_Reshape_updateOutput(struct module *module, THFloatTensor *inp
 
 typedef struct thnetwork
 {
-	struct thobject netobj;
-	struct thobject statobj;
+	struct thobject *netobj;
+	struct thobject *statobj;
 	struct network *net;
-	float *mean, *std;
+	THFloatTensor *out;
+	float mean[3], std[3];
 } THNETWORK;
 
 THNETWORK *THLoadNetwork(const char *path);
 void THMakeSpatial(THNETWORK *network);
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight);
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight);
-void THFreeNetwork(THNETWORK *network);
+THNETWORK *THCreateCudaNetwork(THNETWORK *net);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_on);
+void THFreeNetwork(THNETWORK *network);
 int THLastError();
+
+#ifdef CUDNN
+#include "cudnn/cudnn_th.h"
+#endif

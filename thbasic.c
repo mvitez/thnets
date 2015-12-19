@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <limits.h>
 #include "thnets.h"
 
 #define THAtomicIncrement(a) __sync_fetch_and_add(a, 1);
@@ -30,6 +31,11 @@ void THFloatStorage_free(THFloatStorage *s)
 	THAtomicDecrement(&s->nref);
 	if(s->nref == 0)
 	{
+#ifdef CUDNN
+		if(s->mustfree == 2)
+			cudaFree(s->data);
+		else
+#endif
 		if(s->mustfree)
 			free(s->data);
 		free(s);
@@ -40,7 +46,7 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 {
 	int i;
 	long stride = 1;
-	
+
 	t->nDimension = nDimension;
 	memcpy(t->size, size, nDimension * sizeof(*t->size));
 	for(i = nDimension - 1; i >= 0; i--)
@@ -113,6 +119,8 @@ void THError(const char *fmt, ...)
 
 void THFloatTensor_free(THFloatTensor *t)
 {
+	if(!t)
+		return;
 	if(t->storage)
 		THFloatStorage_free(t->storage);
 	free(t);
@@ -312,7 +320,6 @@ double THExpMinusApprox(double x)
 }
 
 
-#define INT_MAX 0x7fffffff
 extern void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, float *a, int *lda, float *b, int *ldb, float *beta, float *c, int *ldc);
 static void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
 {

@@ -33,7 +33,7 @@ int main(int argc, char **argv)
 
 	if(argc != 4)
 	{
-		fprintf(stderr, "Syntax: loadtorch <models directory> <input file> <UseMM>\n");
+		fprintf(stderr, "Syntax: loadtorch <models directory> <input file> <mode=0,1,2 (norm,MM,cuDNN)>\n");
 		return -1;
 	}
 	net = THLoadNetwork(argv[1]);
@@ -42,6 +42,14 @@ int main(int argc, char **argv)
 		THMakeSpatial(net);
 		if(argv[3][0] == '0')
 			THUseSpatialConvolutionMM(net, 0);
+		else if(argv[3][0] == '2')
+		{
+			THNETWORK *net2 = THCreateCudaNetwork(net);
+			if(!net2)
+				THError("CUDA not compiled in");
+			THFreeNetwork(net);
+			net = net2;
+		}
 		if(strstr(argv[2], ".t7"))
 		{
 			struct thobject input_o;
@@ -50,7 +58,12 @@ int main(int argc, char **argv)
 			if(!rc)
 			{
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
+				// In CuDNN the first one has to do some initializations, so don't count it for timing
+				if(argv[3][0] == '2')
+					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+				t = seconds();
 				rc = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+				t = seconds() - t;
 				for(i = 0; i < rc; i++)
 					printf("(%d,%d,%d): %f\n", i/(outwidth*outheight), i % (outwidth*outheight) / outwidth, i % outwidth, result[i]);
 				THFloatTensor_free(in);
@@ -62,6 +75,9 @@ int main(int argc, char **argv)
 			rc = loadimage(argv[2], &image);
 			if(!rc)
 			{
+				// In CuDNN the first one has to do some initializations, so don't count it for timing
+				if(argv[3][0] == '2')
+					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
 				t = seconds();
                 rc = THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
                 t = seconds() - t;

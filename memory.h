@@ -10,5 +10,8 @@ void debug_memorydump(FILE *fp);
 #define malloc(a) debug_malloc(a,__FILE__,__LINE__)
 #define calloc(a,b) debug_calloc(a,b,__FILE__,__LINE__)
 #define realloc(a,b) debug_realloc(a,b,__FILE__,__LINE__)
+#ifdef strdup
+#undef strdup
+#endif
 #define strdup(a) debug_strdup(a,__FILE__,__LINE__)
 #define free(a) debug_free(a,__FILE__,__LINE__)

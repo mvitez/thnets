@@ -13,7 +13,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	for(i = 0; i < net->nelem; i++)
 	{
 		in = net->modules[i].updateOutput(&net->modules[i], in);
-		//printf("%d) %d %d %ld %ld %ld %ld %f\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3], in->storage->data[0]);
+		//printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
 	return in;
 }
@@ -23,57 +23,58 @@ THNETWORK *THLoadNetwork(const char *path)
 	char tmppath[255];
 	int i;
 	
-	THNETWORK *net = malloc(sizeof(*net));
+	THNETWORK *net = calloc(1, sizeof(*net));
 	sprintf(tmppath, "%s/model.net", path);
-	lasterror = loadtorch(tmppath, &net->netobj, longsize);
+	net->netobj = malloc(sizeof(*net->netobj));
+	lasterror = loadtorch(tmppath, net->netobj, longsize);
 	if(lasterror)
 	{
+		free(net->netobj);
 		free(net);
 		return 0;
 	}
-	//printobject(&net->netobj, 0);
-	net->net = Object2Network(&net->netobj);
+	//printobject(net->netobj, 0);
+	net->net = Object2Network(net->netobj);
 	if(!net->net)
 	{
 		lasterror = ERR_WRONGOBJECT;
-		freeobject(&net->netobj);
+		freeobject(net->netobj);
+		free(net->netobj);
 		free(net);
 		return 0;
 	}
 	sprintf(tmppath, "%s/stat.t7", path);
-	lasterror = loadtorch(tmppath, &net->statobj, longsize);
+	net->statobj = malloc(sizeof(*net->statobj));
+	lasterror = loadtorch(tmppath, net->statobj, longsize);
 	if(lasterror)
 	{
+		free(net->statobj);
 		freenetwork(net->net);
-		freeobject(&net->netobj);
+		freeobject(net->netobj);
+		free(net->netobj);
 		free(net);
 		return 0;
 	}
-	if(net->statobj.type != TYPE_TABLE || net->statobj.table->nelem != 2)
+	if(net->statobj->type != TYPE_TABLE || net->statobj->table->nelem != 2)
 	{
 		lasterror = ERR_WRONGOBJECT;
 		freenetwork(net->net);
-		freeobject(&net->netobj);
-		freeobject(&net->statobj);
+		freeobject(net->netobj);
+		free(net->netobj);
+		freeobject(net->statobj);
+		free(net->statobj);
 		free(net);
 	}
-	net->std = net->mean = 0;
-	for(i = 0; i < net->statobj.table->nelem; i++)
-		if(net->statobj.table->records[i].name.type == TYPE_STRING)
+	net->std[0] = net->std[1] = net->std[2] = 1;
+	net->mean[0] = net->mean[1] = net->mean[2] = 0;
+	for(i = 0; i < net->statobj->table->nelem; i++)
+		if(net->statobj->table->records[i].name.type == TYPE_STRING)
 		{
-			if(!strcmp(net->statobj.table->records[i].name.string.data, "mean"))
-				net->mean = net->statobj.table->records[i].value.tensor->storage->data;
-			else if(!strcmp(net->statobj.table->records[i].name.string.data, "std"))
-				net->std = net->statobj.table->records[i].value.tensor->storage->data;
+			if(!strcmp(net->statobj->table->records[i].name.string.data, "mean"))
+				memcpy(net->mean, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->mean));
+			else if(!strcmp(net->statobj->table->records[i].name.string.data, "std"))
+				memcpy(net->std, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->std));
 		}
-	if(!net->mean || !net->std)
-	{
-		lasterror = ERR_WRONGOBJECT;
-		freenetwork(net->net);
-		freeobject(&net->netobj);
-		freeobject(&net->statobj);
-		free(net);
-	}
 	return net;
 }
 
@@ -81,6 +82,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 {
 	int b, c, i;
 	THFloatTensor *t = THFloatTensor_new();
+	THFloatTensor *out;
 	t->nDimension = 4;
 	t->size[0] = batchsize;
 	t->size[1] = 3;
@@ -97,7 +99,19 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 			for(i = 0; i < width*height; i++)
 				data[b * t->stride[0] + c * t->stride[1] + i] =
 					(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];
-	THFloatTensor *out = forward(network->net, t);
+#ifdef CUDNN
+	if(network->net->cuda)
+	{
+		THFloatTensor *t2 = THCudaTensor_newFromFloatTensor(t);
+		out = forward(network->net, t2);
+		THFloatTensor_free(t2);
+		if(network->out)
+			THFloatTensor_free(network->out);
+		network->out = THFloatTensor_newFromCudaTensor(out);
+		out = network->out;
+	} else
+#endif
+	out = forward(network->net, t);
 	THFloatTensor_free(t);
 	*result = out->storage->data;
 	if(out->nDimension >= 3)
@@ -123,6 +137,7 @@ void rgb2float(float *dst, const unsigned char *src, int width, int height, int 
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight)
 {
 	int i;
+	THFloatTensor *out;
 	
 	float *data = malloc(batchsize * width * height * 3 * sizeof(*data));
 #pragma omp parallel for private(i)
@@ -149,8 +164,20 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		t->stride[2] = width;
 		t->stride[3] = 1;
 	}
-	t->storage = THFloatStorage_newwithbuffer((float *)data);
-	THFloatTensor *out = forward(network->net, t);
+	t->storage = THFloatStorage_newwithbuffer(data);
+#ifdef CUDNN
+	if(network->net->cuda)
+	{
+		THFloatTensor *t2 = THCudaTensor_newFromFloatTensor(t);
+		out = forward(network->net, t2);
+		THFloatTensor_free(t2);
+		if(network->out)
+			THFloatTensor_free(network->out);
+		network->out = THFloatTensor_newFromCudaTensor(out);
+		out = network->out;
+	} else
+#endif
+	out = forward(network->net, t);
 	THFloatTensor_free(t);
 	free(data);
 	*results = out->storage->data;
@@ -165,8 +192,18 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 void THFreeNetwork(THNETWORK *network)
 {
 	freenetwork(network->net);
-	freeobject(&network->netobj);
-	freeobject(&network->statobj);
+	if(network->netobj)
+	{
+		freeobject(network->netobj);
+		free(network->netobj);
+	}
+	if(network->statobj)
+	{
+		freeobject(network->statobj);
+		free(network->statobj);
+	}
+	if(network->out)
+		THFloatTensor_free(network->out);
 	free(network);
 }
 
@@ -248,4 +285,18 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_on)
 		}
 	}
 	return rc;
+}
+
+THNETWORK *THCreateCudaNetwork(THNETWORK *net)
+{
+#ifdef CUDNN
+	THNETWORK *nn = malloc(sizeof(*nn));
+	memcpy(nn, net, sizeof(*nn));
+	nn->netobj = 0;
+	nn->statobj = 0;
+	nn->net = THcudnn_ToCUDNN(net->net);
+	return nn;
+#else
+	return 0;
+#endif
 }
