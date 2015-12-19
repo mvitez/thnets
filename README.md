@@ -2,14 +2,14 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS
+Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.
 
 Requirements for test: libpng and libjpeg
 
 Make with "make"
 
-Make options are DEBUG=1 and MEMORYDEBUG=0 (checks memory leaks) or 1 (generates full dump
-of allocations in memdump.txt)
+Make options are DEBUG=1, MEMORYDEBUG=0 (checks memory leaks) or 1 (generates full dump
+of allocations in memdump.txt) and CUDNN=1 (uses CuDNN).
 
 ## Test program
 
@@ -34,6 +34,10 @@ Makes the loaded network suitable for images bigger of the eye size.
 Changes every occurrence of SpatialConvolution in the network to SpatialConvolutionMM (nn_on=1) or viceversa (nn_on=0).
 SpatialConvolutionMM module swith padW or padH different of 0 will not be changed, as the SpatialConvolution module
 does not support them.
+
+### THNETWORK *THCreateCudaNetwork(THNETWORK *net)
+
+Create a new network from the given network. The new network will use CuDNN.
 
 ### int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
 
