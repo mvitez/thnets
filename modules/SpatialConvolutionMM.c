@@ -130,7 +130,7 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 	THFloatTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);
 
 	long t;
-#pragma omp parallel for private(t)
+#pragma omp parallel for if(batchSize >= 4) private(t)
 	for (t = 0; t < batchSize; t++) {
 		THFloatTensor *input_t = THFloatTensor_newSelect(input, 0, t);
 		THFloatTensor *output_t = THFloatTensor_newSelect(output, 0, t);
