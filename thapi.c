@@ -6,6 +6,10 @@
 
 static int lasterror, longsize = 8;
 
+#ifdef CUDNN
+int cuda_maphostmem;
+#endif
+
 THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
 	int i;
@@ -78,6 +82,28 @@ THNETWORK *THLoadNetwork(const char *path)
 	return net;
 }
 
+void THInit()
+{
+#ifdef CUDNN
+	static int init;
+
+	if(init)
+		return;
+	init = 1;
+	// cuda_maphostmem = 1 requires that memory was allocated with cudaHostAlloc
+	// cuda_maphostmem = 2 will work with malloc, but Tegra TX1 does not support cudaHostRegister with cudaHostRegisterMapped
+#ifdef USECUDAHOSTALLOC
+	struct cudaDeviceProp prop;
+
+	cudaGetDeviceProperties(&prop, 0);
+	if(prop.canMapHostMemory)
+	{
+		errcheck(cudaSetDeviceFlags(cudaDeviceMapHost));
+		cuda_maphostmem = 1;
+	}
+#endif
+}
+
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
 {
 	int b, c, i;
@@ -138,12 +164,34 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 {
 	int i;
 	THFloatTensor *out;
+	THFloatStorage *st;
 	
-	float *data = malloc(batchsize * width * height * 3 * sizeof(*data));
+#ifdef CUDNN
+	if(network->net->cuda)
+	{
+#ifdef HAVEFP16
+		if(floattype == CUDNN_DATA_HALF)
+		{
+			st = THCudaStorage_new(batchsize * ((width * height * 3 + 1) / 2));
+			for(i = 0; i < batchsize; i++)
+				cuda_rgb2half(st->data + i * ((width * height * 3 + 1) / 2), images[i], width, height, stride, network->mean, network->std);
+		} else
+#endif
+		{
+			st = THCudaStorage_new(batchsize * width * height * 3);
+			for(i = 0; i < batchsize; i++)
+				cuda_rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+		}
+	} else
+#endif
+	{
+		st = THFloatStorage_new(batchsize * width * height * 3);
 #pragma omp parallel for private(i)
-	for(i = 0; i < batchsize; i++)
-		rgb2float(data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+		for(i = 0; i < batchsize; i++)
+			rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+	}
 	THFloatTensor *t = THFloatTensor_new();
+	t->storage = st;
 	if(batchsize == 1)
 	{
 		t->nDimension = 3;
@@ -164,22 +212,23 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		t->stride[2] = width;
 		t->stride[3] = 1;
 	}
-	t->storage = THFloatStorage_newwithbuffer(data);
 #ifdef CUDNN
 	if(network->net->cuda)
 	{
-		THFloatTensor *t2 = THCudaTensor_newFromFloatTensor(t);
-		out = forward(network->net, t2);
-		THFloatTensor_free(t2);
+		out = forward(network->net, t);
 		if(network->out)
 			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromCudaTensor(out);
+#ifdef HAVEFP16
+		if(floattype == CUDNN_DATA_HALF)
+			network->out = THFloatTensor_newFromHalfCudaTensor(out);
+		else
+#endif
+			network->out = THFloatTensor_newFromCudaTensor(out);
 		out = network->out;
 	} else
 #endif
-	out = forward(network->net, t);
+		out = forward(network->net, t);
 	THFloatTensor_free(t);
-	free(data);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
 	{
@@ -298,5 +347,18 @@ THNETWORK *THCreateCudaNetwork(THNETWORK *net)
 	return nn;
 #else
 	return 0;
+#endif
+}
+
+int THCudaHalfFloat(int enable)
+{
+#if defined CUDNN && defined HAVEFP16
+	if(enable)
+	{
+		floattype = CUDNN_DATA_HALF;
+	} else floattype = CUDNN_DATA_FLOAT;
+	return 0;
+#else
+	return ERR_NOTIMPLEMENTED;
 #endif
 }

@@ -20,6 +20,10 @@ input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of
 
 ## High level API description
 
+### void THInit()
+
+Initializes the library.
+
 ### THNETWORK *THLoadNetwork(const char *path)
 
 Loads the network contained in the path directory and returns a THNETWORK object or 0, if the
@@ -38,6 +42,10 @@ does not support them.
 ### THNETWORK *THCreateCudaNetwork(THNETWORK *net)
 
 Create a new network from the given network. The new network will use CuDNN.
+
+### int THCudaHalfFloat(int enable)
+
+Enables the use of 16 bit floats on CUDA.
 
 ### int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
 

@@ -29,20 +29,56 @@ int main(int argc, char **argv)
 {
 	THNETWORK *net;
 	float *result;
-	int i, rc, outwidth, outheight;
+	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 1;
+	const char *modelsdir = 0, *inputfile = 0;
 
-	if(argc != 4)
+	for(i = 1; i < argc; i++)
 	{
-		fprintf(stderr, "Syntax: loadtorch <models directory> <input file> <mode=0,1,2 (norm,MM,cuDNN)>\n");
+		if(argv[i][0] != '-')
+			continue;
+		switch(argv[i][1])
+		{
+		case 'm':
+			if(i+1 < argc)
+				modelsdir = argv[++i];
+			break;
+		case 'i':
+			if(i+1 < argc)
+				inputfile = argv[++i];
+			break;
+		case 'a':
+			if(i+1 < argc)
+				alg = atoi(argv[++i]);
+			break;
+		case 'p':
+			print = 1;
+			break;
+		case 'r':
+			if(i+1 < argc)
+				runs = atoi(argv[++i]);
+			break;
+		}
+	}
+	if(!modelsdir || !inputfile)
+	{
+		fprintf(stderr, "Syntax: loadtorch -m <models directory> -i <input file>\n");
+		fprintf(stderr, "                  [-r <number of runs] [-p(rint results)]\n");
+		fprintf(stderr, "                  [-a <alg=0:norm,1:MM,default,2:cuDNN,3:cudNNhalf>]\n");
 		return -1;
 	}
-	net = THLoadNetwork(argv[1]);
+	if(alg == 3)
+	{
+		alg = 2;
+		THCudaHalfFloat(1);
+	}
+	THInit();
+	net = THLoadNetwork(modelsdir);
 	if(net)
 	{
 		THMakeSpatial(net);
-		if(argv[3][0] == '0')
+		if(alg == 0)
 			THUseSpatialConvolutionMM(net, 0);
-		else if(argv[3][0] == '2')
+		else if(alg == 2)
 		{
 			THNETWORK *net2 = THCreateCudaNetwork(net);
 			if(!net2)
@@ -50,43 +86,48 @@ int main(int argc, char **argv)
 			THFreeNetwork(net);
 			net = net2;
 		}
-		if(strstr(argv[2], ".t7"))
+		if(strstr(inputfile, ".t7"))
 		{
 			struct thobject input_o;
 
-			rc = loadtorch(argv[2], &input_o, 8);
+			rc = loadtorch(inputfile, &input_o, 8);
 			if(!rc)
 			{
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
-				if(argv[3][0] == '2')
+				if(alg == 2)
 					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
 				t = seconds();
-				rc = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
-				t = seconds() - t;
-				for(i = 0; i < rc; i++)
-					printf("(%d,%d,%d): %f\n", i/(outwidth*outheight), i % (outwidth*outheight) / outwidth, i % outwidth, result[i]);
+				for(i = 0; i < runs; i++)
+					n = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+				t = (seconds() - t) / runs;
 				THFloatTensor_free(in);
 				freeobject(&input_o);
-			} else printf("Error loading %s\n", argv[2]);
+			} else printf("Error loading %s\n", inputfile);
 		} else {
 			img_t image;
 
-			rc = loadimage(argv[2], &image);
+			rc = loadimage(inputfile, &image);
 			if(!rc)
 			{
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
-				if(argv[3][0] == '2')
+				if(alg == 2)
 					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
 				t = seconds();
-                rc = THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
-                t = seconds() - t;
-                for(i = 0; i < rc; i++)
-					printf("(%d,%d,%d): %f\n", i/(outwidth*outheight), i % (outwidth*outheight) / outwidth, i % outwidth, result[i]);
+				for(i = 0; i < runs; i++)
+					n = THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
+				t = (seconds() - t) / runs;
+#ifdef USECUDAHOSTALLOC
+				cudaFreeHost(image.bitmap);
+#else
 				free(image.bitmap);
-			} else printf("Error loading image %s\n", argv[2]);
+#endif
+			} else printf("Error loading image %s\n", inputfile);
 		}
-		printf("Processing time: %lf\n", t);
+		if(print)
+			for(i = 0; i < n; i++)
+				printf("(%d,%d,%d): %f\n", i/(outwidth*outheight), i % (outwidth*outheight) / outwidth, i % outwidth, result[i]);
+		printf("1 run processing time: %lf\n", t);
         THFreeNetwork(net);
 	} else printf("The network could not be loaded: %d\n", THLastError());
 #ifdef MEMORYDEBUG

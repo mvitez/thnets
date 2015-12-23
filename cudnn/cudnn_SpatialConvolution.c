@@ -19,6 +19,7 @@ THFloatTensor *cudnn_SpatialConvolution_updateOutput(struct module *module, THFl
 	THFloatTensor *output = module->output;
 
 	int sizes[4];
+	int pad[2], filterStride[2], upscale[2];
 	cudnnTensorDescriptor_t dinput, dbias, doutput;
 	cudnnConvolutionDescriptor_t dconv;
 	cudnnFilterDescriptor_t dweight;
@@ -28,20 +29,27 @@ THFloatTensor *cudnn_SpatialConvolution_updateOutput(struct module *module, THFl
 	static size_t wssize;
 	static const int alg = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
 
+	pad[0] = padH;
+	pad[1] = padW;
+	filterStride[0] = dH;
+	filterStride[1] = dW;
+	upscale[0] = 1;
+	upscale[1] = 1;
+
 	if(input->nDimension <= 2)
 	{
 		// Here we use the SpatialConvolution module to perform a linear transformation
 		errcheck(cudnnCreateTensorDescriptor(&dinput));
 		if(input->nDimension == 1)
-			errcheck(cudnnSetTensor4dDescriptor(dinput, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, input->size[0], 1, 1));
-		else errcheck(cudnnSetTensor4dDescriptor(dinput, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, input->size[0], input->size[1], 1, 1));
+			errcheck(cudnnSetTensor4dDescriptor(dinput, CUDNN_TENSOR_NCHW, floattype, 1, input->size[0], 1, 1));
+		else errcheck(cudnnSetTensor4dDescriptor(dinput, CUDNN_TENSOR_NCHW, floattype, input->size[0], input->size[1], 1, 1));
 	} else errcheck(THcudnn_TensorDescriptor(&dinput, input));
 	errcheck(cudnnCreateFilterDescriptor(&dweight));
-	errcheck(cudnnSetFilter4dDescriptor(dweight, CUDNN_DATA_FLOAT, nOutputPlane, nInputPlane, kH, kW));
+	errcheck(cudnnSetFilter4dDescriptor(dweight, floattype, nOutputPlane, nInputPlane, kH, kW));
 	errcheck(cudnnCreateTensorDescriptor(&dbias));
-	errcheck(cudnnSetTensor4dDescriptor(dbias, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, bias->size[0], 1, 1));
+	errcheck(cudnnSetTensor4dDescriptor(dbias, CUDNN_TENSOR_NCHW, floattype, 1, bias->size[0], 1, 1));
 	errcheck(cudnnCreateConvolutionDescriptor(&dconv));
-	errcheck(cudnnSetConvolution2dDescriptor(dconv, padH, padW, dH, dW, 1, 1, CUDNN_CROSS_CORRELATION));
+	errcheck(cudnnSetConvolutionNdDescriptor(dconv, 2, pad, filterStride, upscale, CUDNN_CROSS_CORRELATION, floattype));
 	errcheck(cudnnGetConvolutionNdForwardOutputDim(dconv, dinput, dweight, 4, sizes));
 	THCudaTensor_resize4d(output, sizes[0], sizes[1], sizes[2], sizes[3]);
 	errcheck(THcudnn_TensorDescriptor(&doutput, output));

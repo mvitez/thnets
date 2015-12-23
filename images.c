@@ -6,6 +6,22 @@
 #include "memory.h"
 #endif
 
+#ifdef USECUDAHOSTALLOC
+#include "thnets.h"
+
+void *cmalloc(size_t size)
+{
+	void *ptr = 0;
+
+	errcheck(cudaHostAlloc(&ptr, size, cudaHostAllocMapped));
+	return ptr;
+}
+
+#else
+#define cmalloc(a) malloc(a)
+#endif
+
+
 typedef struct {
 	char filename[255];
 	unsigned char *bitmap;
@@ -37,7 +53,7 @@ static int loadjpeg(const char *path, img_t *image)
 		fclose(fp);
 		return -1;
 	}
-	buf = malloc(w * h * cp);
+	buf = cmalloc(w * h * cp);
 	while(cinfo.output_scanline < h)
 	{
 		JSAMPROW buffer = buf + cp*w*cinfo.output_scanline;
@@ -122,7 +138,7 @@ static int loadpng(const char *path, img_t *image)
 	}
 	if(bit_depth == 16)
 		png_set_strip_16(png_ptr);
-	buf = malloc(w * h * cp);
+	buf = cmalloc(w * h * cp);
 	png_bytep *rows = (png_bytep *)malloc(sizeof(png_bytep) * h);
 	if(setjmp(png_jmpbuf(png_ptr)))
 	{

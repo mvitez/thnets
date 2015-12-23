@@ -3,6 +3,7 @@
 #include "../thnets.h"
 
 static cudnnHandle_t handle;
+int floattype = CUDNN_DATA_FLOAT;
 
 void checkerr(int status)
 {
@@ -36,7 +37,16 @@ int THcudnn_TensorDescriptor(cudnnTensorDescriptor_t *d, THFloatTensor *t)
 		size[i+base] = t->size[i];
 		stride[i+base] = t->stride[i];
 	}
-	return cudnnSetTensorNdDescriptor(*d, CUDNN_DATA_FLOAT, 4, size, stride);
+	return cudnnSetTensorNdDescriptor(*d, floattype, 4, size, stride);
+}
+
+THFloatStorage *THCudaStorage_new(long size)
+{
+	THFloatStorage *s = malloc(sizeof(*s));
+	errcheck(cudaMalloc((void **)&s->data, size * sizeof(*s->data)));
+	s->nref = 1;
+	s->mustfree = 2;
+	return s;
 }
 
 THFloatTensor *THCudaTensor_newFromFloatTensor(THFloatTensor *t)
@@ -106,8 +116,17 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 		case MT_SpatialConvolutionMM:
 		case MT_SpatialConvolution:
 			nn->modules[i].updateOutput = cudnn_SpatialConvolution_updateOutput;
-			nn->modules[i].SpatialConvolution.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
-			nn->modules[i].SpatialConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+#ifdef HAVEFP16
+			if(floattype == CUDNN_DATA_HALF)
+			{
+				nn->modules[i].SpatialConvolution.weight = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			} else
+#endif
+			{
+				nn->modules[i].SpatialConvolution.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			}
 			nn->modules[i].SpatialConvolution.finput = 0;
 			break;
 		case MT_SpatialMaxPooling:
@@ -138,10 +157,76 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 			c->kW = c->kH = 1;
 			c->nOutputPlane = c->weight->size[0];
 			c->nInputPlane = c->weight->size[1];
-			nn->modules[i].SpatialConvolution.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
-			nn->modules[i].SpatialConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);			
+#ifdef HAVEFP16
+			if(floattype == CUDNN_DATA_HALF)
+			{
+				nn->modules[i].SpatialConvolution.weight = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			} else
+#endif
+			{
+				nn->modules[i].SpatialConvolution.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			}
 			break;
 		}
 	}
 	return nn;
 }
+
+
+#ifdef HAVEFP16
+
+void tofp16(__fp16 *dst, const float *src, size_t len)
+{
+	size_t i;
+
+	for(i = 0; i < len; i++)
+		dst[i] = src[i];
+}
+
+void fromfp16(float *dst, const __fp16 *src, size_t len)
+{
+	size_t i;
+
+	for(i = 0; i < len; i++)
+		dst[i] = src[i];
+}
+
+THFloatTensor *THHalfCudaTensor_newFromFloatTensor(THFloatTensor *t)
+{
+	THFloatTensor *n = malloc(sizeof(*n));
+	memcpy(n, t, sizeof(*n));
+	if(t->storage)
+	{
+		n->storage = malloc(sizeof(*n->storage));
+		n->storage->nref = 1;
+		n->storage->mustfree = 2;
+		void *tmp = malloc(THFloatTensor_nElement(t) * 2);
+		tofp16(tmp, THFloatTensor_data(t), THFloatTensor_nElement(t));
+		errcheck(cudaMalloc((void **)&n->storage->data, THFloatTensor_nElement(t) * 2));
+		errcheck(cudaMemcpy(n->storage->data, tmp, THFloatTensor_nElement(t) * 2, cudaMemcpyHostToDevice));
+		free(tmp);
+	}
+	return n;
+}
+
+THFloatTensor *THFloatTensor_newFromHalfCudaTensor(THFloatTensor *t)
+{
+	THFloatTensor *n = malloc(sizeof(*n));
+	memcpy(n, t, sizeof(*n));
+	if(t->storage)
+	{
+		n->storage = malloc(sizeof(*n->storage));
+		n->storage->nref = 1;
+		n->storage->mustfree = 2;
+		void *tmp = malloc(THFloatTensor_nElement(t) * 2);
+		errcheck(cudaMemcpy(tmp, t->storage->data, THFloatTensor_nElement(t) * 2, cudaMemcpyDeviceToHost));
+		n->storage->data = malloc(THFloatTensor_nElement(t) * sizeof(*n->storage->data));
+		fromfp16(n->storage->data, tmp, THFloatTensor_nElement(t));
+		free(tmp);
+	}
+	return n;
+}
+
+#endif

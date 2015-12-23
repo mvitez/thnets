@@ -19,6 +19,9 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 ifneq ($(filter arm%,$(UNAME_P)),)
 	CFLAGS += -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
 endif
+ifneq ($(filter aarc%,$(UNAME_P)),)
+	CFLAGS += -D__NEON__ -mcpu=cortex-a53 -mfpu=neon-vfpv4 -DHAVEFP16 -mfp16-format=ieee
+endif
 
 ifneq ($(filter x86%,$(UNAME_P)),)
 #	CFLAGS += -DUSE_SSE4_2 -march=corei7	#it's slower!
@@ -37,7 +40,7 @@ endif
 
 ifeq ($(CUDNN),1)
 	LIBOBJS += cudnn_basic.o cudnn_SpatialConvolution.o cudnn_SpatialMaxPooling.o cudnn_Threshold.o \
-		cudnn_SoftMax.o
+		cudnn_SoftMax.o cudnn_copy.o
 	CFLAGS += -DCUDNN -I$(CUDAPATH)/include -I$(CUDNNPATH)/include
 	LIBS += -L$(CUDAPATH)/lib -L$(CUDNNPATH)/lib -lcudart -lcudnn
 endif
@@ -49,6 +52,9 @@ all : thnets.so test
 
 .c.o:
 	$(CC) $(CFLAGS) $<
+
+cudnn_copy.o: cudnn_copy.cu
+	nvcc -c -Xcompiler -fPIC -O3 cudnn/cudnn_copy.cu
 
 thnets.so: $(LIBOBJS)
 	$(CC) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
