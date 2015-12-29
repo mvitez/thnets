@@ -84,7 +84,7 @@ THNETWORK *THLoadNetwork(const char *path)
 
 void THInit()
 {
-#ifdef CUDNN
+#if defined CUDNN && defined USECUDAHOSTALLOC
 	static int init;
 
 	if(init)
@@ -92,7 +92,6 @@ void THInit()
 	init = 1;
 	// cuda_maphostmem = 1 requires that memory was allocated with cudaHostAlloc
 	// cuda_maphostmem = 2 will work with malloc, but Tegra TX1 does not support cudaHostRegister with cudaHostRegisterMapped
-#ifdef USECUDAHOSTALLOC
 	struct cudaDeviceProp prop;
 
 	cudaGetDeviceProperties(&prop, 0);
