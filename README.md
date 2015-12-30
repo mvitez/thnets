@@ -9,14 +9,20 @@ Requirements for test: libpng and libjpeg
 Make with "make"
 
 Make options are DEBUG=1, MEMORYDEBUG=0 (checks memory leaks) or 1 (generates full dump
-of allocations in memdump.txt) and CUDNN=1 (uses CuDNN).
+of allocations in memdump.txt) and CUDNN=1 (uses CuDNN). Check the CUDA and CUDNN directories
+in the Makefile if using CUDNN.
 
 ## Test program
 
-    export LD_LIBRARY_PATH=/opt/OpenBLAS/lib:.
+    export LD_LIBRARY_PATH=/opt/OpenBLAS/lib:. (add CUDA and CUDNN lib directories, if using CUDNN)
     ./test <path to directory with model files> <input file>
 
 input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+
+## OpenBLAS-stripped
+
+There is a stripped version of OpenBLAS for ARM. Just type "make" in OpenBLAS-stripped, then
+fix the thnets Makefile to point to that OpenBLAS and set LD_LIBRARY_PATH to use that BLAS.
 
 ## High level API description
 
