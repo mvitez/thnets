@@ -14,7 +14,7 @@ LIBS = -L/opt/OpenBLAS/lib -lopenblas -lm
 CC = gcc
 VPATH = modules cudnn
 LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o Threshold.o \
-	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o images.o SpatialConvolution.o
+	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o
 
 ifneq ($(filter arm%,$(UNAME_P)),)
 	CFLAGS += -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
@@ -59,8 +59,8 @@ cudnn_copy.o: cudnn_copy.cu
 thnets.so: $(LIBOBJS)
 	$(CC) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
 
-test: $(LIBOBJS) test.o
-	$(CC) -o $@ test.o thnets.so $(LIBS) -lpng -ljpeg
+test: $(LIBOBJS) test.o images.o
+	$(CC) -o $@ test.o images.o thnets.so $(LIBS) -lpng -ljpeg
 
 .PHONY : clean
 clean :

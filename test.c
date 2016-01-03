@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 {
 	THNETWORK *net;
 	float *result;
-	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 1;
+	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 1, nbatch = 1;
 	const char *modelsdir = 0, *inputfile = 0;
 
 	for(i = 1; i < argc; i++)
@@ -57,13 +57,22 @@ int main(int argc, char **argv)
 			if(i+1 < argc)
 				runs = atoi(argv[++i]);
 			break;
+		case 'b':
+			if(i+1 < argc)
+			{
+				nbatch = atoi(argv[++i]);
+				if(nbatch > 256 || nbatch < 1)
+					nbatch = 256;
+			}
+			break;
 		}
 	}
 	if(!modelsdir || !inputfile)
 	{
-		fprintf(stderr, "Syntax: loadtorch -m <models directory> -i <input file>\n");
-		fprintf(stderr, "                  [-r <number of runs] [-p(rint results)]\n");
-		fprintf(stderr, "                  [-a <alg=0:norm,1:MM,default,2:cuDNN,3:cudNNhalf>]\n");
+		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
+		fprintf(stderr, "             [-r <number of runs] [-p(rint results)]\n");
+		fprintf(stderr, "             [-a <alg=0:norm,1:MM,default,2:cuDNN,3:cudNNhalf>]\n");
+		fprintf(stderr, "             [-b <nbatch>]\n");
 		return -1;
 	}
 	if(alg == 3)
@@ -110,12 +119,15 @@ int main(int argc, char **argv)
 			rc = loadimage(inputfile, &image);
 			if(!rc)
 			{
+				unsigned char *bitmaps[256];
+				for(i = 0; i < nbatch; i++)
+					bitmaps[i] = image.bitmap;
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
 				if(alg == 2)
 					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
 				t = seconds();
 				for(i = 0; i < runs; i++)
-					n = THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
+					n = THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
 				t = (seconds() - t) / runs;
 #ifdef USECUDAHOSTALLOC
 				cudaFreeHost(image.bitmap);
