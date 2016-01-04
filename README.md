@@ -87,3 +87,19 @@ THLoadNetwork and can give these results:
 - -3 The file contains some elements, which were not implemented in this library
 - -4 The file is corrupted
 - -5 The file contains torch objects not expected in that file
+
+
+
+### Tegra TX1 results:
+
+image size of 1280x720:
+1 run processing time: 2.461129 (direct)
+1 run processing time: 1.549271 (MM)
+1 run processing time: 0.088064 (cuDNN)
+1 run processing time: 0.058184 (16 bit cuDNN)
+
+image size of 1920x1080:
+1 run processing time: 7.196426 (direct)
+1 run processing time: 3.666830 (MM)
+1 run processing time: 0.195412 (cuDNN)
+1 run processing time: 0.129979 (16 bit cuDNN)
