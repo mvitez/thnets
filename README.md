@@ -2,22 +2,27 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.
-
-Requirements for test: libpng and libjpeg
-
-Make with "make"
-
-Make options are DEBUG=1, MEMORYDEBUG=0 (checks memory leaks) or 1 (generates full dump
-of allocations in memdump.txt) and CUDNN=1 (uses CuDNN). Check the CUDA and CUDNN directories
-in the Makefile if using CUDNN.
+Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.  
+Requirements for test: libpng and libjpeg  
+Make with "make"  
+Make options are:
+   * *DEBUG* 0 is off, 1 is on
+   * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
+   * *CUDNN* 0 is off, 1 uses CuDNN
+Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 
 ## Test program
 
     export LD_LIBRARY_PATH=/opt/OpenBLAS/lib:. (add CUDA and CUDNN lib directories, if using CUDNN)
-    ./test <path to directory with model files> <input file>
+    ./test -m <model_dir> -i <input_file>
 
-input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+The model directory must contain 2 files:
+   * *model.net* the network file saved in .t7 format
+   * *stat.t7* contains a table with a 'std' and 'mean' FloatTensor of dimension 3
+
+Input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+
+A demo model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
 
 ## OpenBLAS-stripped
 
@@ -56,10 +61,9 @@ Enables the use of 16 bit floats on CUDA.
 ### int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
 
 Runs the network on the float data. Float data is organized as a coniguous array of
-size batchsize x 3 x height x width, where 3 is the number of color planes.
-
-Returns the number of categories in the output and the size of the output in outwidth and outheight.
-result will point to the array with the data and *must* not be freed.
+size batchsize x 3 x height x width, where 3 is the number of color planes.  
+Returns the number of categories in the output and the size of the output in outwidth and outheight.  
+Result will point to the array with the data and *must* not be freed.  
 The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
 
 ### int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight)
@@ -68,8 +72,8 @@ Runs the network on the series of images. Images is an array with batchsize poin
 each element points to the start of the image. Images are arrays of size
 height x stride x 3, where only the first width of each line long stride contains data.
 
-Returns the number of categories in the output and the size of the output in outwidth and outheight.
-result will point to the array with the data and *must* not be freed.
+Returns the number of categories in the output and the size of the output in outwidth and outheight.  
+Result will point to the array with the data and *must* not be freed.  
 The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
 
 ### void THFreeNetwork(THNETWORK *network)
@@ -96,14 +100,9 @@ See: https://github.com/teradeep/demo-apps/tree/master/generic-embedded
 
 ### Tegra TX1 results:
 
-image size of 1280x720:
-1 run processing time: 2.461129 (direct)
-1 run processing time: 1.549271 (MM)
-1 run processing time: 0.088064 (cuDNN)
-1 run processing time: 0.058184 (16 bit cuDNN)
+Forward times in seconds:
 
-image size of 1920x1080:
-1 run processing time: 7.196426 (direct)
-1 run processing time: 3.666830 (MM)
-1 run processing time: 0.195412 (cuDNN)
-1 run processing time: 0.129979 (16 bit cuDNN)
+| Image Size | Direct   | MM       | cuDNN    | 16-bit cuDNN |
+| :--------: | :------: | :------: | :------: | :----------: |
+| 1280x720   | 2.461129 | 1.549271 | 0.088064 | 0.088064     |
+| 1920x1080  | 7.196426 | 3.666830 | 0.195412 | 0.129979     |
