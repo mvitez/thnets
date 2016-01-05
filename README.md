@@ -79,7 +79,6 @@ The data is a contiguous array of size batchsize x number of categories x outhei
 ### void THFreeNetwork(THNETWORK *network)
 
 Frees the network and all associated data and outputs.
-Bella
 
 ### int THLastError()
 
@@ -97,14 +96,9 @@ THLoadNetwork and can give these results:
 
 ### Tegra TX1 results:
 
-image size of 1280x720:
-1 run processing time: 2.461129 (direct)
-1 run processing time: 1.549271 (MM)
-1 run processing time: 0.088064 (cuDNN)
-1 run processing time: 0.058184 (16 bit cuDNN)
+Forward times in seconds:
 
-image size of 1920x1080:
-1 run processing time: 7.196426 (direct)
-1 run processing time: 3.666830 (MM)
-1 run processing time: 0.195412 (cuDNN)
-1 run processing time: 0.129979 (16 bit cuDNN)
+| Image Size | Direct   | MM       | cuDNN    | 16-bit cuDNN |
+| :--------: | :------: | :------: | :------: | :----------: |
+| 1280x720   | 2.461129 | 1.549271 | 0.088064 | 0.088064     |
+| 1920x1080  | 7.196426 | 3.666830 | 0.195412 | 0.129979     |
