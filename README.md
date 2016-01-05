@@ -2,15 +2,14 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.
-
-Requirements for test: libpng and libjpeg
-
-Make with "make"
-
-Make options are DEBUG=1, MEMORYDEBUG=0 (checks memory leaks) or 1 (generates full dump
-of allocations in memdump.txt) and CUDNN=1 (uses CuDNN). Check the CUDA and CUDNN directories
-in the Makefile if using CUDNN.
+Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.  
+Requirements for test: libpng and libjpeg  
+Make with "make"  
+Make options are:
+   * *DEBUG* 0 is off, 1 is on
+   * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
+   * *CUDNN* 0 is off, 1 uses CuDNN
+Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 
 ## Test program
 
@@ -62,10 +61,9 @@ Enables the use of 16 bit floats on CUDA.
 ### int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
 
 Runs the network on the float data. Float data is organized as a coniguous array of
-size batchsize x 3 x height x width, where 3 is the number of color planes.
-
-Returns the number of categories in the output and the size of the output in outwidth and outheight.
-result will point to the array with the data and *must* not be freed.
+size batchsize x 3 x height x width, where 3 is the number of color planes.  
+Returns the number of categories in the output and the size of the output in outwidth and outheight.  
+Result will point to the array with the data and *must* not be freed.  
 The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
 
 ### int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight)
@@ -74,13 +72,14 @@ Runs the network on the series of images. Images is an array with batchsize poin
 each element points to the start of the image. Images are arrays of size
 height x stride x 3, where only the first width of each line long stride contains data.
 
-Returns the number of categories in the output and the size of the output in outwidth and outheight.
-result will point to the array with the data and *must* not be freed.
+Returns the number of categories in the output and the size of the output in outwidth and outheight.  
+Result will point to the array with the data and *must* not be freed.  
 The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
 
 ### void THFreeNetwork(THNETWORK *network)
 
 Frees the network and all associated data and outputs.
+Bella
 
 ### int THLastError()
 
