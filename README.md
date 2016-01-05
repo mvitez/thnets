@@ -89,6 +89,10 @@ THLoadNetwork and can give these results:
 - -5 The file contains torch objects not expected in that file
 
 
+### Demonstration application
+
+See: https://github.com/teradeep/demo-apps/tree/master/generic-embedded
+
 
 ### Tegra TX1 results:
 
