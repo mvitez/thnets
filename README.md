@@ -15,9 +15,15 @@ in the Makefile if using CUDNN.
 ## Test program
 
     export LD_LIBRARY_PATH=/opt/OpenBLAS/lib:. (add CUDA and CUDNN lib directories, if using CUDNN)
-    ./test <path to directory with model files> <input file>
+    ./test -m <model_dir> -i <input_file>
 
-input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+The model directory must contain 2 files:
+   * *model.net* the network file saved in .t7 format
+   * *stat.t7* contains a table with a 'std' and 'mean' FloatTensor of dimension 3
+
+Input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+
+A demo model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
 
 ## OpenBLAS-stripped
 
