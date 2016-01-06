@@ -22,7 +22,7 @@ static void rgb2float(float *dst, const unsigned char *src, int width, int heigh
 	std1[0] = 1 / std[0];
 	std1[1] = 1 / std[1];
 	std1[2] = 1 / std[2];
-#pragma omp parallel for private(i)
+#pragma omp parallel for private(c)
 	for(c = 0; c < 3; c++)
 		for(i = 0; i < height; i++)
 			for(j = 0; j < width; j++)
