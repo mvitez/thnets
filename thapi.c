@@ -153,6 +153,7 @@ void rgb2float(float *dst, const unsigned char *src, int width, int height, int 
 {
 	int c, i, j;
 
+#pragma omp parallel for private(i)
 	for(c = 0; c < 3; c++)
 		for(i = 0; i < height; i++)
 			for(j = 0; j < width; j++)
@@ -185,7 +186,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 #endif
 	{
 		st = THFloatStorage_new(batchsize * width * height * 3);
-#pragma omp parallel for private(i)
+#pragma omp parallel for if(batchsize>1) private(i)
 		for(i = 0; i < batchsize; i++)
 			rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
 	}
