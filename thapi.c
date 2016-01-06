@@ -5,10 +5,101 @@
 #include "thnets.h"
 
 static int lasterror, longsize = 8;
+static short TB_YUR[256], TB_YUB[256], TB_YUGU[256], TB_YUGV[256], TB_Y[256];
+static unsigned char TB_SAT[1024 + 1024 + 256];
 
 #ifdef CUDNN
 int cuda_maphostmem;
 #endif
+
+#define BYTE2FLOAT 0.003921568f // 1/255
+
+static void rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std)
+{
+	int c, i, j;
+	float std1[3];
+
+	std1[0] = 1 / std[0];
+	std1[1] = 1 / std[1];
+	std1[2] = 1 / std[2];
+#pragma omp parallel for private(i)
+	for(c = 0; c < 3; c++)
+		for(i = 0; i < height; i++)
+			for(j = 0; j < width; j++)
+				dst[j + (i + c * height) * width] = (src[c + 3*j + srcstride*i] * BYTE2FLOAT - mean[c]) * std1[c];
+}
+
+static void init_yuv2rgb()
+{
+	int i;
+
+	/* calculate lookup table for yuv420p */
+	for (i = 0; i < 256; i++) {
+		TB_YUR[i]  =  459 * (i-128) / 256;
+		TB_YUB[i]  =  541 * (i-128) / 256;
+		TB_YUGU[i] = -137 * (i-128) / 256;
+		TB_YUGV[i] = - 55 * (i-128) / 256;
+		TB_Y[i]    = (i-16) * 298 / 256;
+	}
+	for (i = 0; i < 1024; i++) {
+		TB_SAT[i] = 0;
+		TB_SAT[i + 1024 + 256] = 255;
+	}
+	for (i = 0; i < 256; i++)
+		TB_SAT[i + 1024] = i;
+}
+
+static void yuyv2fRGB(const unsigned char *frame, float *dst_float, int imgstride, int rowstride, int w, int h, const float *mean, const float *std)
+{
+	int i, j, w2 = w / 2, c;
+	float std0 = 1/std[0];
+	float std1 = 1/std[1];
+	float std2 = 1/std[2];
+
+#pragma omp parallel for private(c)
+	for(c = 0; c < 3; c++)
+	{
+		float *dst;
+		const unsigned char *src;
+		if(c == 0)
+		{
+			/* convert for R channel */
+			src = frame;
+			for (i = 0; i < h; i++) {
+				dst = dst_float + i * rowstride;
+				for (j = 0; j < w2; j++) {
+					*dst++ = (TB_SAT[ TB_Y[ src[0] ] + TB_YUR[ src[3] ] + 1024] * BYTE2FLOAT - mean[0]) * std0;
+					*dst++ = (TB_SAT[ TB_Y[ src[2] ] + TB_YUR[ src[3] ] + 1024] * BYTE2FLOAT - mean[0]) * std0;
+					src += 4;
+				}
+			}
+		} else if(c == 1)
+		{
+			/* convert for G channel */
+			src = frame;
+			for (i = 0; i < h; i++) {
+				dst = dst_float + i * rowstride + imgstride;
+				for (j = 0; j < w2; j++) {
+					*dst++ = (TB_SAT[ TB_Y[ src[0] ] + TB_YUGU[ src[1] ] + TB_YUGV[ src[3] ] + 1024] * BYTE2FLOAT - mean[1]) * std1;
+					*dst++ = (TB_SAT[ TB_Y[ src[2] ] + TB_YUGU[ src[1] ] + TB_YUGV[ src[3] ] + 1024] * BYTE2FLOAT - mean[1]) * std1;
+					src += 4;
+				}
+			}
+		} else if(c == 2)
+		{
+			/* convert for B channel */
+			src = frame;
+			for (i = 0; i < h; i++) {
+				dst = dst_float + i * rowstride + 2*imgstride;
+				for (j = 0; j < w2; j++) {
+					*dst++ = (TB_SAT[ TB_Y[ src[0] ] + TB_YUB[ src[1] ] + 1024] * BYTE2FLOAT - mean[2]) * std2;
+					*dst++ = (TB_SAT[ TB_Y[ src[2] ] + TB_YUB[ src[1] ] + 1024] * BYTE2FLOAT - mean[2]) * std2;
+					src += 4;
+				}
+			}
+		}
+	}
+}
 
 THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
@@ -84,12 +175,13 @@ THNETWORK *THLoadNetwork(const char *path)
 
 void THInit()
 {
-#if defined CUDNN && defined USECUDAHOSTALLOC
 	static int init;
 
 	if(init)
 		return;
+	init_yuv2rgb();
 	init = 1;
+#if defined CUDNN && defined USECUDAHOSTALLOC
 	// cuda_maphostmem = 1 requires that memory was allocated with cudaHostAlloc
 	// cuda_maphostmem = 2 will work with malloc, but Tegra TX1 does not support cudaHostRegister with cudaHostRegisterMapped
 	struct cudaDeviceProp prop;
@@ -145,23 +237,6 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 		*outheight = out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
 	return THFloatTensor_nElement(out);
-}
-
-#define BYTE2FLOAT 0.003921568f // 1/255
-
-void rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std)
-{
-	int c, i, j;
-	float std1[3];
-
-	std1[0] = 1 / std[0];
-	std1[1] = 1 / std[1];
-	std1[2] = 1 / std[2];
-#pragma omp parallel for private(i)
-	for(c = 0; c < 3; c++)
-		for(i = 0; i < height; i++)
-			for(j = 0; j < width; j++)
-				dst[j + (i + c * height) * width] = (src[c + 3*j + srcstride*i] * BYTE2FLOAT - mean[c]) * std1[c];
 }
 
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight)
@@ -232,6 +307,37 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	} else
 #endif
 		out = forward(network->net, t);
+	THFloatTensor_free(t);
+	*results = out->storage->data;
+	if(out->nDimension >= 3)
+	{
+		*outwidth = out->size[out->nDimension - 1];
+		*outheight = out->size[out->nDimension - 2];
+	} else *outwidth = *outheight = 1;
+	return THFloatTensor_nElement(out);
+}
+
+int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight)
+{
+	THFloatTensor *out;
+	THFloatStorage *st;
+
+#ifdef CUDNN
+	if(network->net->cuda)
+		THError("This function is not supported with CUDNN");
+#endif
+	st = THFloatStorage_new(width * height * 3);
+	yuyv2fRGB(image, st->data, width*height, width, width, height, network->mean, network->std);
+	THFloatTensor *t = THFloatTensor_new();
+	t->storage = st;
+	t->nDimension = 3;
+	t->size[0] = 3;
+	t->size[1] = height;
+	t->size[2] = width;
+	t->stride[0] = width * height;
+	t->stride[1] = width;
+	t->stride[2] = 1;
+	out = forward(network->net, t);
 	THFloatTensor_free(t);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)

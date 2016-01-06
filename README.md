@@ -64,6 +64,7 @@ Enables the use of 16 bit floats on CUDA.
 
 Runs the network on the float data. Float data is organized as a coniguous array of
 size batchsize x 3 x height x width, where 3 is the number of color planes.  
+
 Returns the number of categories in the output and the size of the output in outwidth and outheight.  
 Result will point to the array with the data and *must* not be freed.  
 The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
@@ -72,7 +73,16 @@ The data is a contiguous array of size batchsize x number of categories x outhei
 
 Runs the network on the series of images. Images is an array with batchsize pointers and
 each element points to the start of the image. Images are arrays of size
-height x stride x 3, where only the first width of each line long stride contains data.
+height x stride x 3, where only the first width of each line long stride contains data.  
+
+Returns the number of categories in the output and the size of the output in outwidth and outheight.  
+Result will point to the array with the data and *must* not be freed.  
+The data is a contiguous array of size batchsize x number of categories x outheight x outwidth.
+
+### int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight)
+
+Runs the network on an image in the YUYV format. This function is useful when the image comes from a camera,
+where the YUYV format is common.  
 
 Returns the number of categories in the output and the size of the output in outwidth and outheight.  
 Result will point to the array with the data and *must* not be freed.  
