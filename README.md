@@ -2,18 +2,20 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS, CuDNN version 4 if compiled with the CUDNN=1 option.  
+Requirements for library: OpenBLAS (included for ARM), CuDNN version 4 if compiled with the CUDNN=1 option.  
 Requirements for test: libpng and libjpeg  
-Make with "make"  
+Check the OPENBLAS directory in the Makefile or make and install OpenBLAS-stripped first
+Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
+Make with "make"
+Install with "(sudo) make install"
 Make options are:
    * *DEBUG* 0 is off, 1 is on
    * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
    * *CUDNN* 0 is off, 1 uses CuDNN
-Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 
 ## Test program
 
-    export LD_LIBRARY_PATH=/opt/OpenBLAS/lib:. (add CUDA and CUDNN lib directories, if using CUDNN)
+    export LD_LIBRARY_PATH=/usr/local/lib:/opt/OpenBLAS/lib (add CUDA and CUDNN lib directories, if using CUDNN)
     ./test -m <model_dir> -i <input_file>
 
 The model directory must contain 2 files:
@@ -27,7 +29,7 @@ A demo model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com
 ## OpenBLAS-stripped
 
 There is a stripped version of OpenBLAS for ARM. Just type "make" in OpenBLAS-stripped, then
-fix the thnets Makefile to point to that OpenBLAS and set LD_LIBRARY_PATH to use that BLAS.
+"(sudo) make install."
 
 ## High level API description
 

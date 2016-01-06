@@ -7,10 +7,11 @@ CUDNN = 0
 
 CUDAPATH=/usr/local/cuda
 CUDNNPATH=/home/ubuntu/cudnn/cuda
+OPENBLASPATH=/usr/local/lib
 
 UNAME_P := $(shell uname -p)
 CFLAGS = -Wall -c -fopenmp -fPIC
-LIBS = -L/opt/OpenBLAS/lib -lopenblas -lm
+LIBS = -L$(OPENBLASPATH) -lopenblas -lm
 CC = gcc
 VPATH = modules cudnn
 LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o Threshold.o \
@@ -46,7 +47,7 @@ ifeq ($(CUDNN),1)
 endif
 
 .PHONY : all
-all : thnets.so test
+all : libthnets.so test
 
 *.o: thnets.h
 
@@ -56,12 +57,18 @@ all : thnets.so test
 cudnn_copy.o: cudnn_copy.cu
 	nvcc -c -Xcompiler -fPIC -O3 cudnn/cudnn_copy.cu
 
-thnets.so: $(LIBOBJS)
+libthnets.so: $(LIBOBJS)
 	$(CC) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
 
 test: $(LIBOBJS) test.o images.o
-	$(CC) -o $@ test.o images.o thnets.so $(LIBS) -lpng -ljpeg
+	$(CC) -o $@ test.o images.o libthnets.so $(LIBS) -lpng -ljpeg
 
 .PHONY : clean
 clean :
-	rm -f *.o thnets.so test
+	rm -f *.o libthnets.so test
+
+install:
+	sudo cp libthnets.so /usr/local/lib
+
+uninstall:
+	sudo rm /usr/local/lib/libthnets.so
