@@ -6,8 +6,8 @@ Requirements for library: OpenBLAS (included for ARM), CuDNN version 4 if compil
 Requirements for test: libpng and libjpeg  
 Check the OPENBLAS directory in the Makefile or make and install OpenBLAS-stripped first
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
-Make with "make"
-Install with "(sudo) make install"
+Make with "make".
+Install with "(sudo) make install".
 Make options are:
    * *DEBUG* 0 is off, 1 is on
    * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
