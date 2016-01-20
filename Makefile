@@ -7,7 +7,7 @@ CUDNN = 0
 
 CUDAPATH=/usr/local/cuda
 CUDNNPATH=/home/ubuntu/cudnn/cuda
-OPENBLASPATH=/usr/local/lib
+OPENBLASPATH=/opt/OpenBLAS/lib
 
 UNAME_P := $(shell uname -p)
 CFLAGS = -Wall -c -fopenmp -fPIC

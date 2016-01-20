@@ -2,9 +2,8 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS (included for ARM), CuDNN version 4 if compiled with the CUDNN=1 option.  
+Requirements for library: OpenBLAS (already part of the library for ARM), CuDNN version 4 if compiled with the CUDNN=1 option.  
 Requirements for test: libpng and libjpeg  
-Check the OPENBLAS directory in the Makefile or make and install OpenBLAS-stripped first
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 Make with "make".
 Install with "(sudo) make install".
@@ -25,11 +24,6 @@ The model directory must contain 2 files:
 Input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
 
 A demo model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
-
-## OpenBLAS-stripped
-
-There is a stripped version of OpenBLAS for ARM. Just type "make" in OpenBLAS-stripped, then
-"(sudo) make install."
 
 ## High level API description
 
