@@ -12,6 +12,8 @@ THFloatStorage *THFloatStorage_new(long size)
 {
 	THFloatStorage *s = malloc(sizeof(*s));
 	s->data = malloc(sizeof(*s->data) * size);
+	if(!s->data)
+		THError("Out of memory");
 	s->nref = 1;
 	s->mustfree = 1;
 	return s;
@@ -319,8 +321,13 @@ double THExpMinusApprox(double x)
 #endif
 }
 
+void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, float *a, int *lda, float *b, int *ldb, float *beta, float *c, int *ldc);
+void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a, int lda, float *b, int ldb, float beta, float *c, int ldc);
+void sger_(int *m, int *n, float *alpha, float *x, int *incx, float *y, int *incy, float *a, int *lda);
+void sger(int m, int n, float alpha, float *x, int incx, float *y, int incy, float *a, int lda);
+void sgemv(char trans, int m, int n, float alpha, float *a, int lda, float *x, int incx, float beta, float *y, int incy);
+void sgemv_(char *trans, int *m, int *n, float *alpha, float *a, int *lda, float *x, int *incx, float *beta, float *y, int *incy);
 
-extern void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, float *a, int *lda, float *b, int *ldb, float *beta, float *c, int *ldc);
 static void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
 {
 	int transa_ = ((transa == 't') || (transa == 'T'));
@@ -353,54 +360,61 @@ static void THBlas_gemm(char transa, char transb, long m, long n, long k, float 
 
 	if( (m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (lda <= INT_MAX)  && (ldb <= INT_MAX) && (ldc <= INT_MAX) )
 	{
+#ifdef USEBLAS
 		int i_m = (int)m;
 		int i_n = (int)n;
 		int i_k = (int)k;
 		int i_lda = (int)lda;
 		int i_ldb = (int)ldb;
 		int i_ldc = (int)ldc;
-
 		sgemm_(&transa, &transb, &i_m, &i_n, &i_k, &alpha, a, &i_lda, b, &i_ldb, &beta, c, &i_ldc);
+#else
+		sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+#endif
 		return;
 	}
 	THError("Wrong parameters to gemm");
 }
 
-void sgemv_(char *trans, int *m, int *n, float *alpha, float *a, int *lda, float *x, int *incx, float *beta, float *y, int *incy);
 void THBlas_gemv(char trans, long m, long n, float alpha, float *a, long lda, float *x, long incx, float beta, float *y, long incy)
 {
 	if(n == 1)
 		lda = m;
-  
+
 	if( (m <= INT_MAX) && (n <= INT_MAX) && 
 		(lda > 0) && (lda <= INT_MAX) &&
 		(incx > 0) && (incx <= INT_MAX) &&
 		(incy > 0) && (incy <= INT_MAX) )
 	{
+#ifdef USEBLAS
 		int i_m = (int)m;
 		int i_n = (int)n;
 		int i_lda = (int)lda;
 		int i_incx = (int)incx;
 		int i_incy = (int)incy;
-
 		sgemv_(&trans, &i_m, &i_n, &alpha, a, &i_lda, x, &i_incx, &beta, y, &i_incy);
-		return;
+#else
+		sgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
+#endif
 	}
 }
 
-void sger_(int *m, int *n, float *alpha, float *x, int *incx, float *y, int *incy, float *a, int *lda);
+
 void THBlas_ger(long m, long n, float alpha, float *x, long incx, float *y, long incy, float *a, long lda)
 {
 	if(n == 1)
 		lda = m;
 
+#ifdef USEBLAS
 	int i_m = (int)m;
 	int i_n = (int)n;
 	int i_lda = (int)lda;
 	int i_incx = (int)incx;
 	int i_incy = (int)incy;
-
 	sger_(&i_m, &i_n, &alpha, x, &i_incx, y, &i_incy, a, &i_lda);
+#else
+	sger(m, n, alpha, x, incx, y, incy, a, lda);
+#endif
 }
 
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2)

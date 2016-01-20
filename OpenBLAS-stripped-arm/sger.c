@@ -36,35 +36,49 @@
 /* or implied, of The University of Texas at Austin.                 */
 /*********************************************************************/
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "common.h"
+/* Modified by Marko Vitez for University of Purdue                  */
 
-#if defined(OS_WINDOWS) && (defined(__MINGW32__) || defined(__MINGW64__))
-#include <conio.h>
-#undef  printf
-#define printf	_cprintf
-#endif
+#include "blas.h"
 
-#ifdef __ELF__
-int __xerbla(char *message, blasint *info, blasint length){
+#define NULL 0
 
-  printf(" ** On entry to %6s parameter number %2d had an illegal value\n",
-	  message, *info);
+static int sger_func(int m, int n, int dummy1, float alpha, float *x, int incx, float *y, int incy, float *a, int lda, float *buffer)
+{
+	float *X = x;
 
-  return 0;
+	if(incx != 1)
+	{
+		X = buffer;
+		scopy_k(m, x, incx, X, 1);
+	}
+
+	while (n > 0)
+	{
+		saxpy_k(m, 0, 0, alpha * *y, X, 1, a, 1, NULL, 0);
+		a += lda;
+		y += incy;
+		n --;
+	}
+	return 0;
 }
 
-int BLASFUNC(xerbla)(char *, blasint *, blasint) __attribute__ ((weak, alias ("__xerbla")));
+void sger(int m, int n, float alpha, float *x, int incx, float *y, int incy, float *a, int lda)
+{
+	float *buffer;
+	/*     Quick return if possible. */
+	if (m == 0 || n == 0)
+		return;
+	if (alpha == 0.)
+		return;
 
-#else
+	if(incy < 0)
+		y -= (n - 1) * incy;
+	if(incx < 0)
+		x -= (m - 1) * incx;
 
-int BLASFUNC(xerbla)(char *message, blasint *info, blasint length){
+	buffer = saa[0];
 
-  printf(" ** On entry to %6s parameter number %2d had an illegal value\n",
-	  message, *info);
-
-  return 0;
+	sger_func(m, n, 0, alpha, x, incx, y, incy, a, lda, buffer);
+	
+	return;
 }
-
-#endif

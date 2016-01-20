@@ -36,107 +36,70 @@
 /* or implied, of The University of Texas at Austin.                 */
 /*********************************************************************/
 
-#include "common.h"
+/* Modified by Marko Vitez for University of Purdue                  */
 
-int CNAME(BLASLONG m, BLASLONG n, BLASLONG dummy1, FLOAT beta,
-	  FLOAT *dummy2, BLASLONG dummy3, FLOAT *dummy4, BLASLONG dummy5,
-	  FLOAT *c, BLASLONG ldc){
+#include <omp.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "blas.h"
 
-  BLASLONG i, j;
-  FLOAT *c_offset1, *c_offset;
-  FLOAT ctemp1, ctemp2, ctemp3, ctemp4;
-  FLOAT ctemp5, ctemp6, ctemp7, ctemp8;
+#define GEMM_MULTITHREAD_THRESHOLD 4
 
-  c_offset = c;
+void sgemv(char trans, int m, int n, float alpha, float *a, int lda, float *x, int incx, float beta, float *y, int incy)
+{
+	long range[MAX_CPU_NUMBER+1];
+	int nthreads;
+	long width;	
+	double MNK;
+	int lenx, leny;
+	int i, num_cpu;
 
-  if (beta == ZERO){
-
-    j = n;
-    do {
-      c_offset1 = c_offset;
-      c_offset += ldc;
-
-      i = (m >> 3);
-      if (i > 0){
-	do {
-	  *(c_offset1 + 0) = ZERO;
-	  *(c_offset1 + 1) = ZERO;
-	  *(c_offset1 + 2) = ZERO;
-	  *(c_offset1 + 3) = ZERO;
-	  *(c_offset1 + 4) = ZERO;
-	  *(c_offset1 + 5) = ZERO;
-	  *(c_offset1 + 6) = ZERO;
-	  *(c_offset1 + 7) = ZERO;
-	  c_offset1 += 8;
-	  i --;
-	} while (i > 0);
-      }
-
-      i = (m & 7);
-      if (i > 0){
-	do {
-	  *c_offset1 = ZERO;
-	  c_offset1 ++;
-	  i --;
-	} while (i > 0);
-      }
-      j --;
-    } while (j > 0);
-
-  } else {
-
-    j = n;
-    do {
-      c_offset1 = c_offset;
-      c_offset += ldc;
-
-      i = (m >> 3);
-      if (i > 0){
-	do {
-	  ctemp1 = *(c_offset1 + 0);
-	  ctemp2 = *(c_offset1 + 1);
-	  ctemp3 = *(c_offset1 + 2);
-	  ctemp4 = *(c_offset1 + 3);
-	  ctemp5 = *(c_offset1 + 4);
-	  ctemp6 = *(c_offset1 + 5);
-	  ctemp7 = *(c_offset1 + 6);
-	  ctemp8 = *(c_offset1 + 7);
-
-	  ctemp1 *= beta;
-	  ctemp2 *= beta;
-	  ctemp3 *= beta;
-	  ctemp4 *= beta;
-	  ctemp5 *= beta;
-	  ctemp6 *= beta;
-	  ctemp7 *= beta;
-	  ctemp8 *= beta;
-
-	  *(c_offset1 + 0) = ctemp1;
-	  *(c_offset1 + 1) = ctemp2;
-	  *(c_offset1 + 2) = ctemp3;
-	  *(c_offset1 + 3) = ctemp4;
-	  *(c_offset1 + 4) = ctemp5;
-	  *(c_offset1 + 5) = ctemp6;
-	  *(c_offset1 + 6) = ctemp7;
-	  *(c_offset1 + 7) = ctemp8;
-	  c_offset1 += 8;
-	  i --;
-	} while (i > 0);
-      }
-
-      i = (m & 7);
-      if (i > 0){
-	do {
-	  ctemp1 = *c_offset1;
-	  ctemp1 *= beta;
-	  *c_offset1 = ctemp1;
-	  c_offset1 ++;
-	  i --;
-	} while (i > 0);
-      }
-      j --;
-    } while (j > 0);
-
-  }
-  return 0;
-};
+	lenx = m;
+	leny = n;
+	if(trans != 't')
+	{
+		fprintf(stderr, "sgemv not supported for untransposed matrix\n");
+		exit(0);
+	}
+	if(beta != 1)
+	{
+		fprintf(stderr, "sgemv not supported for beta != 1\n");
+		exit(0);
+	}
+	if(alpha == 0)
+		return;
+	if(incx < 0)
+		x -= (lenx - 1) * incx;
+	if(incy < 0)
+		y -= (leny - 1) * incy;
+	
+	if(omp_in_parallel())
+	{
+		sgemv_t(m, n, 0, alpha, a, lda, x, incx, y, incy, 0);
+		return;
+	}
+	MNK = (double) m * (double) n;
+	if(MNK <= 24.0 * 24.0 * GEMM_MULTITHREAD_THRESHOLD*GEMM_MULTITHREAD_THRESHOLD)
+	{
+		sgemv_t(m, n, 0, alpha, a, lda, x, incx, y, incy, 0);
+		return;
+	}
+	range[0] = 0;
+	i = n;
+	nthreads = threads_num;
+	num_cpu = 0;
+	while(i > 0)
+	{
+		width  = (i + nthreads - num_cpu - 1) / (nthreads - num_cpu);
+		if(width < 4)
+		width = 4;
+		if(i < width)
+			width = i;
+		range[num_cpu + 1] = range[num_cpu] + width;
+		num_cpu ++;
+		i -= width;
+	}
+#pragma omp parallel for
+	for(i = 0; i < nthreads; i++)
+		sgemv_t(m, range[i+1] - range[i], 0, alpha, a + range[i] * lda, lda, x, incx, y + range[i] * incy, incy, 0);
+}

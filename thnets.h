@@ -233,6 +233,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in);
 THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj);
 struct network *Object2Network(struct thobject *obj);
 void printtensor(THFloatTensor *t);
+void blas_init();
 
 THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input);

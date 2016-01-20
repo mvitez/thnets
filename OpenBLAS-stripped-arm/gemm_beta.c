@@ -36,31 +36,107 @@
 /* or implied, of The University of Texas at Austin.                 */
 /*********************************************************************/
 
-#include <stdio.h>
-#include "common.h"
+#include "blas.h"
 
-#undef  TIMING
+int sgemm_beta(BLASLONG m, BLASLONG n, BLASLONG dummy1, FLOAT beta,
+	  FLOAT *dummy2, BLASLONG dummy3, FLOAT *dummy4, BLASLONG dummy5,
+	  FLOAT *c, BLASLONG ldc){
 
-#ifdef PARAMTEST
-#undef GEMM_P
-#undef GEMM_Q
-#undef GEMM_R
+  BLASLONG i, j;
+  FLOAT *c_offset1, *c_offset;
+  FLOAT ctemp1, ctemp2, ctemp3, ctemp4;
+  FLOAT ctemp5, ctemp6, ctemp7, ctemp8;
 
-#define GEMM_P	(args -> gemm_p)
-#define GEMM_Q	(args -> gemm_q)
-#define GEMM_R	(args -> gemm_r)
-#endif
+  c_offset = c;
 
-#if 0
-#undef GEMM_P
-#undef GEMM_Q
+  if (beta == ZERO){
 
-#define GEMM_P 504
-#define GEMM_Q 128
-#endif
+    j = n;
+    do {
+      c_offset1 = c_offset;
+      c_offset += ldc;
 
-#ifdef THREADED_LEVEL3
-#include "level3_thread.c"
-#else
-#include "level3.c"
-#endif
+      i = (m >> 3);
+      if (i > 0){
+	do {
+	  *(c_offset1 + 0) = ZERO;
+	  *(c_offset1 + 1) = ZERO;
+	  *(c_offset1 + 2) = ZERO;
+	  *(c_offset1 + 3) = ZERO;
+	  *(c_offset1 + 4) = ZERO;
+	  *(c_offset1 + 5) = ZERO;
+	  *(c_offset1 + 6) = ZERO;
+	  *(c_offset1 + 7) = ZERO;
+	  c_offset1 += 8;
+	  i --;
+	} while (i > 0);
+      }
+
+      i = (m & 7);
+      if (i > 0){
+	do {
+	  *c_offset1 = ZERO;
+	  c_offset1 ++;
+	  i --;
+	} while (i > 0);
+      }
+      j --;
+    } while (j > 0);
+
+  } else {
+
+    j = n;
+    do {
+      c_offset1 = c_offset;
+      c_offset += ldc;
+
+      i = (m >> 3);
+      if (i > 0){
+	do {
+	  ctemp1 = *(c_offset1 + 0);
+	  ctemp2 = *(c_offset1 + 1);
+	  ctemp3 = *(c_offset1 + 2);
+	  ctemp4 = *(c_offset1 + 3);
+	  ctemp5 = *(c_offset1 + 4);
+	  ctemp6 = *(c_offset1 + 5);
+	  ctemp7 = *(c_offset1 + 6);
+	  ctemp8 = *(c_offset1 + 7);
+
+	  ctemp1 *= beta;
+	  ctemp2 *= beta;
+	  ctemp3 *= beta;
+	  ctemp4 *= beta;
+	  ctemp5 *= beta;
+	  ctemp6 *= beta;
+	  ctemp7 *= beta;
+	  ctemp8 *= beta;
+
+	  *(c_offset1 + 0) = ctemp1;
+	  *(c_offset1 + 1) = ctemp2;
+	  *(c_offset1 + 2) = ctemp3;
+	  *(c_offset1 + 3) = ctemp4;
+	  *(c_offset1 + 4) = ctemp5;
+	  *(c_offset1 + 5) = ctemp6;
+	  *(c_offset1 + 6) = ctemp7;
+	  *(c_offset1 + 7) = ctemp8;
+	  c_offset1 += 8;
+	  i --;
+	} while (i > 0);
+      }
+
+      i = (m & 7);
+      if (i > 0){
+	do {
+	  ctemp1 = *c_offset1;
+	  ctemp1 *= beta;
+	  *c_offset1 = ctemp1;
+	  c_offset1 ++;
+	  i --;
+	} while (i > 0);
+      }
+      j --;
+    } while (j > 0);
+
+  }
+  return 0;
+};

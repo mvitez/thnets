@@ -11,17 +11,28 @@ OPENBLASPATH=/usr/local/lib
 
 UNAME_P := $(shell uname -p)
 CFLAGS = -Wall -c -fopenmp -fPIC
-LIBS = -L$(OPENBLASPATH) -lopenblas -lm
+LIBS = -lm
 CC = gcc
 VPATH = modules cudnn
 LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o Threshold.o \
-	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o
+	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 
 ifneq ($(filter arm%,$(UNAME_P)),)
 	CFLAGS += -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
+	LIBOBJS += sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o \
+		axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
+	VPATH += OpenBLAS-stripped-arm
 endif
 ifneq ($(filter aarc%,$(UNAME_P)),)
 	CFLAGS += -D__NEON__ -mcpu=cortex-a53 -mfpu=neon-vfpv4 -DHAVEFP16 -mfp16-format=ieee
+	LIBOBJS += sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o \
+		axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
+	VPATH += OpenBLAS-stripped-arm
+endif
+
+ifeq ($(filter arm% aarc%,$(UNAME_P)),)
+	CFLAGS += -DUSEBLAS
+	LIBS += -L$(OPENBLASPATH) -lopenblas
 endif
 
 ifneq ($(filter x86%,$(UNAME_P)),)

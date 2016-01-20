@@ -26,40 +26,31 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *****************************************************************************/
 
 /**************************************************************************************
- * * 2013/09/14 Saar
- * *	 BLASTEST float		: OK
- * * 	 BLASTEST double	: OK
- * 	 CTEST			: OK
- * 	 TEST			: OK
- * *
- * **************************************************************************************/
+* 2013/09/14 Saar
+*	 BLASTEST float		: OK
+* 	 BLASTEST double	: OK
+* 	 CTEST			: OK
+* 	 TEST			: OK
+*
+**************************************************************************************/
 
+#include "blas.h"
 
-#include "common.h"
-
-int CNAME(BLASLONG m, BLASLONG n, BLASLONG dummy1, FLOAT alpha, FLOAT *a, BLASLONG lda, FLOAT *x, BLASLONG inc_x, FLOAT *y, BLASLONG inc_y, FLOAT *buffer)
+int scopy_k(BLASLONG n, FLOAT *x, BLASLONG inc_x, FLOAT *y, BLASLONG inc_y)
 {
-	BLASLONG i;
-	BLASLONG ix,iy;
-	BLASLONG j;
-	FLOAT *a_ptr;
-	FLOAT temp;
+	BLASLONG i=0;
+	BLASLONG ix=0,iy=0;
 
-	iy = 0;
-	a_ptr = a;
+	if ( n < 0     )  return(0);
 
-	for (j=0; j<n; j++)
+	while(i < n)
 	{
-		temp = 0.0;
-		ix = 0;
-		for (i=0; i<m; i++)
-		{
-			temp += a_ptr[i] * x[ix];
-			ix    += inc_x;
-		}
-		y[iy] += alpha * temp;
-		iy += inc_y;
-		a_ptr += lda;
+
+		y[iy] = x[ix] ;
+		ix += inc_x ;
+		iy += inc_y ;
+		i++ ;
+
 	}
 	return(0);
 

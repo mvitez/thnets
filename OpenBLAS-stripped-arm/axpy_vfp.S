@@ -34,7 +34,6 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **************************************************************************************/
 
 #define ASSEMBLER
-#include "common.h"
 
 #define STACKSIZE 256
 
@@ -356,7 +355,11 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 * End of macro definitions
 **************************************************************************************/
 
-	PROLOGUE
+	.arm
+	.global	saxpy_k
+	.func	saxpy_k
+
+saxpy_k:
 
 	.align 5
 	push    {r4 , fp}
@@ -499,5 +502,5 @@ axpy_kernel_L999:
 	pop     {r4,fp}
 	bx	lr
 
-	EPILOGUE
+
 

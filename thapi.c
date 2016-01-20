@@ -22,7 +22,7 @@ static void rgb2float(float *dst, const unsigned char *src, int width, int heigh
 	std1[0] = 1 / std[0];
 	std1[1] = 1 / std[1];
 	std1[2] = 1 / std[2];
-#pragma omp parallel for private(c)
+#pragma omp parallel for private(c, i, j)
 	for(c = 0; c < 3; c++)
 		for(i = 0; i < height; i++)
 			for(j = 0; j < width; j++)
@@ -56,7 +56,7 @@ static void yuyv2fRGB(const unsigned char *frame, float *dst_float, int imgstrid
 	float std1 = 1/std[1];
 	float std2 = 1/std[2];
 
-#pragma omp parallel for private(c)
+#pragma omp parallel for private(c, i, j)
 	for(c = 0; c < 3; c++)
 	{
 		float *dst;
@@ -180,6 +180,9 @@ void THInit()
 	if(init)
 		return;
 	init_yuv2rgb();
+#ifndef USEBLAS
+	blas_init();
+#endif
 	init = 1;
 #if defined CUDNN && defined USECUDAHOSTALLOC
 	// cuda_maphostmem = 1 requires that memory was allocated with cudaHostAlloc
@@ -210,7 +213,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	t->stride[2] = width;
 	t->stride[3] = 1;
 	t->storage = THFloatStorage_newwithbuffer((float *)data);
-#pragma omp parallel for private(b)
+#pragma omp parallel for private(b, c, i)
 	for(b = 0; b < batchsize; b++)
 		for(c = 0; c < 3; c++)
 			for(i = 0; i < width*height; i++)

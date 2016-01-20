@@ -34,7 +34,6 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **************************************************************************************/
 
 #define ASSEMBLER
-#include "common.h"
 
 #define STACKSIZE 256
 
@@ -233,7 +232,11 @@ USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 * End of macro definitions
 **************************************************************************************/
 
-	PROLOGUE
+	.arm
+	.global sgemm_otcopy
+	.func sgemm_otcopy
+
+sgemm_otcopy:
 
 	.align 5
 
@@ -426,5 +429,4 @@ sgemm_tcopy_L999:
 	pop	{r4 - r9, fp}
 	bx	lr
 
-	EPILOGUE
 
