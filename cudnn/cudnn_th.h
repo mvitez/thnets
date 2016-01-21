@@ -9,8 +9,8 @@ THFloatTensor *THFloatTensor_newFromCudaTensor(THFloatTensor *t);
 void THCudatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3);
 struct network *THcudnn_ToCUDNN(struct network *net);
 void THCudaTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3);
-float *cuda_rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std);
-float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std);
+float *cuda_rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr);
+float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr);
 #ifdef HAVEFP16
 void tofp16(__fp16 *dst, const float *src, size_t len);
 void fromfp16(float *dst, const __fp16 *src, size_t len);

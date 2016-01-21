@@ -29,6 +29,21 @@ static void rgb2float(float *dst, const unsigned char *src, int width, int heigh
 				dst[j + (i + c * height) * width] = (src[c + 3*j + srcstride*i] * BYTE2FLOAT - mean[c]) * std1[c];
 }
 
+static void bgr2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std)
+{
+	int c, i, j;
+	float std1[3];
+
+	std1[0] = 1 / std[0];
+	std1[1] = 1 / std[1];
+	std1[2] = 1 / std[2];
+#pragma omp parallel for private(c, i, j)
+	for(c = 0; c < 3; c++)
+		for(i = 0; i < height; i++)
+			for(j = 0; j < width; j++)
+				dst[j + (i + c * height) * width] = (src[2-c + 3*j + srcstride*i] * BYTE2FLOAT - mean[c]) * std1[c];
+}
+
 static void init_yuv2rgb()
 {
 	int i;
@@ -242,7 +257,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	return THFloatTensor_nElement(out);
 }
 
-int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight)
+int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight, int bgr)
 {
 	int i;
 	THFloatTensor *out;
@@ -256,21 +271,26 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		{
 			st = THCudaStorage_new(batchsize * ((width * height * 3 + 1) / 2));
 			for(i = 0; i < batchsize; i++)
-				cuda_rgb2half(st->data + i * ((width * height * 3 + 1) / 2), images[i], width, height, stride, network->mean, network->std);
+				cuda_rgb2half(st->data + i * ((width * height * 3 + 1) / 2), images[i], width, height, stride, network->mean, network->std, bgr);
 		} else
 #endif
 		{
 			st = THCudaStorage_new(batchsize * width * height * 3);
 			for(i = 0; i < batchsize; i++)
-				cuda_rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+				cuda_rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std, bgr);
 		}
 	} else
 #endif
 	{
 		st = THFloatStorage_new(batchsize * width * height * 3);
+		if(bgr)
 #pragma omp parallel for if(batchsize>1) private(i)
-		for(i = 0; i < batchsize; i++)
-			rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+			for(i = 0; i < batchsize; i++)
+				bgr2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
+		else
+#pragma omp parallel for if(batchsize>1) private(i)
+			for(i = 0; i < batchsize; i++)
+				rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
 	}
 	THFloatTensor *t = THFloatTensor_new();
 	t->storage = st;

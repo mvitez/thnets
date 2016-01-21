@@ -124,10 +124,10 @@ int main(int argc, char **argv)
 					bitmaps[i] = image.bitmap;
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
 				if(alg == 2)
-					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
+					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);
 				t = seconds();
 				for(i = 0; i < runs; i++)
-					n = THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight);
+					n = THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);
 				t = (seconds() - t) / runs;
 #ifdef USECUDAHOSTALLOC
 				cudaFreeHost(image.bitmap);
