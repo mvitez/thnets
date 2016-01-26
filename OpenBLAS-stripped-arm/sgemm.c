@@ -42,6 +42,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "blas.h"
+#include "../sgemm.h"
 
 #define MAX_CPU_NUMBER 8
 #define CACHE_LINE_SIZE 8
@@ -81,15 +82,59 @@ typedef struct {
 
 int threads_num;
 float *saa[MAX_CPU_NUMBER], *sba[MAX_CPU_NUMBER];
+static struct {
+	int x1, y1, plane;
+} *xtab;
 
-/* This is what oncopy does: this routine here is a little bit slower of the ASM routine, but
-   at least here it's clear what it does
-static void icopy_operation(int m, int n, float *a, int lda, int x, int y, float *b)
+static struct {
+	int x1, y1;
+} *ytab;
+
+static void calctabs(struct sgemmargs *args)
+{
+	int x, y;
+
+	xtab = malloc(sizeof(*xtab) * args->k);
+	ytab = malloc(sizeof(*ytab) * args->m);
+	for(x = 0; x < args->k; x++)
+	{
+		xtab[x].plane = x / args->ks0;
+		int x1 = x % args->ks0;
+		int y1 = x1 / args->ks1 - args->padH;
+		x1 = x1 % args->ks1 - args->padW;
+		xtab[x].y1 = y1 * args->is1;
+		xtab[x].x1 = x1;
+	}
+	for(y = 0; y < args->m; y++)
+	{
+		int y1 = y / args->os1 * args->dH;
+		int x1 = y % args->os1 * args->dW;
+		ytab[y].y1 = y1 * args->is1;
+		ytab[y].x1 = x1;
+	}
+}
+
+static float get_a_pad(struct sgemmargs *args, int x, int y)
+{
+	int x1 = xtab[x].x1 + ytab[y].x1;
+	int y1 = xtab[x].y1 + ytab[y].y1;
+	if(y1 < 0 || y1 >= args->is0 || x1 < 0 || x1 >= args->is1)
+		return 0;
+	return args->a[xtab[x].plane*args->is0 + y1 + x1];
+}
+
+static float get_a_nopad(struct sgemmargs *args, int x, int y)
+{
+	int x1 = xtab[x].x1 + ytab[y].x1;
+	int y1 = xtab[x].y1 + ytab[y].y1;
+	return args->a[xtab[x].plane*args->is0 + y1 + x1];
+}
+
+static void icopy_operation_pad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
 {
 	int i, i1, j, im;
-	
+
 	//printf("icopy (%d,%d)%d (%d,%d)\n", m, n, lda, x, y);
-	a += x * lda + y;
 	for(j = 0; j + 3 < n; j += 4)
 	{
 		for(i = 0; i < m; i += 4)
@@ -97,10 +142,10 @@ static void icopy_operation(int m, int n, float *a, int lda, int x, int y, float
 			im = m - i > 4 ? 4 : m - i;
 			for(i1 = 0; i1 < im; i1++)
 			{
-				b[i1*4 + 0] = a[(i+i1) * lda + j+0];
-				b[i1*4 + 1] = a[(i+i1) * lda + j+1];
-				b[i1*4 + 2] = a[(i+i1) * lda + j+2];
-				b[i1*4 + 3] = a[(i+i1) * lda + j+3];
+				b[i1*4 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_pad(args, x+i+i1, y+j+3);
 			}
 			b += im * 4;
 		}
@@ -112,8 +157,8 @@ static void icopy_operation(int m, int n, float *a, int lda, int x, int y, float
 			im = m - i > 4 ? 4 : m - i;
 			for(i1 = 0; i1 < im; i1++)
 			{
-				b[i1*2 + 0] = a[(i+i1) * lda + j+0];
-				b[i1*2 + 1] = a[(i+i1) * lda + j+1];
+				b[i1*2 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_pad(args, x+i+i1, y+j+1);
 			}
 			b += im * 2;
 		}
@@ -125,15 +170,68 @@ static void icopy_operation(int m, int n, float *a, int lda, int x, int y, float
 		{
 			im = m - i > 4 ? 4 : m - i;
 			for(i1 = 0; i1 < im; i1++)
-				b[i1] = a[(i+i1) * lda + j];
+				b[i1] = get_a_pad(args, x+i+i1, y+j);
 			b += im;
 		}
 	}
-} */
+}
+
+static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	int i, i1, j, im;
+
+	//printf("icopy (%d,%d)%d (%d,%d)\n", m, n, lda, x, y);
+	for(j = 0; j + 3 < n; j += 4)
+	{
+		for(i = 0; i < m; i += 4)
+		{
+			im = m - i > 4 ? 4 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*4 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+			}
+			b += im * 4;
+		}
+	}
+	if(j + 1 < n)
+	{
+		for(i = 0; i < m; i += 4)
+		{
+			im = m - i > 4 ? 4 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*2 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+			}
+			b += im * 2;
+		}
+		j += 2;
+	}
+	if(j < n)
+	{
+		for(i = 0; i < m; i += 4)
+		{
+			im = m - i > 4 ? 4 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+				b[i1] = get_a_nopad(args, x+i+i1, y+j);
+			b += im;
+		}
+	}
+}
+
+static void icopy_operation(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	if(args->padW || args->padH)
+		icopy_operation_pad(m, n, args, x, y, b);
+	else icopy_operation_nopad(m, n, args, x, y, b);
+}
 
 static job_t job[MAX_CPU_NUMBER];
 
-static int gemm_thread(long mypos, long nthreads, int transa, long *range_m, long *range_n, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
+static int gemm_thread(long mypos, long nthreads, struct sgemmargs *args, long *range_m, long *range_n)
 {
 	float *buffer[DIVIDE_RATE];
 	float *sa, *sb;
@@ -143,6 +241,18 @@ static int gemm_thread(long mypos, long nthreads, int transa, long *range_m, lon
 	long is, min_i, div_n;
 	long i, current;
 	long l1stride;
+	char transa = args->transa;
+	long m = args->m;
+	long n = args->n;
+	long k = args->k;
+	float alpha = args->alpha;
+	float beta = args->beta;
+	float *a = args->a;
+	float *b = args->b;
+	float *c = args->c;
+	long lda = args->lda;
+	long ldb = args->ldb;
+	long ldc = args->ldc;
 
 #ifdef TIMING
 	unsigned long rpcc_counter;
@@ -207,6 +317,8 @@ static int gemm_thread(long mypos, long nthreads, int transa, long *range_m, lon
 		//printf("icopy%ld (%ld,%ld)%ld (%ld,%ld)\n", mypos, min_l, min_i, lda, ls, m_from);
 		if(transa)
 			ICOPYT_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
+		else if(args->ks0)
+			icopy_operation(min_l, min_i, args, ls, m_from, sa);
 		else ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
 		STOP_RPCC(copy_A);
 		div_n = (n_to - n_from + DIVIDE_RATE - 1) / DIVIDE_RATE;
@@ -277,6 +389,8 @@ static int gemm_thread(long mypos, long nthreads, int transa, long *range_m, lon
 			//printf("icopya%ld (%ld,%ld)%ld (%ld,%ld)\n", mypos, min_l, min_i, lda, ls, is);
 			if(transa)
 				ICOPYT_OPERATION(min_l, min_i, a, lda, ls, is, sa);
+			else if(args->ks0)
+				icopy_operation(min_l, min_i, args, ls, is, sa);
 			else ICOPY_OPERATION(min_l, min_i, a, lda, ls, is, sa);
 			STOP_RPCC(copy_A);
 			current = mypos;
@@ -335,7 +449,7 @@ static int gemm_thread(long mypos, long nthreads, int transa, long *range_m, lon
 	return 0;
 }
 
-static int gemm_single(int mypos, int transa, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
+static int gemm_single(int mypos, struct sgemmargs *args)
 {
 	long m_from, m_to, n_from, n_to;
 
@@ -345,6 +459,18 @@ static int gemm_single(int mypos, int transa, long m, long n, long k, float alph
 	float *sa = saa[mypos];
 	float *sb = sba[mypos];
 	long l1stride, gemm_p, l2size;
+	char transa = args->transa;
+	long m = args->m;
+	long n = args->n;
+	long k = args->k;
+	float alpha = args->alpha;
+	float beta = args->beta;
+	float *a = args->a;
+	float *b = args->b;
+	float *c = args->c;
+	long lda = args->lda;
+	long ldb = args->ldb;
+	long ldc = args->ldc;
 
 #ifdef TIMING
 	unsigned long long rpcc_counter;
@@ -409,6 +535,8 @@ static int gemm_single(int mypos, int transa, long m, long n, long k, float alph
 			START_RPCC();
 			if(transa)
 				ICOPYT_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
+			else if(args->ks0)
+				icopy_operation(min_l, min_i, args, ls, m_from, sa);
 			else ICOPY_OPERATION(min_l, min_i, a, lda, ls, m_from, sa);
 			STOP_RPCC(innercost);
 			for(jjs = js; jjs < js + min_j; jjs += min_jj)
@@ -437,6 +565,8 @@ static int gemm_single(int mypos, int transa, long m, long n, long k, float alph
 				START_RPCC();
 				if(transa)
 					ICOPYT_OPERATION(min_l, min_i, a, lda, ls, is, sa);
+				else if(args->ks0)
+					icopy_operation(min_l, min_i, args, ls, is, sa);
 				else ICOPY_OPERATION(min_l, min_i, a, lda, ls, is, sa);
 				STOP_RPCC(innercost);
 				START_RPCC();
@@ -457,7 +587,7 @@ static int gemm_single(int mypos, int transa, long m, long n, long k, float alph
 	return 0;
 }
 
-void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a, int lda, float *b, int ldb, float beta, float *c, int ldc)
+void sgemmargs(struct sgemmargs *args)
 {
 	long range_M[MAX_CPU_NUMBER + 1];
 	long range_N[MAX_CPU_NUMBER + 1];
@@ -467,22 +597,39 @@ void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a,
 	long width, i, j, k1, js;
 	long m1, n1, n_from, n_to;
 
-	if(transb == 't')
+	if(args->transb)
 	{
 		fprintf(stderr, "sgemm: translation of B matrix is unsupported\n");
 		exit(0);
 	}
-    range_M[0] = 0;
-	m1 = m;
+	range_M[0] = 0;
+	m1 = args->m;
 	num_cpu_m  = 0;
+
 	if(omp_in_parallel())
 	{
-		gemm_single(omp_get_thread_num(), transa == 't', m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+		if(args->ks0 && omp_get_thread_num() == 0)
+			calctabs(args);
+#pragma omp barrier
+		gemm_single(omp_get_thread_num(), args);
+#pragma omp barrier
+		if(args->ks0 && omp_get_thread_num() == 0)
+		{
+			free(xtab);
+			free(ytab);
+		}
 		return;
 	}
-	if((m < threads_num * SWITCH_RATIO) || (n < threads_num * SWITCH_RATIO))
+	if(args->ks0)
+		calctabs(args);
+	if((args->m < threads_num * SWITCH_RATIO) || (args->n < threads_num * SWITCH_RATIO))
 	{
-		gemm_single(0, transa == 't', m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+		gemm_single(0, args);
+		if(args->ks0)
+		{
+			free(xtab);
+			free(ytab);
+		}
 		return;
 	}
 
@@ -496,13 +643,13 @@ void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a,
 		num_cpu_m++;
 	}
 	n_from = 0;
-	n_to   = n;
+	n_to   = args->n;
 
 	for(js = n_from; js < n_to; js += GEMM_R * threads_num)
 	{
 		n1 = n_to - js;
-		if (n > GEMM_R * threads_num)
-			n = GEMM_R * threads_num;
+		if (n1 > GEMM_R * threads_num)
+			n1 = GEMM_R * threads_num;
 		range_N[0] = js;
 		num_cpu_n  = 0;
 		while (n1 > 0)
@@ -521,8 +668,34 @@ void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a,
 					job[j].working[i][CACHE_LINE_SIZE * k1] = 0;
 #pragma omp parallel for
 		for(i = 0; i < threads_num; i++)
-			gemm_thread(i, threads_num, transa == 't', range_M, range_N, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+			gemm_thread(i, threads_num, args, range_M, range_N);
 	}
+	if(args->ks0)
+	{
+		free(xtab);
+		free(ytab);
+	}
+}
+
+void sgemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
+{
+	struct sgemmargs args;
+
+	args.transa = transa == 't';
+	args.transb = transb == 't';
+	args.m = m;
+	args.n = n;
+	args.k = k;
+	args.alpha = alpha;
+	args.a = a;
+	args.lda = lda;
+	args.b = b;
+	args.ldb = ldb;
+	args.beta = beta;
+	args.c = c;
+	args.ldc = ldc;
+	args.ks0 = 0;
+	sgemmargs(&args);
 }
 
 void blas_init()

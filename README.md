@@ -40,11 +40,12 @@ network cannot be loaded. The reason can be obtained with THLastError().
 
 Makes the loaded network suitable for images bigger of the eye size.
 
-### void THUseSpatialConvolutionMM(THNETWORK *network, int nn_on)
+### void THUseSpatialConvolutionMM(THNETWORK *network, int nn_type)
 
-Changes every occurrence of SpatialConvolution in the network to SpatialConvolutionMM (nn_on=1) or viceversa (nn_on=0).
-SpatialConvolutionMM module swith padW or padH different of 0 will not be changed, as the SpatialConvolution module
-does not support them.
+Changes every occurrence of SpatialConvolution in the network to SpatialConvolutionMM (nn_type>0) or viceversa (nn_type=0).
+SpatialConvolutionMM modules with padW or padH different of 0 will not be changed to SpatialConvolution, as the
+SpatialConvolution module does not support them. If nn_type=2 and supported (currently only on ARM), it will use virtual MM,
+which takes much less memory.
 
 ### THNETWORK *THCreateCudaNetwork(THNETWORK *net)
 
@@ -104,7 +105,7 @@ THLoadNetwork and can give these results:
 
 ### Demonstration application
 
-See: https://github.com/teradeep/demo-apps/tree/master/generic-embedded. The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
+See: https://github.com/e-lab/demo-apps.git The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
 
 
 ### Tegra TX1 results:

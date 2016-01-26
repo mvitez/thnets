@@ -155,6 +155,7 @@ struct Reshape
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
+	MT_SpatialConvolutionVirtMM,
 	MT_SpatialConvolution,
 	MT_SpatialMaxPooling,
 	MT_Linear,
@@ -216,6 +217,8 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 float *THFloatTensor_data(THFloatTensor *tensor);
 double THExpMinusApprox(double x);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
+void THFloatTensor_convmm(THFloatTensor *r, float beta, THFloatTensor *t, float alpha, THFloatTensor *filt, THFloatTensor *m,
+	THFloatTensor *r1, int kH, int kW, int dH, int dW, int padH, int padW);
 void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *vec1, THFloatTensor *vec2);
 void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *mat, THFloatTensor *vec);
 void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
@@ -265,7 +268,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight);
 THNETWORK *THCreateCudaNetwork(THNETWORK *net);
 int THCudaHalfFloat(int enable);
-int THUseSpatialConvolutionMM(THNETWORK *network, int mm_on);
+int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();
 

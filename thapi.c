@@ -123,6 +123,13 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	for(i = 0; i < net->nelem; i++)
 	{
 		in = net->modules[i].updateOutput(&net->modules[i], in);
+		// You can remove these lines if you don't have problems with memory
+		// These lines free intermediate results
+		if(i > 0)
+		{
+			THFloatTensor_free(net->modules[i-1].output);
+			net->modules[i-1].output = 0;
+		}
 		//printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
 	return in;
@@ -438,21 +445,21 @@ void THMakeSpatial(THNETWORK *network)
 	}
 }
 
-int THUseSpatialConvolutionMM(THNETWORK *network, int mm_on)
+int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 {
 	int i;
 	int rc = 0;
 
 	for(i = 0; i < network->net->nelem; i++)
 	{
-		if(mm_on && network->net->modules[i].type == MT_SpatialConvolution)
+		if(mm_type && network->net->modules[i].type == MT_SpatialConvolution)
 		{
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			network->net->modules[i].type = MT_SpatialConvolutionMM;
 			network->net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
 			if(c->weight->nDimension == 4)
 				THFloatTensor_resize2d(c->weight, c->weight->size[0], c->weight->size[1] * c->weight->size[2] * c->weight->size[3]);
-		} else if(!mm_on && network->net->modules[i].type == MT_SpatialConvolutionMM)
+		} else if(!mm_type && network->net->modules[i].type == MT_SpatialConvolutionMM)
 		{
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			if(c->padW || c->padH)
@@ -465,6 +472,11 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_on)
 			if(c->weight->nDimension == 2)
 				THFloatTensor_resize4d(c->weight, c->nOutputPlane, c->nInputPlane, c->kH, c->kW);
 		}
+#ifndef USEBLAS
+		if(mm_type == 2 && (network->net->modules[i].type == MT_SpatialConvolution ||
+			network->net->modules[i].type == MT_SpatialConvolutionMM))
+				network->net->modules[i].type = MT_SpatialConvolutionVirtMM;
+#endif
 	}
 	return rc;
 }

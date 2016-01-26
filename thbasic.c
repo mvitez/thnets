@@ -4,6 +4,9 @@
 #include <stdarg.h>
 #include <limits.h>
 #include "thnets.h"
+#ifndef USEBLAS
+#include "sgemm.h"
+#endif
 
 #define THAtomicIncrement(a) __sync_fetch_and_add(a, 1);
 #define THAtomicDecrement(a) __sync_fetch_and_add(a, -1);
@@ -111,7 +114,7 @@ void THFloatTensor_resize1d(THFloatTensor *t, long size0)
 void THError(const char *fmt, ...)
 {
 	va_list ap;
-	
+
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
@@ -322,7 +325,6 @@ double THExpMinusApprox(double x)
 }
 
 void sgemm_(char *transa, char *transb, int *m, int *n, int *k, float *alpha, float *a, int *lda, float *b, int *ldb, float *beta, float *c, int *ldc);
-void sgemm(char transa, char transb, int m, int n, int k, float alpha, float *a, int lda, float *b, int ldb, float beta, float *c, int ldc);
 void sger_(int *m, int *n, float *alpha, float *x, int *incx, float *y, int *incy, float *a, int *lda);
 void sger(int m, int n, float alpha, float *x, int incx, float *y, int incy, float *a, int lda);
 void sgemv(char trans, int m, int n, float alpha, float *a, int lda, float *x, int incx, float beta, float *y, int incy);
@@ -381,7 +383,7 @@ void THBlas_gemv(char trans, long m, long n, float alpha, float *a, long lda, fl
 	if(n == 1)
 		lda = m;
 
-	if( (m <= INT_MAX) && (n <= INT_MAX) && 
+	if( (m <= INT_MAX) && (n <= INT_MAX) &&
 		(lda > 0) && (lda <= INT_MAX) &&
 		(incx > 0) && (incx <= INT_MAX) &&
 		(incy > 0) && (incy <= INT_MAX) )
@@ -418,7 +420,7 @@ void THBlas_ger(long m, long n, float alpha, float *x, long incx, float *y, long
 }
 
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2)
-{ 
+{
 	char transpose_r, transpose_m1, transpose_m2;
 	THFloatTensor *r__, *m1_, *m2_;
 
@@ -525,9 +527,9 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		THFloatTensor_free(m2_);
 
 	if(r__ != r_)
-		THError("freeCopyTo not implemented"); 
+		THError("freeCopyTo not implemented");
 		/*THFloatTensor_(freeCopyTo)(r__, r_);*/
-} 
+}
 
 void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *mat, THFloatTensor *vec)
 {
@@ -537,7 +539,7 @@ void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 	if( mat->size[1] != vec->size[0] )
 		THError("size mismatch, %s, %s", mat->size[1], vec->size[0]);
 
-	if(t->nDimension != 1) 
+	if(t->nDimension != 1)
 		THError("vector expected, got t: %dD", t->nDimension);
 
 	if(t->size[0] != mat->size[0])
@@ -580,7 +582,7 @@ void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float a
 
 	if(t->nDimension != 2)
 		THError("expected matrix, got %dD tensor for t", t->nDimension);
-    
+
 	if( (t->size[0] != vec1->size[0]) || (t->size[1] != vec2->size[0]) )
 		THError("size mismatch, t: %ld, vec1: %ld, t: %ld, vec2: %ld", t->size[0], vec1->size[0], t->size[1], vec2->size[0]);
 
@@ -887,3 +889,37 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 		}
 	}
 }
+
+#ifndef USEBLAS
+void THFloatTensor_convmm(THFloatTensor *r, float beta, THFloatTensor *t, float alpha, THFloatTensor *filt, THFloatTensor *m,
+	THFloatTensor *r1, int kH, int kW, int dH, int dW, int padH, int padW)
+{
+	struct sgemmargs args;
+
+	args.transa = 0;
+	args.transb = 0;
+	args.m = r->size[1];
+	args.n = r->size[0];
+	args.k = filt->size[1];
+	args.alpha = alpha;
+	args.beta = beta;
+	args.lda = m->stride[0];
+	args.ldb = filt->stride[0];
+	args.ldc = r->stride[0];
+	args.a = THFloatTensor_data(m);
+	args.b = THFloatTensor_data(filt);
+	args.c = THFloatTensor_data(r);
+	args.ks0 = kH * kW;
+	args.ks1 = kW;
+	args.is0 = m->stride[0];
+	args.is1 = m->stride[1];
+	args.ih = m->size[1];
+	args.os0 = r1->stride[0];
+	args.os1 = r1->stride[1];
+	args.dW = dW;
+	args.dH = dH;
+	args.padW = padW;
+	args.padH = padH;
+	sgemmargs(&args);
+}
+#endif

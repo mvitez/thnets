@@ -72,8 +72,9 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	long nInputPlane, long inputWidth, long inputHeight,
 	long nOutputPlane, long outputWidth, long outputHeight)
 {
-	nn_unfolded_copy(finput, input, kW, kH, dW, dH, padW, padH,
-		nInputPlane, inputWidth, inputHeight, outputWidth, outputHeight);
+	if(finput)
+		nn_unfolded_copy(finput, input, kW, kH, dW, dH, padW, padH,
+			nInputPlane, inputWidth, inputHeight, outputWidth, outputHeight);
 
 	THFloatTensor *output2d = THFloatTensor_newWithStorage2d(output->storage, output->storageOffset,
 		nOutputPlane, -1,
@@ -88,7 +89,9 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 		THFloatVector_fill(data, what, len);
 	}
 
-	THFloatTensor_addmm(output2d, 1, output2d, 1, weight, finput);
+	if(finput)
+		THFloatTensor_addmm(output2d, 1, output2d, 1, weight, finput);
+	else THFloatTensor_convmm(output2d, 1, output2d, 1, weight, input, output, kH, kW, dH, dW, padH, padW);
 
 	THFloatTensor_free(output2d);
 }
@@ -126,7 +129,9 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 		THError("Given input size: (%dx%dx%d). Calculated output size: (%dx%dx%d). Output size is too small",
 		nInputPlane,inputHeight,inputWidth,nOutputPlane,outputHeight,outputWidth);
 
-	THFloatTensor_resize3d(finput, batchSize, kW*kH*nInputPlane, outputHeight*outputWidth);
+
+	if(module->type == MT_SpatialConvolutionMM)
+		THFloatTensor_resize3d(finput, batchSize, kW*kH*nInputPlane, outputHeight*outputWidth);
 	THFloatTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);
 
 	long t;
@@ -134,7 +139,7 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 	for (t = 0; t < batchSize; t++) {
 		THFloatTensor *input_t = THFloatTensor_newSelect(input, 0, t);
 		THFloatTensor *output_t = THFloatTensor_newSelect(output, 0, t);
-		THFloatTensor *finput_t = THFloatTensor_newSelect(finput, 0, t);
+		THFloatTensor *finput_t = module->type == MT_SpatialConvolutionMM ? THFloatTensor_newSelect(finput, 0, t) : 0;
 
 		nn_SpatialConvolutionMM_updateOutput_frame(input_t, output_t, weight, bias, finput_t,
 			kW, kH, dW, dH, padW, padH,
