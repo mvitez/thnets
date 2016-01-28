@@ -53,7 +53,7 @@
 #define GEMM_R 12288
 #define GEMM_UNROLL_M 4
 #define GEMM_UNROLL_N 4
-#define BUFFER_SIZE ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN) * 2 * MAX_CPU_NUMBER
+#define BUFFER_SIZE ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN) * 3
 #define GEMM_ALIGN 0x03fffUL
 
 #define MIN(a,b) ((a)>(b) ? (b) : (a))
@@ -707,6 +707,6 @@ void blas_init()
 	for(i = 0; i < threads_num; i++)
 	{
 		saa[i] = malloc(BUFFER_SIZE);
-		sba[i] = saa[i] + ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN);
+		sba[i] = (float *)((char *)saa[i] + ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN));
 	}
 }
