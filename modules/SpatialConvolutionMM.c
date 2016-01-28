@@ -91,7 +91,9 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 
 	if(finput)
 		THFloatTensor_addmm(output2d, 1, output2d, 1, weight, finput);
+#ifndef USEBLAS
 	else THFloatTensor_convmm(output2d, 1, output2d, 1, weight, input, output, kH, kW, dH, dW, padH, padW);
+#endif
 
 	THFloatTensor_free(output2d);
 }
