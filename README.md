@@ -2,7 +2,7 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS (already part of the library for ARM), CuDNN version 4 if compiled with the CUDNN=1 option.  
+Requirements for library: OpenBLAS (already part of the library for ARM and x86_64), CuDNN version 4 if compiled with the CUDNN=1 option.  
 Requirements for test: libpng and libjpeg  
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 Make with "make".
