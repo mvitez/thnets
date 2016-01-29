@@ -7,6 +7,8 @@ typedef float FLOAT;
 extern float *saa[MAX_CPU_NUMBER], *sba[MAX_CPU_NUMBER];
 extern int threads_num;
 
+int sgemm_incopy(long m, long n, float *a, long lda, float *b);
+int sgemm_itcopy(long m, long n, float *a, long lda, float *b);
 int sgemm_oncopy(long m, long n, float *a, long lda, float *b);
 int sgemm_otcopy(long m, long n, float *a, long lda, float *b);
 int sgemm_kernel(long m, long n, long k, float alpha, float *sa, float *sb, float *c, long ldc);

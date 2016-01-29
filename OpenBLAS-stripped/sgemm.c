@@ -41,18 +41,40 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sched.h>
 #include "blas.h"
 #include "../sgemm.h"
 
 #define MAX_CPU_NUMBER 8
 #define CACHE_LINE_SIZE 8
 #define DIVIDE_RATE 2
+
+#ifdef ARM
+
 #define SWITCH_RATIO 2
 #define GEMM_P 128
 #define GEMM_Q 240
 #define GEMM_R 12288
 #define GEMM_UNROLL_M 4
 #define GEMM_UNROLL_N 4
+
+#define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_otcopy(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER)
+#define ICOPYT_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_oncopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER)
+
+#else
+
+#define SWITCH_RATIO 4
+#define GEMM_P 1024
+#define GEMM_Q 512
+#define GEMM_R 15328
+#define GEMM_UNROLL_M 8
+#define GEMM_UNROLL_N 4
+
+#define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_itcopy(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER)
+#define ICOPYT_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_incopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER)
+
+#endif
+
 #define BUFFER_SIZE ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN) * 3
 #define GEMM_ALIGN 0x03fffUL
 
@@ -62,8 +84,6 @@ typedef struct {
 	volatile long working[MAX_CPU_NUMBER][CACHE_LINE_SIZE * DIVIDE_RATE];
 } job_t;
 
-#define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_otcopy(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER)
-#define ICOPYT_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_oncopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER)
 #define OCOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_oncopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER);
 #define KERNEL_OPERATION(M, N, K, ALPHA, SA, SB, C, LDC, X, Y) sgemm_kernel(M, N, K, ALPHA, SA, SB, (float *)(C) + ((X) + (Y) * LDC), LDC)
 #define BETA_OPERATION(M_FROM, M_TO, N_FROM, N_TO, BETA, C, LDC) sgemm_beta((M_TO) - (M_FROM), (N_TO - N_FROM), 0, \
@@ -77,8 +97,13 @@ typedef struct {
 #define STOP_RPCC(COUNTER)
 #endif
 
+#ifdef ARM
 #define WMB  __asm__ __volatile__ ("dmb  ishst" : : : "memory")
 #define YIELDING        asm volatile ("nop;nop;nop;nop;nop;nop;nop;nop; \n");
+#else
+#define WMB
+#define YIELDING        sched_yield()
+#endif
 
 int threads_num;
 float *saa[MAX_CPU_NUMBER], *sba[MAX_CPU_NUMBER];
@@ -130,6 +155,7 @@ static float get_a_nopad(struct sgemmargs *args, int x, int y)
 	return args->a[xtab[x].plane*args->is0 + y1 + x1];
 }
 
+#ifdef ARM
 static void icopy_operation_pad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
 {
 	int i, i1, j, im;
@@ -221,6 +247,140 @@ static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, i
 		}
 	}
 }
+
+#else
+
+static void icopy_operation_pad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	int i, i1, j, im;
+
+	for(j = 0; j + 7 < n; j += 8)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*8 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*8 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*8 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*8 + 3] = get_a_pad(args, x+i+i1, y+j+3);
+				b[i1*8 + 4] = get_a_pad(args, x+i+i1, y+j+4);
+				b[i1*8 + 5] = get_a_pad(args, x+i+i1, y+j+5);
+				b[i1*8 + 6] = get_a_pad(args, x+i+i1, y+j+6);
+				b[i1*8 + 7] = get_a_pad(args, x+i+i1, y+j+7);
+			}
+			b += im * 8;
+		}
+	}
+	if(j + 3 < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*4 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_pad(args, x+i+i1, y+j+3);
+			}
+			b += im * 4;
+		}
+		j += 4;
+	}
+	if(j + 1 < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*2 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+			}
+			b += im * 2;
+		}
+		j += 2;
+	}
+	if(j < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+				b[i1] = get_a_pad(args, x+i+i1, y+j);
+			b += im;
+		}
+	}
+}
+
+static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	int i, i1, j, im;
+
+	for(j = 0; j + 7 < n; j += 8)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*8 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*8 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*8 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*8 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+				b[i1*8 + 4] = get_a_nopad(args, x+i+i1, y+j+4);
+				b[i1*8 + 5] = get_a_nopad(args, x+i+i1, y+j+5);
+				b[i1*8 + 6] = get_a_nopad(args, x+i+i1, y+j+6);
+				b[i1*8 + 7] = get_a_nopad(args, x+i+i1, y+j+7);
+			}
+			b += im * 8;
+		}
+	}
+	if(j + 3 < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*4 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+			}
+			b += im * 4;
+		}
+		j += 4;
+	}
+	if(j + 1 < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*2 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+			}
+			b += im * 2;
+		}
+		j += 2;
+	}
+	if(j < n)
+	{
+		for(i = 0; i < m; i += 8)
+		{
+			im = m - i > 8 ? 8 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+				b[i1] = get_a_nopad(args, x+i+i1, y+j);
+			b += im;
+		}
+	}
+}
+
+#endif
 
 static void icopy_operation(int m, int n, struct sgemmargs *args, int x, int y, float *b)
 {
