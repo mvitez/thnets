@@ -105,7 +105,7 @@ THLoadNetwork and can give these results:
 
 ### Demonstration application
 
-See: https://github.com/e-lab/demo-apps.git The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
+See: https://github.com/teradeep/demo-apps.git The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
 
 
 ### Tegra TX1 results:
