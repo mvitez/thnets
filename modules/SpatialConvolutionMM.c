@@ -72,13 +72,15 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	long nInputPlane, long inputWidth, long inputHeight,
 	long nOutputPlane, long outputWidth, long outputHeight)
 {
+	THFloatTensor *output2d;
+
 	if(finput)
+	{
 		nn_unfolded_copy(finput, input, kW, kH, dW, dH, padW, padH,
 			nInputPlane, inputWidth, inputHeight, outputWidth, outputHeight);
-
-	THFloatTensor *output2d = THFloatTensor_newWithStorage2d(output->storage, output->storageOffset,
-		nOutputPlane, -1,
-		outputHeight*outputWidth, -1);
+		output2d = THFloatTensor_newWithStorage2d(output->storage, output->storageOffset,
+			nOutputPlane, -1, outputHeight*outputWidth, -1);
+	}
 
 	long i;
 	for (i = 0; i < nOutputPlane; i++)
@@ -90,12 +92,14 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	}
 
 	if(finput)
+	{
 		THFloatTensor_addmm(output2d, 1, output2d, 1, weight, finput);
+		THFloatTensor_free(output2d);
+	}
 #ifndef USEBLAS
-	else THFloatTensor_convmm(output2d, 1, output2d, 1, weight, input, output, kH, kW, dH, dW, padH, padW);
+	else THFloatTensor_convmm(output, 1, 1, weight, input, kH, kW, dH, dW, padH, padW);
 #endif
 
-	THFloatTensor_free(output2d);
 }
 
 THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFloatTensor *input)

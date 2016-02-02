@@ -891,14 +891,14 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 }
 
 #ifndef USEBLAS
-void THFloatTensor_convmm(THFloatTensor *r, float beta, THFloatTensor *t, float alpha, THFloatTensor *filt, THFloatTensor *m,
-	THFloatTensor *r1, int kH, int kW, int dH, int dW, int padH, int padW)
+void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTensor *filt, THFloatTensor *m,
+	int kH, int kW, int dH, int dW, int padH, int padW)
 {
 	struct sgemmargs args;
 
 	args.transa = 0;
 	args.transb = 0;
-	args.m = r->size[1];
+	args.m = r->size[1] * r->size[2];
 	args.n = r->size[0];
 	args.k = filt->size[1];
 	args.alpha = alpha;
@@ -914,8 +914,8 @@ void THFloatTensor_convmm(THFloatTensor *r, float beta, THFloatTensor *t, float 
 	args.is0 = m->stride[0];
 	args.is1 = m->stride[1];
 	args.ih = m->size[1];
-	args.os0 = r1->stride[0];
-	args.os1 = r1->stride[1];
+	args.os0 = r->stride[0];
+	args.os1 = r->stride[1];
 	args.dW = dW;
 	args.dH = dH;
 	args.padW = padW;

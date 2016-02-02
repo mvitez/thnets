@@ -217,8 +217,8 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 float *THFloatTensor_data(THFloatTensor *tensor);
 double THExpMinusApprox(double x);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
-void THFloatTensor_convmm(THFloatTensor *r, float beta, THFloatTensor *t, float alpha, THFloatTensor *filt, THFloatTensor *m,
-	THFloatTensor *r1, int kH, int kW, int dH, int dW, int padH, int padW);
+void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTensor *filt, THFloatTensor *m,
+	int kH, int kW, int dH, int dW, int padH, int padW);
 void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *vec1, THFloatTensor *vec2);
 void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *mat, THFloatTensor *vec);
 void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
