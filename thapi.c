@@ -128,7 +128,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		if(i > 0)
 		{
 			THFloatTensor_free(net->modules[i-1].output);
-			net->modules[i-1].output = 0;
+			net->modules[i-1].output = THFloatTensor_new();
 		}
 		//printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
