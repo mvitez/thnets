@@ -72,7 +72,7 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	long nInputPlane, long inputWidth, long inputHeight,
 	long nOutputPlane, long outputWidth, long outputHeight)
 {
-	THFloatTensor *output2d;
+	THFloatTensor *output2d = 0;
 
 	if(finput)
 	{
