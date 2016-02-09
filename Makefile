@@ -81,9 +81,9 @@ clean :
 	rm -f *.o libthnets.so test
 
 install:
-	sudo cp libthnets.so /usr/local/lib
-	sudo cp thnets.h thvector.h /usr/local/include
+	cp libthnets.so /usr/local/lib
+	cp thnets.h thvector.h /usr/local/include
 
 uninstall:
-	sudo rm /usr/local/lib/libthnets.so
-	sudo rm /usr/local/include/thnets.h /usr/local/include/thvector.h
+	rm /usr/local/lib/libthnets.so
+	rm /usr/local/include/thnets.h /usr/local/include/thvector.h
