@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 {
 	THNETWORK *net;
 	float *result;
-	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 1, nbatch = 1;
+	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 2, nbatch = 1;
 	const char *modelsdir = 0, *inputfile = 0;
 
 	for(i = 1; i < argc; i++)
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 	{
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
 		fprintf(stderr, "             [-r <number of runs] [-p(rint results)]\n");
-		fprintf(stderr, "             [-a <alg=0:norm,1:MM (default),2:virtMM,3:cuDNN,4:cudNNhalf>]\n");
+		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>]\n");
 		fprintf(stderr, "             [-b <nbatch>]\n");
 		return -1;
 	}
