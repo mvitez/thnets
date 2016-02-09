@@ -192,6 +192,7 @@ THNETWORK *THLoadNetwork(const char *path)
 			else if(!strcmp(net->statobj->table->records[i].name.string.data, "std"))
 				memcpy(net->std, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->std));
 		}
+	THUseSpatialConvolutionMM(net, 2);
 	return net;
 }
 
@@ -416,8 +417,12 @@ void THMakeSpatial(THNETWORK *network)
 		} else if(network->net->modules[i].type == MT_Linear)
 		{
 			THFloatTensor_free(network->net->modules[i].Linear.addBuffer);
-			network->net->modules[i].type = MT_SpatialConvolutionMM;
 			network->net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
+#ifndef USEBLAS
+			network->net->modules[i].type = MT_SpatialConvolutionVirtMM;
+#else
+			network->net->modules[i].type = MT_SpatialConvolutionMM;
+#endif
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			c->finput = THFloatTensor_new();
 			c->padW = c->padH = 0;
@@ -426,7 +431,9 @@ void THMakeSpatial(THNETWORK *network)
 			c->nInputPlane = nInputPlane;
 			nInputPlane = c->nOutputPlane = c->weight->size[0];
 			size = (size + 2*c->padW - c->kW) / c->dW + 1;
-		} else if(network->net->modules[i].type == MT_SpatialConvolutionMM)
+		} else if(network->net->modules[i].type == MT_SpatialConvolution ||
+			network->net->modules[i].type == MT_SpatialConvolutionMM ||
+			network->net->modules[i].type == MT_SpatialConvolutionVirtMM)
 		{
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			size = (size + 2*c->padW - c->kW) / c->dW + 1;
@@ -457,9 +464,9 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			network->net->modules[i].type = MT_SpatialConvolutionMM;
 			network->net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
-			if(c->weight->nDimension == 4)
-				THFloatTensor_resize2d(c->weight, c->weight->size[0], c->weight->size[1] * c->weight->size[2] * c->weight->size[3]);
-		} else if(!mm_type && network->net->modules[i].type == MT_SpatialConvolutionMM)
+			THFloatTensor_resize2d(c->weight, c->nOutputPlane, c->nInputPlane * c->kH * c->kW);
+		} else if(!mm_type && (network->net->modules[i].type == MT_SpatialConvolutionMM ||
+			network->net->modules[i].type == MT_SpatialConvolutionVirtMM))
 		{
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			if(c->padW || c->padH)
@@ -469,13 +476,13 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 			}
 			network->net->modules[i].type = MT_SpatialConvolution;
 			network->net->modules[i].updateOutput = nn_SpatialConvolution_updateOutput;
-			if(c->weight->nDimension == 2)
-				THFloatTensor_resize4d(c->weight, c->nOutputPlane, c->nInputPlane, c->kH, c->kW);
+			THFloatTensor_resize4d(c->weight, c->nOutputPlane, c->nInputPlane, c->kH, c->kW);
 		}
 #ifndef USEBLAS
-		if(mm_type == 2 && (network->net->modules[i].type == MT_SpatialConvolution ||
-			network->net->modules[i].type == MT_SpatialConvolutionMM))
-				network->net->modules[i].type = MT_SpatialConvolutionVirtMM;
+		if(mm_type == 2 && network->net->modules[i].type == MT_SpatialConvolutionMM)
+			network->net->modules[i].type = MT_SpatialConvolutionVirtMM;
+		else if(mm_type == 1 && network->net->modules[i].type == MT_SpatialConvolutionVirtMM)
+			network->net->modules[i].type = MT_SpatialConvolutionMM;
 #endif
 	}
 	return rc;
