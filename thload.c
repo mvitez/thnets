@@ -629,6 +629,7 @@ THFloatTensor *TableGetTensor(struct table *t, const char *name)
 			th->nDimension = tt->ndim;
 			memcpy(th->size, tt->size, sizeof(long) * tt->ndim);
 			memcpy(th->stride, tt->stride, sizeof(long) * tt->ndim);
+			th->storageOffset = tt->storageoffset;
 			th->storage = THFloatStorage_newwithbuffer(tt->storage->data);
 			break;
 		}
