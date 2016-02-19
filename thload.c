@@ -778,6 +778,11 @@ struct network *Object2Network(struct thobject *obj)
 			if(data && m->nbatchsize <= 4)
 				memcpy(m->batchsize, data, sizeof(*m->batchsize) * m->nbatchsize);
 			
+		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Normalize") ||
+			!strcmp(mt->records[i].value.nnmodule->name, "nn.L2Normalize"))
+		{
+			net->modules[i].type = MT_Normalize;
+			net->modules[i].updateOutput = nn_Normalize_updateOutput;
 		} else THError("Unknown module type %s", mt->records[i].value.nnmodule->name);
 	}
 	return net;

@@ -165,6 +165,7 @@ enum moduletype {
 	MT_Dropout,
 	MT_SpatialZeroPadding,
 	MT_Reshape,
+	MT_Normalize
 };
 
 struct module
@@ -248,6 +249,7 @@ THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *inpu
 THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Reshape_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *input);
 
 /* High level API */
 
