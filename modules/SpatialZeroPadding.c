@@ -1,6 +1,19 @@
 #include <string.h>
 #include "../thnets.h"
 
+int nnload_SpatialZeroPadding(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_SpatialZeroPadding;
+	mod->updateOutput = nn_SpatialZeroPadding_updateOutput;
+	struct SpatialZeroPadding *m = &mod->SpatialZeroPadding;
+	m->pad_l = TableGetNumber(t, "pad_l");
+	m->pad_r = TableGetNumber(t, "pad_r");
+	m->pad_t = TableGetNumber(t, "pad_t");
+	m->pad_b = TableGetNumber(t, "pad_b");
+	return 0;
+}
+
 THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int idim = input->nDimension;

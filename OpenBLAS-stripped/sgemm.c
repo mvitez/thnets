@@ -84,7 +84,8 @@ typedef struct {
 	volatile long working[MAX_CPU_NUMBER][CACHE_LINE_SIZE * DIVIDE_RATE];
 } job_t;
 
-#define OCOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_oncopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER);
+#define OCOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_oncopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER)
+#define OCOPYT_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_otcopy(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER)
 #define KERNEL_OPERATION(M, N, K, ALPHA, SA, SB, C, LDC, X, Y) sgemm_kernel(M, N, K, ALPHA, SA, SB, (float *)(C) + ((X) + (Y) * LDC), LDC)
 #define BETA_OPERATION(M_FROM, M_TO, N_FROM, N_TO, BETA, C, LDC) sgemm_beta((M_TO) - (M_FROM), (N_TO - N_FROM), 0, \
 		  BETA, NULL, 0, NULL, 0, (float *)(C) + (M_FROM) + (N_FROM) * (LDC), LDC)
@@ -402,6 +403,7 @@ static int gemm_thread(long mypos, long nthreads, struct sgemmargs *args, long *
 	long i, current;
 	long l1stride;
 	char transa = args->transa;
+	char transb = args->transb;
 	long m = args->m;
 	long n = args->n;
 	long k = args->k;
@@ -498,7 +500,9 @@ static int gemm_thread(long mypos, long nthreads, struct sgemmargs *args, long *
 				else if (min_jj > GEMM_UNROLL_N)
 					min_jj = GEMM_UNROLL_N;
 				START_RPCC();
-				OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, buffer[bufferside] + min_l * (jjs - xxx) * l1stride);
+				if(transb)
+					OCOPYT_OPERATION(min_l, min_jj, b, ldb, ls, jjs, buffer[bufferside] + min_l * (jjs - xxx) * l1stride);
+				else OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, buffer[bufferside] + min_l * (jjs - xxx) * l1stride);
 				STOP_RPCC(copy_B);
 				START_RPCC();
 				KERNEL_OPERATION(min_i, min_jj, min_l, alpha, sa, buffer[bufferside] + min_l * (jjs - xxx) * l1stride, c, ldc, m_from, jjs);
@@ -620,6 +624,7 @@ static int gemm_single(int mypos, struct sgemmargs *args)
 	float *sb = sba[mypos];
 	long l1stride, gemm_p, l2size;
 	char transa = args->transa;
+	char transb = args->transb;
 	long m = args->m;
 	long n = args->n;
 	long k = args->k;
@@ -707,7 +712,9 @@ static int gemm_single(int mypos, struct sgemmargs *args)
 				else if(min_jj > GEMM_UNROLL_N)
 					min_jj = GEMM_UNROLL_N;
 				START_RPCC();
-				OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, sb + min_l * (jjs - js) * l1stride);
+				if(transb)
+					OCOPYT_OPERATION(min_l, min_jj, b, ldb, ls, jjs, sb + min_l * (jjs - js) * l1stride);
+				else OCOPY_OPERATION(min_l, min_jj, b, ldb, ls, jjs, sb + min_l * (jjs - js) * l1stride);
 				STOP_RPCC(outercost);
 				START_RPCC();
 				KERNEL_OPERATION(min_i, min_jj, min_l, alpha, sa,
@@ -757,11 +764,6 @@ void sgemmargs(struct sgemmargs *args)
 	long width, i, j, k1, js;
 	long m1, n1, n_from, n_to;
 
-	if(args->transb)
-	{
-		fprintf(stderr, "sgemm: translation of B matrix is unsupported\n");
-		exit(0);
-	}
 	range_M[0] = 0;
 	m1 = args->m;
 	num_cpu_m  = 0;

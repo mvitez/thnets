@@ -145,19 +145,23 @@ void THFloatTensor_free(THFloatTensor *t)
 
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex)
 {
-	if(dimension)
-		THError("THFloatTensor_newSelect not implemented for dimension != 0");
+	int i;
+
 	THFloatTensor *t = malloc(sizeof(*t));
 	t->nDimension = tensor->nDimension - 1;
-	t->size[0] = tensor->size[1];
-	t->size[1] = tensor->size[2];
-	t->size[2] = tensor->size[3];
-	t->stride[0] = tensor->stride[1];
-	t->stride[1] = tensor->stride[2];
-	t->stride[2] = tensor->stride[3];
+	t->storageOffset = sliceIndex * tensor->stride[dimension];
+	for(i = 0; i < dimension; i++)
+	{
+		t->size[i] = tensor->size[i];
+		t->stride[i] = tensor->stride[i];
+	}
+	for(i = dimension; i < t->nDimension; i++)
+	{
+		t->size[i] = tensor->size[i+1];
+		t->stride[i] = tensor->stride[i+1];
+	}
 	t->storage = tensor->storage;
 	THAtomicIncrement(&t->storage->nref);
-	t->storageOffset = sliceIndex * tensor->stride[0];
 	return t;
 }
 
@@ -173,6 +177,19 @@ long THFloatTensor_nElement(THFloatTensor *t)
 			nElement *= t->size[i];
 		return nElement;
 	}
+}
+
+int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* src)
+{
+	int d;
+	if (self->nDimension != src->nDimension)
+		return 0;
+	for(d = 0; d < self->nDimension; ++d)
+	{
+		if(self->size[d] != src->size[d])
+			return 0;
+	}
+	return 1;
 }
 
 void THFloatTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
@@ -342,7 +359,7 @@ void sger(int m, int n, float alpha, float *x, int incx, float *y, int incy, flo
 void sgemv(char trans, int m, int n, float alpha, float *a, int lda, float *x, int incx, float beta, float *y, int incy);
 void sgemv_(char *trans, int *m, int *n, float *alpha, float *a, int *lda, float *x, int *incx, float *beta, float *y, int *incy);
 
-static void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
+void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
 {
 	int transa_ = ((transa == 't') || (transa == 'T'));
 	int transb_ = ((transb == 't') || (transb == 'T'));

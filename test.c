@@ -81,6 +81,7 @@ int main(int argc, char **argv)
 		THCudaHalfFloat(1);
 	}
 	THInit();
+	th_debug = 0;
 	net = THLoadNetwork(modelsdir);
 	if(net)
 	{

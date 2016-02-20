@@ -1,4 +1,22 @@
+#include <string.h>
 #include "../thnets.h"
+
+int nnload_Reshape(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_Reshape;
+	mod->updateOutput = nn_Reshape_updateOutput;
+	struct Reshape *m = &mod->Reshape;
+	m->numElements = TableGetNumber(t, "nelement");
+	m->batchMode = TableGetBoolean(t, "batchMode");
+	void *data = TableGetStorage(t, "size", &m->nsize);
+	if(data && m->nsize <= 4)
+		memcpy(m->size, data, sizeof(*m->size) * m->nsize);
+	data = TableGetStorage(t, "batchsize", &m->nbatchsize);
+	if(data && m->nbatchsize <= 4)
+		memcpy(m->batchsize, data, sizeof(*m->batchsize) * m->nbatchsize);
+	return 0;
+}
 
 THFloatTensor *nn_Reshape_updateOutput(struct module *module, THFloatTensor *input)
 {

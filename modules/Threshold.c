@@ -1,5 +1,17 @@
 #include "../thnets.h"
 
+int nnload_Threshold(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_Threshold;
+	mod->updateOutput = nn_Threshold_updateOutput;
+	struct Threshold *m = &mod->Threshold;
+	m->threshold = TableGetNumber(t, "threshold");
+	m->val = TableGetNumber(t, "val");
+	m->inplace = TableGetBoolean(t, "inplace");
+	return 0;
+}
+
 THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float val = module->Threshold.val;

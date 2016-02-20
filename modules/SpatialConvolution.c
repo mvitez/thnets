@@ -1,5 +1,37 @@
 #include "../thnets.h"
 
+static void nnfree_SpatialConvolution(struct module *mod)
+{
+	THFloatTensor_free(mod->SpatialConvolution.bias);
+	THFloatTensor_free(mod->SpatialConvolution.weight);
+	THFloatTensor_free(mod->SpatialConvolution.finput);
+}
+
+int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_SpatialConvolutionMM;
+	mod->updateOutput = nn_SpatialConvolutionMM_updateOutput;
+	mod->nnfree = nnfree_SpatialConvolution;
+	struct SpatialConvolution *m = &mod->SpatialConvolution;
+	m->padW = TableGetNumber(t, "padW");
+	m->padH = TableGetNumber(t, "padH");
+	if(!m->padW && !m->padH)
+		m->padW = m->padH = TableGetNumber(t, "padding");
+	m->dW = TableGetNumber(t, "dW");
+	m->dH = TableGetNumber(t, "dH");
+	m->kW = TableGetNumber(t, "kW");
+	m->kH = TableGetNumber(t, "kH");
+	m->nInputPlane = TableGetNumber(t, "nInputPlane");
+	m->nOutputPlane = TableGetNumber(t, "nOutputPlane");
+	m->bias = TableGetTensor(t, "bias");
+	m->weight = TableGetTensor(t, "weight");
+	if(m->weight->nDimension == 4)
+		THFloatTensor_resize2d(m->weight, m->weight->size[0], m->weight->size[1] * m->weight->size[2] * m->weight->size[3]);
+	m->finput = THFloatTensor_new();
+	return 0;
+}
+
 THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int dW = module->SpatialConvolution.dW;

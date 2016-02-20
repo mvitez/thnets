@@ -1,5 +1,12 @@
 #include "../thnets.h"
 
+int nnload_SoftMax(struct module *mod, struct nnmodule *n)
+{
+	mod->type = MT_SoftMax;
+	mod->updateOutput = nn_SoftMax_updateOutput;
+	return 0;
+}
+
 THFloatTensor *nn_SoftMax_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

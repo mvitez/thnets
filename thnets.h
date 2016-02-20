@@ -113,9 +113,19 @@ struct SpatialConvolution
 	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
 };
 
+struct SpatialFullConvolution
+{
+	THFloatTensor *bias, *weight;
+	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
+	int adjW, adjH;
+	THFloatTensor *ones, *columns;
+};
+
 struct SpatialMaxPooling
 {
 	int padW, padH, dW, dH, kW, kH, ceil_mode;
+	int iwidth, iheight;
+	THFloatTensor *indices;
 };
 
 struct Linear
@@ -152,6 +162,17 @@ struct Reshape
 	int nsize, nbatchsize;
 };
 
+struct SpatialMaxUnpooling
+{
+	struct nnmodule *pooling;
+};
+
+struct SpatialBatchNormalization
+{
+	THFloatTensor *running_mean, *running_var, *weight, *bias;
+	double eps;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -165,14 +186,22 @@ enum moduletype {
 	MT_Dropout,
 	MT_SpatialZeroPadding,
 	MT_Reshape,
-	MT_Normalize
+	MT_Normalize,
+	MT_SpatialFullConvolution,
+	MT_SpatialMaxUnpooling,
+	MT_SpatialBatchNormalization
 };
+
+struct network;
 
 struct module
 {
 	int type;
 	THFloatTensor *(*updateOutput)(struct module *m, THFloatTensor *in);
+	void (*nnfree)(struct module *m);
 	THFloatTensor *output;
+	struct network *net;
+	struct nnmodule *nnmodule;
 	union {
 		struct SpatialConvolution SpatialConvolution;
 		struct SpatialMaxPooling SpatialMaxPooling;
@@ -182,6 +211,9 @@ struct module
 		struct Dropout Dropout;
 		struct SpatialZeroPadding SpatialZeroPadding;
 		struct Reshape Reshape;
+		struct SpatialFullConvolution SpatialFullConvolution;
+		struct SpatialMaxUnpooling SpatialMaxUnpooling;
+		struct SpatialBatchNormalization SpatialBatchNormalization;
 	};
 };
 
@@ -191,6 +223,19 @@ struct network
 	struct module *modules;
 };
 
+struct object2module
+{
+	const char *name;
+	int (*func)(struct module *mod, struct nnmodule *n);
+};
+
+extern struct object2module object2module[];
+
+double TableGetNumber(struct table *t, const char *name);
+int TableGetBoolean(struct table *t, const char *name);
+THFloatTensor *TableGetTensor(struct table *t, const char *name);
+void *TableGetStorage(struct table *t, const char *name, int *nelem);
+struct nnmodule *TableGetNNModule(struct table *t, const char *name);
 void THError(const char *fmt, ...);
 THFloatTensor *THFloatTensor_new();
 THFloatStorage *THFloatStorage_new(long size);
@@ -202,6 +247,7 @@ THFloatTensor *THFloatTensor_newWithTensor(THFloatTensor *tensor);
 void THFloatTensor_transpose(THFloatTensor *tdst, THFloatTensor *tsrc, int dimension1, int dimension2);
 THFloatTensor *THFloatTensor_newTranspose(THFloatTensor *tensor, int dimension1_, int dimension2_);
 float *THFloatTensor_data(THFloatTensor *tensor);
+int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* src);
 void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension);
 void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3);
 void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2);
@@ -217,6 +263,7 @@ void THFloatTensor_free(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
 float *THFloatTensor_data(THFloatTensor *tensor);
 double THExpMinusApprox(double x);
+void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
 void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTensor *filt, THFloatTensor *m,
 	int kH, int kW, int dH, int dW, int padH, int padW);
@@ -250,6 +297,23 @@ THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *inp
 THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Reshape_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input);
+
+int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
+int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
+int nnload_Threshold(struct module *mod, struct nnmodule *n);
+int nnload_View(struct module *mod, struct nnmodule *n);
+int nnload_SoftMax(struct module *mod, struct nnmodule *n);
+int nnload_Linear(struct module *mod, struct nnmodule *n);
+int nnload_Dropout(struct module *mod, struct nnmodule *n);
+int nnload_SpatialZeroPadding(struct module *mod, struct nnmodule *n);
+int nnload_Reshape(struct module *mod, struct nnmodule *n);
+int nnload_Normalize(struct module *mod, struct nnmodule *n);
+int nnload_SpatialFullConvolution(struct module *mod, struct nnmodule *n);
+int nnload_SpatialMaxUnpooling(struct module *mod, struct nnmodule *n);
+int nnload_SpatialBatchNormalization(struct module *mod, struct nnmodule *n);
 
 /* High level API */
 
@@ -273,6 +337,7 @@ int THCudaHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();
+int th_debug;
 
 #ifdef CUDNN
 #include "cudnn/cudnn_th.h"

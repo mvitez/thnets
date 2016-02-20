@@ -7,6 +7,7 @@
 static int lasterror, longsize = 8;
 static short TB_YUR[256], TB_YUB[256], TB_YUGU[256], TB_YUGV[256], TB_Y[256];
 static unsigned char TB_SAT[1024 + 1024 + 256];
+int th_debug;
 
 #ifdef CUDNN
 int cuda_maphostmem;
@@ -130,7 +131,8 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			THFloatTensor_free(net->modules[i-1].output);
 			net->modules[i-1].output = THFloatTensor_new();
 		}
-		//printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
+		if(th_debug > 1)
+			printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
 	return in;
 }
@@ -150,7 +152,8 @@ THNETWORK *THLoadNetwork(const char *path)
 		free(net);
 		return 0;
 	}
-	//printobject(net->netobj, 0);
+	if(th_debug)
+		printobject(net->netobj, 0);
 	net->net = Object2Network(net->netobj);
 	if(!net->net)
 	{
@@ -160,38 +163,36 @@ THNETWORK *THLoadNetwork(const char *path)
 		free(net);
 		return 0;
 	}
+	net->std[0] = net->std[1] = net->std[2] = 1;
+	net->mean[0] = net->mean[1] = net->mean[2] = 0;
 	sprintf(tmppath, "%s/stat.t7", path);
 	net->statobj = malloc(sizeof(*net->statobj));
 	lasterror = loadtorch(tmppath, net->statobj, longsize);
-	if(lasterror)
+	if(!lasterror)
 	{
-		free(net->statobj);
-		freenetwork(net->net);
-		freeobject(net->netobj);
-		free(net->netobj);
-		free(net);
-		return 0;
-	}
-	if(net->statobj->type != TYPE_TABLE || net->statobj->table->nelem != 2)
-	{
-		lasterror = ERR_WRONGOBJECT;
-		freenetwork(net->net);
-		freeobject(net->netobj);
-		free(net->netobj);
-		freeobject(net->statobj);
-		free(net->statobj);
-		free(net);
-	}
-	net->std[0] = net->std[1] = net->std[2] = 1;
-	net->mean[0] = net->mean[1] = net->mean[2] = 0;
-	for(i = 0; i < net->statobj->table->nelem; i++)
-		if(net->statobj->table->records[i].name.type == TYPE_STRING)
+		if(net->statobj->type != TYPE_TABLE || net->statobj->table->nelem != 2)
 		{
-			if(!strcmp(net->statobj->table->records[i].name.string.data, "mean"))
-				memcpy(net->mean, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->mean));
-			else if(!strcmp(net->statobj->table->records[i].name.string.data, "std"))
-				memcpy(net->std, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->std));
+			lasterror = ERR_WRONGOBJECT;
+			freenetwork(net->net);
+			freeobject(net->netobj);
+			free(net->netobj);
+			freeobject(net->statobj);
+			free(net->statobj);
+			free(net);
+			return 0;
 		}
+		for(i = 0; i < net->statobj->table->nelem; i++)
+			if(net->statobj->table->records[i].name.type == TYPE_STRING)
+			{
+				if(!strcmp(net->statobj->table->records[i].name.string.data, "mean"))
+					memcpy(net->mean, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->mean));
+				else if(!strcmp(net->statobj->table->records[i].name.string.data, "std"))
+					memcpy(net->std, net->statobj->table->records[i].value.tensor->storage->data, sizeof(net->std));
+			}
+	} else {
+		free(net->statobj);
+		net->statobj = 0;
+	}
 	THUseSpatialConvolutionMM(net, 2);
 	return net;
 }

@@ -1,0 +1,83 @@
+#include <math.h>
+#include "../thnets.h"
+
+static void nnfree_SpatialBatchNormalization(struct module *mod)
+{
+	THFloatTensor_free(mod->SpatialBatchNormalization.running_mean);
+	THFloatTensor_free(mod->SpatialBatchNormalization.running_var);
+	THFloatTensor_free(mod->SpatialBatchNormalization.weight);
+	THFloatTensor_free(mod->SpatialBatchNormalization.bias);
+}
+
+int nnload_SpatialBatchNormalization(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_SpatialBatchNormalization;
+	mod->updateOutput = nn_SpatialBatchNormalization_updateOutput;
+	mod->nnfree = nnfree_SpatialBatchNormalization;
+	struct SpatialBatchNormalization *m = &mod->SpatialBatchNormalization;
+	m->running_mean = TableGetTensor(t, "running_mean");
+	m->running_var = TableGetTensor(t, "running_var");
+	m->weight = TableGetTensor(t, "weight");
+	m->bias = TableGetTensor(t, "bias");
+	m->eps = TableGetNumber(t, "eps");
+	return 0;
+}
+
+THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input)
+{
+	THFloatTensor *output = module->output;
+	THFloatTensor *running_mean = module->SpatialBatchNormalization.running_mean;
+	THFloatTensor *running_var = module->SpatialBatchNormalization.running_var;
+	THFloatTensor *weight = module->SpatialBatchNormalization.weight;
+	THFloatTensor *bias = module->SpatialBatchNormalization.bias;
+	long nFeature = input->size[1];
+
+	double eps = module->SpatialBatchNormalization.eps;
+	THFloatTensor_resizeAs(output, input);
+	long f;
+#pragma omp parallel for
+	for (f = 0; f < nFeature; ++f)
+	{
+		THFloatTensor *in = THFloatTensor_newSelect(input, 1, f);
+		THFloatTensor *out = THFloatTensor_newSelect(output, 1, f);
+
+		float mean, invstd;
+
+		mean = running_mean->storage->data[running_mean->storageOffset + running_mean->stride[0] * f];
+		invstd = 1 / sqrt(running_var->storage->data[running_var->storageOffset + running_var->stride[0] * f] + eps);
+
+		// compute output
+		float w = weight ? weight->storage->data[weight->storageOffset + weight->stride[0] * f] : 1;
+		float b = bias ? bias->storage->data[bias->storageOffset + bias->stride[0] * f] : 0;
+
+		float *ind = in->storage->data + in->storageOffset;
+		float *outd = out->storage->data + out->storageOffset;
+		
+		if(in->nDimension == 1)
+		{
+			long i;
+			for(i = 0; in->size[0]; i++)
+				outd[out->stride[0] * i] = ((ind[in->stride[0] * i] - mean) * invstd) * w + b;
+		} else if(in->nDimension == 2)
+		{
+			long i, j;
+			for(i = 0; i < in->size[0]; i++)
+				for(j = 0; j < in->size[1]; j++)
+					outd[out->stride[0] * i + out->stride[1] * j] =
+						((ind[in->stride[0] * i + in->stride[1] * j] - mean) * invstd) * w + b;
+		} else if(in->nDimension == 3)
+		{
+			long i, j, k;
+			for(i = 0; i < in->size[0]; i++)
+				for(j = 0; j < in->size[1]; j++)
+					for(k = 0; k < in->size[1]; k++)
+						outd[out->stride[0] * i + out->stride[1] * j + out->stride[2] * k] =
+							((ind[in->stride[0] * i + in->stride[1] * j + in->stride[2] * k] - mean) * invstd) * w + b;
+		} else THError("SpatialBatchNormalization not supported for input dimensions higher of 4");
+			
+		THFloatTensor_free(out);
+		THFloatTensor_free(in);
+	}
+	return output;
+}

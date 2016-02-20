@@ -1,5 +1,25 @@
 #include "../thnets.h"
 
+static void nnfree_Linear(struct module *mod)
+{
+	THFloatTensor_free(mod->Linear.bias);
+	THFloatTensor_free(mod->Linear.weight);
+	THFloatTensor_free(mod->Linear.addBuffer);
+}
+
+int nnload_Linear(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_Linear;
+	mod->updateOutput = nn_Linear_updateOutput;
+	mod->nnfree = nnfree_Linear;
+	struct Linear *m = &mod->Linear;
+	m->weight = TableGetTensor(t, "weight");
+	m->addBuffer = TableGetTensor(t, "addBuffer");
+	m->bias = TableGetTensor(t, "bias");
+	return 0;
+}
+
 THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *weight = module->Linear.weight;

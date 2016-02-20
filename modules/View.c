@@ -1,5 +1,15 @@
 #include "../thnets.h"
 
+int nnload_View(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_View;
+	mod->updateOutput = nn_View_updateOutput;
+	struct View *m = &mod->View;
+	m->numElements = TableGetNumber(t, "numElements");
+	return 0;
+}
+
 THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 {
 	long nElements = THFloatTensor_nElement(input);

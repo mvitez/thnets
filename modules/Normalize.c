@@ -1,6 +1,13 @@
 #include <math.h>
 #include "../thnets.h"
 
+int nnload_Normalize(struct module *mod, struct nnmodule *n)
+{
+	mod->type = MT_Normalize;
+	mod->updateOutput = nn_Normalize_updateOutput;
+	return 0;
+}
+
 THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

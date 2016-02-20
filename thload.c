@@ -72,7 +72,7 @@ static int scalartype(const char *type)
 		return TYPE_INT;
 	if(!strcmp(type, "Long"))
 		return TYPE_LONG;
-	if(!strcmp(type, "Float"))
+	if(!strcmp(type, "Float") || !strcmp(type, "Cuda"))
 		return TYPE_FLOAT;
 	if(!strcmp(type, "Double"))
 		return TYPE_DOUBLE;
@@ -372,9 +372,26 @@ static int readobject(struct thfile *f, struct thobject *obj)
 		if(readint(f, &obj->boolean))
 			return ERR_READFILE;
 		break;	
-	case TYPE_FUNCTION:
 	case LEGACY_TYPE_RECUR_FUNCTION:
 	case TYPE_RECUR_FUNCTION:
+		// Read it and ignore it
+		if(readint(f, &rc))	// Index
+			return ERR_READFILE;
+		if(readint(f, &rc))	// Length
+			return ERR_READFILE;
+		if(fseek(f->fp, rc, SEEK_CUR))
+			return ERR_READFILE;
+		f->idx++;
+		// Read object following this function and drop it
+		{
+			struct thobject tmp;
+			rc = readobject(f, &tmp);
+			freeobject(&tmp);
+		}
+		if(rc)
+			return rc;
+		break;
+	case TYPE_FUNCTION:
 		return ERR_NOTIMPLEMENTED;
 	default:
 		return ERR_CORRUPTED;
@@ -462,6 +479,10 @@ int printobject(struct thobject *obj, int indent)
 			printobject(&obj->nnmodule->table->records[i].name, 0);
 			printobject(&obj->nnmodule->table->records[i].value, indent+1);
 		}
+		break;
+	case LEGACY_TYPE_RECUR_FUNCTION:
+	case TYPE_RECUR_FUNCTION:
+		printf("Not loaded Lua function\n");
 		break;
 	}
 	return 0;
@@ -597,22 +618,24 @@ int freeobject(struct thobject *obj)
 	return 0;	
 }
 
-static double TableGetNumber(struct table *t, const char *name)
+double TableGetNumber(struct table *t, const char *name)
 {
 	int i;
 	
 	for(i = 0; i < t->nelem; i++)
-		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name))
+		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
+			t->records[i].value.type == TYPE_NUMBER)
 			return t->records[i].value.number;
 	return 0;
 }
 
-static int TableGetBoolean(struct table *t, const char *name)
+int TableGetBoolean(struct table *t, const char *name)
 {
 	int i;
 	
 	for(i = 0; i < t->nelem; i++)
-		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name))
+		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
+			t->records[i].value.type == TYPE_BOOLEAN)
 			return t->records[i].value.boolean;
 	return -1;
 }
@@ -623,14 +646,17 @@ THFloatTensor *TableGetTensor(struct table *t, const char *name)
 	
 	THFloatTensor *th = THFloatTensor_new();
 	for(i = 0; i < t->nelem; i++)
-		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name))
+		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
+			t->records[i].value.type == TYPE_TENSOR)
 		{
 			struct tensor *tt = t->records[i].value.tensor;
 			th->nDimension = tt->ndim;
 			memcpy(th->size, tt->size, sizeof(long) * tt->ndim);
 			memcpy(th->stride, tt->stride, sizeof(long) * tt->ndim);
 			th->storageOffset = tt->storageoffset;
-			th->storage = THFloatStorage_newwithbuffer(tt->storage->data);
+			if(tt->storage)
+				th->storage = THFloatStorage_newwithbuffer(tt->storage->data);
+			else th->storage = 0;
 			break;
 		}
 	return th;
@@ -641,12 +667,24 @@ void *TableGetStorage(struct table *t, const char *name, int *nelem)
 	int i;
 	
 	for(i = 0; i < t->nelem; i++)
-		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name))
+		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
+			t->records[i].value.type == TYPE_STORAGE)
 		{
 			struct storage *tt = t->records[i].value.storage;
 			*nelem = tt->nelem;
 			return tt->data;
 		}
+	return 0;
+}
+
+struct nnmodule *TableGetNNModule(struct table *t, const char *name)
+{
+	int i;
+	
+	for(i = 0; i < t->nelem; i++)
+		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
+			t->records[i].value.type == TYPE_NNMODULE)
+			return t->records[i].value.nnmodule;
 	return 0;
 }
 
@@ -661,11 +699,32 @@ THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj)
 	return th;
 }
 
+struct object2module object2module[] =
+{
+	{"nn.SpatialConvolutionMM", nnload_SpatialConvolution},
+	{"nn.SpatialConvolution", nnload_SpatialConvolution},
+	{"nn.SpatialMaxPooling", nnload_SpatialMaxPooling},
+	{"nn.Linear", nnload_Linear},
+	{"nn.SoftMax", nnload_SoftMax},
+	{"nn.Threshold", nnload_Threshold},
+	{"nn.ReLU", nnload_Threshold},
+	{"nn.View", nnload_View},
+	{"nn.Dropout", nnload_Dropout},
+	{"nn.SpatialZeroPadding", nnload_SpatialZeroPadding},
+	{"nn.Reshape", nnload_Reshape},
+	{"nn.Normalize", nnload_Normalize},
+	{"nn.L2Normalize", nnload_Normalize},
+	{"nn.SpatialFullConvolution", nnload_SpatialFullConvolution},
+	{"nn.SpatialMaxUnpooling", nnload_SpatialMaxUnpooling},
+	{"nn.SpatialBatchNormalization", nnload_SpatialBatchNormalization},
+	{0,0}
+};
+
 struct network *Object2Network(struct thobject *obj)
 {
 	struct network *net;
 	struct table *mt;
-	int i;
+	int i, j;
 	
 	if(obj->type != TYPE_NNMODULE)
 		return 0;
@@ -685,105 +744,19 @@ struct network *Object2Network(struct thobject *obj)
 	net->modules = calloc(mt->nelem, sizeof(*net->modules));
 	for(i = 0; i < mt->nelem; i++)
 	{
-		struct table *t = mt->records[i].value.nnmodule->table;
 		net->modules[i].output = THFloatTensor_new();
-		if(!strcmp(mt->records[i].value.nnmodule->name, "nn.SpatialConvolutionMM") ||
-			!strcmp(mt->records[i].value.nnmodule->name, "nn.SpatialConvolution"))
-		{
-			net->modules[i].type = MT_SpatialConvolutionMM;
-			net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
-			struct SpatialConvolution *m = &net->modules[i].SpatialConvolution;
-			m->padW = TableGetNumber(t, "padW");
-			m->padH = TableGetNumber(t, "padH");
-			if(!m->padW && !m->padH)
-				m->padW = m->padH = TableGetNumber(t, "padding");
-			m->dW = TableGetNumber(t, "dW");
-			m->dH = TableGetNumber(t, "dH");
-			m->kW = TableGetNumber(t, "kW");
-			m->kH = TableGetNumber(t, "kH");
-			m->nInputPlane = TableGetNumber(t, "nInputPlane");
-			m->nOutputPlane = TableGetNumber(t, "nOutputPlane");
-			m->bias = TableGetTensor(t, "bias");
-			m->weight = TableGetTensor(t, "weight");
-			if(m->weight->nDimension == 4)
-				THFloatTensor_resize2d(m->weight, m->weight->size[0], m->weight->size[1] * m->weight->size[2] * m->weight->size[3]);
-			m->finput = THFloatTensor_new();
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.SpatialMaxPooling"))
-		{
-			net->modules[i].type = MT_SpatialMaxPooling;
-			net->modules[i].updateOutput = nn_SpatialMaxPooling_updateOutput;
-			struct SpatialMaxPooling *m = &net->modules[i].SpatialMaxPooling;
-			m->padW = TableGetNumber(t, "padW");
-			m->padH = TableGetNumber(t, "padH");
-			m->dW = TableGetNumber(t, "dW");
-			m->dH = TableGetNumber(t, "dH");
-			m->kW = TableGetNumber(t, "kW");
-			m->kH = TableGetNumber(t, "kH");
-			m->ceil_mode = TableGetNumber(t, "ceil_mode");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Linear"))
-		{
-			net->modules[i].type = MT_Linear;
-			net->modules[i].updateOutput = nn_Linear_updateOutput;
-			struct Linear *m = &net->modules[i].Linear;
-			m->weight = TableGetTensor(t, "weight");
-			m->addBuffer = TableGetTensor(t, "addBuffer");
-			m->bias = TableGetTensor(t, "bias");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.SoftMax"))
-		{
-			net->modules[i].type = MT_SoftMax;
-			net->modules[i].updateOutput = nn_SoftMax_updateOutput;
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Threshold") ||
-			!strcmp(mt->records[i].value.nnmodule->name, "nn.ReLU"))
-		{
-			net->modules[i].type = MT_Threshold;
-			net->modules[i].updateOutput = nn_Threshold_updateOutput;
-			struct Threshold *m = &net->modules[i].Threshold;
-			m->threshold = TableGetNumber(t, "threshold");
-			m->val = TableGetNumber(t, "val");
-			m->inplace = TableGetBoolean(t, "inplace");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.View"))
-		{
-			net->modules[i].type = MT_View;
-			net->modules[i].updateOutput = nn_View_updateOutput;
-			struct View *m = &net->modules[i].View;
-			m->numElements = TableGetNumber(t, "numElements");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Dropout"))
-		{
-			net->modules[i].type = MT_Dropout;
-			net->modules[i].updateOutput = nn_Dropout_updateOutput;
-			struct Dropout *m = &net->modules[i].Dropout;
-			m->inplace = TableGetBoolean(t, "inplace");
-			m->v2 = TableGetBoolean(t, "v2");
-			m->p = TableGetNumber(t, "p");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.SpatialZeroPadding"))
-		{
-			net->modules[i].type = MT_SpatialZeroPadding;
-			net->modules[i].updateOutput = nn_SpatialZeroPadding_updateOutput;
-			struct SpatialZeroPadding *m = &net->modules[i].SpatialZeroPadding;
-			m->pad_l = TableGetNumber(t, "pad_l");
-			m->pad_r = TableGetNumber(t, "pad_r");
-			m->pad_t = TableGetNumber(t, "pad_t");
-			m->pad_b = TableGetNumber(t, "pad_b");
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Reshape"))
-		{
-			net->modules[i].type = MT_Reshape;
-			net->modules[i].updateOutput = nn_Reshape_updateOutput;
-			struct Reshape *m = &net->modules[i].Reshape;
-			m->numElements = TableGetNumber(t, "nelement");
-			m->batchMode = TableGetBoolean(t, "batchMode");
-			void *data = TableGetStorage(t, "size", &m->nsize);
-			if(data && m->nsize <= 4)
-				memcpy(m->size, data, sizeof(*m->size) * m->nsize);
-			data = TableGetStorage(t, "batchsize", &m->nbatchsize);
-			if(data && m->nbatchsize <= 4)
-				memcpy(m->batchsize, data, sizeof(*m->batchsize) * m->nbatchsize);
-			
-		} else if(!strcmp(mt->records[i].value.nnmodule->name, "nn.Normalize") ||
-			!strcmp(mt->records[i].value.nnmodule->name, "nn.L2Normalize"))
-		{
-			net->modules[i].type = MT_Normalize;
-			net->modules[i].updateOutput = nn_Normalize_updateOutput;
-		} else THError("Unknown module type %s", mt->records[i].value.nnmodule->name);
+		net->modules[i].net = net;
+		net->modules[i].nnmodule = mt->records[i].value.nnmodule;
+
+		for(j = 0; object2module[j].name; j++)
+			if(!strcmp(mt->records[i].value.nnmodule->name, object2module[j].name))
+			{
+				if(object2module[j].func(net->modules+i, mt->records[i].value.nnmodule))
+					THError("Error loading module type %s", mt->records[i].value.nnmodule->name);
+				break;
+			}
+		if(!object2module[j].name)
+			THError("Unknown module type %s", mt->records[i].value.nnmodule->name);
 	}
 	return net;
 }
@@ -794,19 +767,8 @@ void freenetwork(struct network *net)
 
 	for(i = 0; i < net->nelem; i++)
 	{
-		switch(net->modules[i].type)
-		{
-		case MT_SpatialConvolution:
-		case MT_SpatialConvolutionMM:
-			THFloatTensor_free(net->modules[i].SpatialConvolution.bias);
-			THFloatTensor_free(net->modules[i].SpatialConvolution.weight);
-			THFloatTensor_free(net->modules[i].SpatialConvolution.finput);
-			break;
-		case MT_Linear:
-			THFloatTensor_free(net->modules[i].Linear.bias);
-			THFloatTensor_free(net->modules[i].Linear.weight);
-			THFloatTensor_free(net->modules[i].Linear.addBuffer);
-		}
+		if(net->modules[i].nnfree)
+			net->modules[i].nnfree(net->modules + i);
 		THFloatTensor_free(net->modules[i].output);
 	}
 	free(net->modules);

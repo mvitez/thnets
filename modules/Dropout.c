@@ -1,5 +1,17 @@
 #include "../thnets.h"
 
+int nnload_Dropout(struct module *mod, struct nnmodule *n)
+{
+	struct table *t = n->table;
+	mod->type = MT_Dropout;
+	mod->updateOutput = nn_Dropout_updateOutput;
+	struct Dropout *m = &mod->Dropout;
+	m->inplace = TableGetBoolean(t, "inplace");
+	m->v2 = TableGetBoolean(t, "v2");
+	m->p = TableGetNumber(t, "p");
+	return 0;
+}
+
 THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float p = module->Dropout.p;
