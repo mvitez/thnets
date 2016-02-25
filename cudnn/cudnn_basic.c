@@ -115,6 +115,7 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 		{
 		case MT_SpatialConvolutionMM:
 		case MT_SpatialConvolution:
+		case MT_SpatialConvolutionVirtMM:
 			nn->modules[i].updateOutput = cudnn_SpatialConvolution_updateOutput;
 #ifdef HAVEFP16
 			if(floattype == CUDNN_DATA_HALF)
@@ -130,6 +131,7 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 			nn->modules[i].SpatialConvolution.finput = 0;
 			break;
 		case MT_SpatialMaxPooling:
+			nn->modules[i].SpatialMaxPooling.indices = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialMaxPooling.indices);
 			nn->modules[i].updateOutput = cudnn_SpatialMaxPooling_updateOutput;
 			break;
 		case MT_Threshold:
