@@ -44,10 +44,10 @@ static void nn_SpatialMaxPooling_updateOutput_frame(float *input_p, float *outpu
 
 				long hstart = i * dH - padH;
 				long wstart = j * dW - padW;
-				long hend = fminf(hstart + kH, iheight);
-				long wend = fminf(wstart + kW, iwidth);
-				hstart = fmaxf(hstart, 0);
-				wstart = fmaxf(wstart, 0);
+				long hend = thfminf(hstart + kH, iheight);
+				long wend = thfminf(wstart + kW, iwidth);
+				hstart = thfmaxf(hstart, 0);
+				wstart = thfmaxf(wstart, 0);
 
 				long maxindex = -1;
 				float maxval = -THInf;

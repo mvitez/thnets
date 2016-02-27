@@ -1,4 +1,7 @@
 #include <stdio.h>
+#ifdef HAVEHALF
+#include "cuda_fp16.h"
+#endif
 
 extern "C" void THError(const char *fmt, ...);
 extern "C" int cuda_maphostmem;
@@ -143,4 +146,27 @@ float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height
 	cudaFree(cstd);
 	
 	return dst;
+}
+
+__global__ void fillwithone(float *dst, int stride)
+{
+	dst[threadIdx.x + blockIdx.x * stride] = 1;
+}
+
+__global__ void fillwithoneH(__half *dst, int stride)
+{
+	dst[threadIdx.x + blockIdx.x * stride] = __float2half(1);
+}
+
+extern "C" void cuda_fillwithone(int n1, int n2, float *data, int stride);
+extern "C" void cuda_fillwithoneH(int n1, int n2, float *data, int stride);
+
+void cuda_fillwithone(int n1, int n2, float *data, int stride)
+{
+	fillwithone<<<n1, n2>>>(data, stride);
+}
+
+void cuda_fillwithoneH(int n1, int n2, float *data, int stride)
+{
+	fillwithoneH<<<n1, n2>>>((__half *)data, stride);
 }

@@ -57,6 +57,10 @@ int main(int argc, char **argv)
 			if(i+1 < argc)
 				runs = atoi(argv[++i]);
 			break;
+		case 'd':
+			if(i+1 < argc)
+				th_debug = atoi(argv[++i]);
+			break;
 		case 'b':
 			if(i+1 < argc)
 			{
@@ -72,7 +76,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
 		fprintf(stderr, "             [-r <number of runs] [-p(rint results)]\n");
 		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>]\n");
-		fprintf(stderr, "             [-b <nbatch>]\n");
+		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
 		return -1;
 	}
 	if(alg == 4)
@@ -81,7 +85,6 @@ int main(int argc, char **argv)
 		THCudaHalfFloat(1);
 	}
 	THInit();
-	th_debug = 0;
 	net = THLoadNetwork(modelsdir);
 	if(net)
 	{
@@ -127,7 +130,7 @@ int main(int argc, char **argv)
 					bitmaps[i] = image.bitmap;
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
 				if(alg == 3)
-					THProcessImages(net, &image.bitmap, 1, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);
+					THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);
 				t = seconds();
 				for(i = 0; i < runs; i++)
 					n = THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);

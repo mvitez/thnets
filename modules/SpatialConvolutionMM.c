@@ -29,8 +29,8 @@ static void nn_unfolded_copy(THFloatTensor *finput, THFloatTensor *input,
 				} else {
 					if (dW==1){
 						ix = (long long)(0 - padW + kw);
-						lpad = fmaxf(0,padW-kw);
-						rpad = fmaxf(0,padW-(kW-kw-1));
+						lpad = thfmaxf(0,padW-kw);
+						rpad = thfmaxf(0,padW-(kW-kw-1));
 						if (outputWidth-rpad-lpad <= 0) {
 							memset(dst+(y*outputWidth), 0, sizeof(float)*outputWidth);
 						} else {

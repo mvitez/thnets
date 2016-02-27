@@ -68,7 +68,7 @@ struct tensor {
 	long *stride;
 	long storageoffset;
 	struct storage *storage;
-} tensor;
+};
 
 struct thobject
 {
@@ -272,8 +272,9 @@ void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
 void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
 
-#define fmaxf(a,b) ((a) > (b) ? (a) : (b))
-#define fminf(a,b) ((a) < (b) ? (a) : (b))
+#define thfmaxf(a,b) ((a) > (b) ? (a) : (b))
+#define thfminf(a,b) ((a) < (b) ? (a) : (b))
+
 #define THInf FLT_MAX
 
 int loadtorch(const char *path, struct thobject *obj, int longsize);
@@ -337,7 +338,7 @@ int THCudaHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();
-int th_debug;
+extern int th_debug;
 
 #ifdef CUDNN
 #include "cudnn/cudnn_th.h"

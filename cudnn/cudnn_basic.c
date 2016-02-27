@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../thnets.h"
+#include "cublas_v2.h"
 
 static cudnnHandle_t handle;
+static cublasHandle_t blashandle;
 int floattype = CUDNN_DATA_FLOAT;
 
 void checkerr(int status)
@@ -16,6 +18,13 @@ cudnnHandle_t THcudnn_getHandle()
 	if(!handle)
 		cudnnCreate(&handle);
 	return handle;
+}
+
+cublasHandle_t THcublas_getHandle()
+{
+	if(!blashandle)
+		cublasCreate(&blashandle);
+	return blashandle;
 }
 
 int THcudnn_TensorDescriptor(cudnnTensorDescriptor_t *d, THFloatTensor *t)
@@ -81,6 +90,7 @@ THFloatTensor *THFloatTensor_newFromCudaTensor(THFloatTensor *t)
 
 void THCudaTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3)
 {
+	long nelemorig = THFloatTensor_nElement(t);
 	t->nDimension = 4;
 	t->size[0] = size0;
 	t->size[1] = size1;
@@ -96,7 +106,60 @@ void THCudaTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2,
 		t->storage->nref = 1;
 		t->storage->mustfree = 2;
 		errcheck(cudaMalloc((void **)&t->storage->data, THFloatTensor_nElement(t) * sizeof(*t->storage->data)));
-	}
+	} else if(nelemorig != THFloatTensor_nElement(t))
+		THError("Resizing of CUDA tensors not supported");
+}
+
+void THCudaTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2)
+{
+	long nelemorig = THFloatTensor_nElement(t);
+	t->nDimension = 3;
+	t->size[0] = size0;
+	t->size[1] = size1;
+	t->size[2] = size2;
+	t->stride[2] = 1;
+	t->stride[1] = size2;
+	t->stride[0] = size1 * size2;
+	if(!t->storage)
+	{
+		t->storage = malloc(sizeof(*t->storage));
+		t->storage->nref = 1;
+		t->storage->mustfree = 2;
+		errcheck(cudaMalloc((void **)&t->storage->data, THFloatTensor_nElement(t) * sizeof(*t->storage->data)));
+	} else if(nelemorig != THFloatTensor_nElement(t))
+		THError("Resizing of CUDA tensors not supported");
+}
+
+void THCudaTensor_resize2d(THFloatTensor *t, long size0, long size1)
+{
+	long nelemorig = THFloatTensor_nElement(t);
+	t->nDimension = 2;
+	t->size[0] = size0;
+	t->size[1] = size1;
+	t->stride[1] = 1;
+	t->stride[0] = size1;
+	if(!t->storage)
+	{
+		t->storage = malloc(sizeof(*t->storage));
+		t->storage->nref = 1;
+		t->storage->mustfree = 2;
+		errcheck(cudaMalloc((void **)&t->storage->data, THFloatTensor_nElement(t) * sizeof(*t->storage->data)));
+	} else if(nelemorig != THFloatTensor_nElement(t))
+		THError("Resizing of CUDA tensors not supported");
+}
+
+void THCudaTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
+{
+	if(tsrc == tdst)
+		return;
+	long nelemsrc = THFloatTensor_nElement(tsrc);
+	tdst->nDimension = tsrc->nDimension;
+	memcpy(tdst->size, tsrc->size, sizeof(tsrc->size));
+	memcpy(tdst->stride, tsrc->stride, sizeof(tsrc->stride));
+	if(!tdst->storage)
+		tdst->storage = THCudaStorage_new(nelemsrc);
+	else if(nelemsrc != THFloatTensor_nElement(tdst))
+		THError("Resizing of CUDA tensors not supported");
 }
 
 struct network *THcudnn_ToCUDNN(struct network *net)
@@ -111,6 +174,7 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 	for(i = 0; i < net->nelem; i++)
 	{
 		nn->modules[i].output = THCudaTensor_newFromFloatTensor(net->modules[i].output);
+		nn->modules[i].net = nn;
 		switch(net->modules[i].type)
 		{
 		case MT_SpatialConvolutionMM:
@@ -132,7 +196,10 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 			break;
 		case MT_SpatialMaxPooling:
 			nn->modules[i].SpatialMaxPooling.indices = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialMaxPooling.indices);
-			nn->modules[i].updateOutput = cudnn_SpatialMaxPooling_updateOutput;
+			nn->modules[i].updateOutput = cunn_SpatialMaxPooling_updateOutput;
+			break;
+		case MT_SpatialMaxUnpooling:
+			nn->modules[i].updateOutput = cunn_SpatialMaxUnpooling_updateOutput;
 			break;
 		case MT_Threshold:
 			if(nn->modules[i].Threshold.threshold || nn->modules[i].Threshold.val)
@@ -171,11 +238,122 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 				nn->modules[i].SpatialConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
 			}
 			break;
+		case MT_SpatialBatchNormalization:
+			nn->modules[i].updateOutput = cudnn_SpatialBatchNormalization_updateOutput;
+			nn->modules[i].SpatialBatchNormalization.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialBatchNormalization.weight);
+			nn->modules[i].SpatialBatchNormalization.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialBatchNormalization.bias);
+			nn->modules[i].SpatialBatchNormalization.running_mean = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialBatchNormalization.running_mean);
+			nn->modules[i].SpatialBatchNormalization.running_var = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialBatchNormalization.running_var);
+			break;
+		case MT_SpatialFullConvolution:
+			nn->modules[i].updateOutput = cunn_SpatialFullConvolution_updateOutput;
+#ifdef HAVEFP16
+			if(floattype == CUDNN_DATA_HALF)
+			{
+				nn->modules[i].SpatialFullConvolution.weight = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.weight);
+				nn->modules[i].SpatialFullConvolution.bias = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.bias);
+				nn->modules[i].SpatialFullConvolution.columns = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.columns);
+				nn->modules[i].SpatialFullConvolution.ones = THHalfCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.ones);
+			} else
+#endif
+			{
+				nn->modules[i].SpatialFullConvolution.weight = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.weight);
+				nn->modules[i].SpatialFullConvolution.bias = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.bias);
+				nn->modules[i].SpatialFullConvolution.columns = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.columns);
+				nn->modules[i].SpatialFullConvolution.ones = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.ones);
+			}
+			break;
 		}
 	}
 	return nn;
 }
 
+void adjustLd(char transa, char transb, long m, long n, long k, long *lda, long *ldb, long *ldc)
+{
+	int transa_ = ((transa == 't') || (transa == 'T'));
+	int transb_ = ((transb == 't') || (transb == 'T'));
+
+	if(n == 1)
+		*ldc = m;
+
+	if(transa_)
+	{
+		if(m == 1)
+			*lda = k;
+	}
+	else
+	{
+		if(k == 1)
+			*lda = m;
+	}
+
+	if(transb_)
+	{
+		if(k == 1)
+			*ldb = n;
+	}
+	else
+	{
+		if(n == 1)
+			*ldb = k;
+	}
+}
+
+void THCudaBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc)
+{
+	adjustLd(transa, transb, m, n, k, &lda, &ldb, &ldc);
+
+	if( (m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (lda <= INT_MAX)  && (ldb <= INT_MAX) && (ldc <= INT_MAX) )
+	{
+		int i_m = (int)m;
+		int i_n = (int)n;
+		int i_k = (int)k;
+		int i_lda = (int)lda;
+		int i_ldb = (int)ldb;
+		int i_ldc = (int)ldc;
+
+#ifdef HAVEFP16
+		if(floattype == CUDNN_DATA_HALF)
+		{
+			__half h_alpha;
+			__half h_beta;
+			tofp16((__fp16 *)&h_alpha, &alpha, 1);
+			tofp16((__fp16 *)&h_beta, &beta, 1);
+			errcheck(cublasHgemm(THcublas_getHandle(), transa == 't' ? CUBLAS_OP_T : CUBLAS_OP_N,
+				transb == 't' ? CUBLAS_OP_T : CUBLAS_OP_N,
+				i_m, i_n, i_k, &h_alpha, (__half *)a, i_lda, (__half *)b, i_ldb, &h_beta, (__half *)c, i_ldc));
+		} else
+#endif
+		errcheck(cublasSgemm(THcublas_getHandle(), transa == 't' ? CUBLAS_OP_T : CUBLAS_OP_N,
+			transb == 't' ? CUBLAS_OP_T : CUBLAS_OP_N,
+			i_m, i_n, i_k, &alpha, a, i_lda, b, i_ldb, &beta, c, i_ldc));
+		return;
+	}
+	THError("Cublas_gemm only supports m, n, k, lda, ldb, ldc with the bound [val] <= %d", INT_MAX);
+}
+
+void THCudaTensor_Ones(THFloatTensor *t)
+{
+	int n1 = 0, n2 = 0, stride = 0;
+	
+	if(t->nDimension == 2)
+	{
+		n1 = t->size[0];
+		n2 = t->size[1];
+		stride = t->stride[0];
+	} else if(t->nDimension == 1)
+	{
+		n1 = 1;
+		n2 = t->size[0];
+	} else THError("Unsupported nDimension for THCudaTensor_Ones");
+
+#ifdef HAVEFP16
+	if(floattype == CUDNN_DATA_HALF)
+		cuda_fillwithoneH(n1, n2, THFloatTensor_data(t), stride);
+	else
+#endif
+		cuda_fillwithone(n1, n2, THFloatTensor_data(t), stride);
+}
 
 #ifdef HAVEFP16
 

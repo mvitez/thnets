@@ -26,6 +26,7 @@ ifneq ($(filter arm%,$(UNAME_P)),)
 endif
 ifneq ($(filter aarc%,$(UNAME_P)),)
 	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a53 -mfpu=neon-vfpv4 -DHAVEFP16 -mfp16-format=ieee
+	CUFLAGS += -DHAVEHALF --gpu-architecture=compute_53
 	LIBOBJS += axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
 	VPATH += OpenBLAS-stripped/arm
 endif
@@ -48,16 +49,19 @@ endif
 
 ifeq ($(DEBUG),1)
 	CFLAGS += -g
+	CUFLAGS += -g
 	ASFLAGS += -g
 else
 	CFLAGS += -O3
+	CUFLAGS += -O3
 endif
 
 ifeq ($(CUDNN),1)
-	LIBOBJS += cudnn_basic.o cudnn_SpatialConvolution.o cudnn_SpatialMaxPooling.o cudnn_Threshold.o \
-		cudnn_SoftMax.o cudnn_copy.o
+	LIBOBJS += cudnn_basic.o cudnn_SpatialConvolution.o cunn_SpatialMaxPooling.o cudnn_Threshold.o \
+		cudnn_SoftMax.o cudnn_copy.o cunn_SpatialMaxUnpooling.o cudnn_SpatialBatchNormalization.o \
+		cunn_SpatialFullConvolution.o
 	CFLAGS += -DCUDNN -I$(CUDAPATH)/include -I$(CUDNNPATH)/include
-	LIBS += -L$(CUDAPATH)/lib -L$(CUDNNPATH)/lib -lcudart -lcudnn
+	LIBS += -L$(CUDAPATH)/lib -L$(CUDNNPATH)/lib -lcudart -lcudnn -lcublas
 endif
 
 .PHONY : all
@@ -68,8 +72,8 @@ all : libthnets.so test
 .c.o:
 	$(CC) $(CFLAGS) $<
 
-cudnn_copy.o: cudnn_copy.cu
-	nvcc -c -Xcompiler -fPIC -O3 cudnn/cudnn_copy.cu
+%.o: %.cu
+	nvcc -c -Xcompiler -fPIC $(CUFLAGS) -DCUDNN $<
 
 libthnets.so: $(LIBOBJS)
 	$(CC) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
