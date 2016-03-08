@@ -71,14 +71,14 @@ THFloatTensor *cunn_SpatialFullConvolution_updateOutput(struct module *module, T
 		float *indata, *outdata;
 #ifdef HAVEHALF
 		if(floattype == CUDNN_DATA_HALF)
-			indata = (unsigned short *)input_n->storage->data + input_n->storageOffset;
+			indata = (float *)((unsigned short *)input_n->storage->data + input_n->storageOffset);
 		else
 #endif
 		indata = THFloatTensor_data(input_n);
 
 #ifdef HAVEHALF
 		if(floattype == CUDNN_DATA_HALF)
-			outdata = (unsigned short *)output_n->storage->data + output_n->storageOffset;
+			outdata = (float *)((unsigned short *)output_n->storage->data + output_n->storageOffset);
 		else
 #endif
 		outdata = THFloatTensor_data(output_n);
