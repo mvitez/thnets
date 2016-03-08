@@ -65,9 +65,23 @@ THFloatTensor *cunn_SpatialFullConvolution_updateOutput(struct module *module, T
 	// For each elt in batch, do:
 	for (int elt = 0; elt < batchSize; elt ++)
 	{
-		// Matrix mulitply per output:
+		// Matrix multiply per output:
 		THFloatTensor *input_n = THFloatTensor_newSelect(input, 0, elt);
 		THFloatTensor *output_n = THFloatTensor_newSelect(output, 0, elt);
+		float *indata, *outdata;
+#ifdef HAVEHALF
+		if(floattype == CUDNN_DATA_HALF)
+			indata = (unsigned short *)input_n->storage->data + input_n->storageOffset;
+		else
+#endif
+		indata = THFloatTensor_data(input_n);
+
+#ifdef HAVEHALF
+		if(floattype == CUDNN_DATA_HALF)
+			outdata = (unsigned short *)output_n->storage->data + output_n->storageOffset;
+		else
+#endif
+		outdata = THFloatTensor_data(output_n);
 
 		// M,N,K are dims of matrix A and B
 		// (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
@@ -80,18 +94,21 @@ THFloatTensor *cunn_SpatialFullConvolution_updateOutput(struct module *module, T
 			'n', 't',
 			n, m, k,
 			1,
-			THFloatTensor_data(input_n), n,
+			indata, n,
 			THFloatTensor_data(weight), m,
 			0,
 			THFloatTensor_data(columns), n
 		);
 
 		// Unpack columns back into input:
+#ifdef HAVEHALF
 		if(floattype == CUDNN_DATA_HALF)
 			col2imH((__half *)THFloatTensor_data(columns),
 			nOutputPlane, outputHeight, outputWidth, kH, kW, padH, padW, dH, dW,
-			(__half *)THFloatTensor_data(output_n));
-		else col2im(THFloatTensor_data(columns),
+			(__half *)outdata);
+		else
+#endif
+			col2im(THFloatTensor_data(columns),
 			nOutputPlane, outputHeight, outputWidth, kH, kW, padH, padW, dH, dW,
 			THFloatTensor_data(output_n));
 
@@ -110,7 +127,7 @@ THFloatTensor *cunn_SpatialFullConvolution_updateOutput(struct module *module, T
 			THFloatTensor_data(ones), k_,
 			THFloatTensor_data(bias), k_,
 			1,
-			THFloatTensor_data(output_n), n_
+			outdata, n_
 		);
 		THFloatTensor_free(input_n);
 		THFloatTensor_free(output_n);
