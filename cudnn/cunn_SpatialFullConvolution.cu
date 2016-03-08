@@ -87,10 +87,13 @@ THFloatTensor *cunn_SpatialFullConvolution_updateOutput(struct module *module, T
 		);
 
 		// Unpack columns back into input:
-		col2im(THFloatTensor_data(columns),
+		if(floattype == CUDNN_DATA_HALF)
+			col2imH((__half *)THFloatTensor_data(columns),
 			nOutputPlane, outputHeight, outputWidth, kH, kW, padH, padW, dH, dW,
-			THFloatTensor_data(output_n)
-		);
+			(__half *)THFloatTensor_data(output_n));
+		else col2im(THFloatTensor_data(columns),
+			nOutputPlane, outputHeight, outputWidth, kH, kW, padH, padW, dH, dW,
+			THFloatTensor_data(output_n));
 
 		// Do Bias after:
 		// M,N,K are dims of matrix A and B

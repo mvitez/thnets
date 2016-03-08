@@ -95,7 +95,7 @@ struct threcord {
 typedef struct THFloatStorage
 {
     float *data;
-	int nref, mustfree;
+	int nref, mustfree;	// mustfree = 0 (allocated somewhere else), 1 (free), 2 (cuda free)
 } THFloatStorage;
 
 typedef struct THFloatTensor

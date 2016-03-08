@@ -152,13 +152,15 @@ THFloatTensor *cunn_SpatialMaxPooling_updateOutput(struct module *module, THFloa
 	float *input_data = THFloatTensor_data(input);
 
 	THCudaTensor_resize4d(output, batchSize, nInputPlane, nOutputRows, nOutputCols);
-	THCudaTensor_resizeAs(indices, output);
 
 	int count = THFloatTensor_nElement(output);
 
 #ifdef HAVEHALF
 	if(floattype == CUDNN_DATA_HALF)
 	{
+		floattype = CUDNN_DATA_FLOAT;
+		THCudaTensor_resizeAs(indices, output);
+		floattype = CUDNN_DATA_HALF;
 		__half *h_input_data = (__half *)input_data;
 		float *indices_data = THFloatTensor_data(indices);
 		__half *h_output_data = (__half *)THFloatTensor_data(output);
@@ -170,6 +172,7 @@ THFloatTensor *cunn_SpatialMaxPooling_updateOutput(struct module *module, THFloa
 	} else
 #endif
 	{
+		THCudaTensor_resizeAs(indices, output);
 		float *indices_data = THFloatTensor_data(indices);
 		float *output_data = THFloatTensor_data(output);
 

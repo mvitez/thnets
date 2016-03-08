@@ -4,7 +4,7 @@
 #include <math.h>
 #include "thnets.h"
 
-static int lasterror, longsize = 8;
+static int lasterror;
 static short TB_YUR[256], TB_YUB[256], TB_YUGU[256], TB_YUGV[256], TB_Y[256];
 static unsigned char TB_SAT[1024 + 1024 + 256];
 int th_debug;
@@ -128,8 +128,8 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		// These lines free intermediate results
 		if(i > 0)
 		{
-			THFloatTensor_free(net->modules[i-1].output);
-			net->modules[i-1].output = THFloatTensor_new();
+			//THFloatTensor_free(net->modules[i-1].output);
+			//net->modules[i-1].output = THFloatTensor_new();
 		}
 		if(th_debug > 1)
 			printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
@@ -140,12 +140,14 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 THNETWORK *THLoadNetwork(const char *path)
 {
 	char tmppath[255];
-	int i;
+	int i, longsize = 8;
 	
 	THNETWORK *net = calloc(1, sizeof(*net));
 	sprintf(tmppath, "%s/model.net", path);
 	net->netobj = malloc(sizeof(*net->netobj));
 	lasterror = loadtorch(tmppath, net->netobj, longsize);
+	if(lasterror == ERR_CORRUPTED)
+		lasterror = loadtorch(tmppath, net->netobj, longsize = 4);
 	if(lasterror)
 	{
 		free(net->netobj);
@@ -278,9 +280,9 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 #ifdef HAVEFP16
 		if(floattype == CUDNN_DATA_HALF)
 		{
-			st = THCudaStorage_new(batchsize * ((width * height * 3 + 1) / 2));
+			st = THCudaStorage_new(batchsize * (width * height * 3));
 			for(i = 0; i < batchsize; i++)
-				cuda_rgb2half(st->data + i * ((width * height * 3 + 1) / 2), images[i], width, height, stride, network->mean, network->std, bgr);
+				cuda_rgb2half((unsigned short *)st->data + i * (width * height * 3), images[i], width, height, stride, network->mean, network->std, bgr);
 		} else
 #endif
 		{

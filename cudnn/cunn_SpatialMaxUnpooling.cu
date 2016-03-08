@@ -86,7 +86,7 @@ THFloatTensor *cunn_SpatialMaxUnpooling_updateOutput(struct module *module, THFl
 	}
 
 	THCudaTensor_resize4d(output, batchSize, nInputPlane, oheight, owidth);
-	cudaMemset(THFloatTensor_data(output), 0, sizeof(float) * THFloatTensor_nElement(output));
+	cudaMemset(THFloatTensor_data(output), 0, (floattype == CUDNN_DATA_HALF ? 2 : 4) * THFloatTensor_nElement(output));
 
 	int count = THFloatTensor_nElement(input);
 

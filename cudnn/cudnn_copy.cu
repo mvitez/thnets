@@ -79,7 +79,7 @@ __global__ void bgr2half_kernel(unsigned short *dst, const unsigned char *src, i
 }
 
 extern "C" float *cuda_rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr);
-extern "C" float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr);
+extern "C" unsigned short *cuda_rgb2half(unsigned short *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr);
 
 float *cuda_rgb2float(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr)
 {
@@ -115,7 +115,7 @@ float *cuda_rgb2float(float *dst, const unsigned char *src, int width, int heigh
 	return dst;
 }
 
-float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr)
+unsigned short *cuda_rgb2half(unsigned short *dst, const unsigned char *src, int width, int height, int srcstride, const float *mean, const float *std, int bgr)
 {
 	unsigned char *csrc;
 	float *cmean, *cstd;
@@ -135,8 +135,8 @@ float *cuda_rgb2half(float *dst, const unsigned char *src, int width, int height
 	errcheck(cudaMemcpy(cstd, std, 3 * sizeof(*std), cudaMemcpyHostToDevice));
 
 	if(bgr)
-		bgr2half_kernel<<<height, width/4>>>((unsigned short *)dst, csrc, width, height, srcstride, cmean, cstd);
-	else rgb2half_kernel<<<height, width/4>>>((unsigned short *)dst, csrc, width, height, srcstride, cmean, cstd);
+		bgr2half_kernel<<<height, width/4>>>(dst, csrc, width, height, srcstride, cmean, cstd);
+	else rgb2half_kernel<<<height, width/4>>>(dst, csrc, width, height, srcstride, cmean, cstd);
 	errcheck(cudaDeviceSynchronize());
 	
 	if(cuda_maphostmem)
