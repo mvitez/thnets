@@ -1,0 +1,16 @@
+./test -m . -i image.jpg -r 100 -a 2 -b 1
+./test -m . -i image.jpg -r 100 -a 2 -b 2
+./test -m . -i image.jpg -r 100 -a 3 -b 1
+./test -m . -i image.jpg -r 100 -a 3 -b 2
+./test -m . -i image.jpg -r 100 -a 3 -b 4
+./test -m . -i image.jpg -r 100 -a 3 -b 8
+./test -m . -i image.jpg -r 100 -a 3 -b 16
+./test -m . -i image.jpg -r 100 -a 3 -b 32
+./test -m . -i image.jpg -r 100 -a 3 -b 64
+./test -m . -i image.jpg -r 100 -a 4 -b 1
+./test -m . -i image.jpg -r 100 -a 4 -b 2
+./test -m . -i image.jpg -r 100 -a 4 -b 4
+./test -m . -i image.jpg -r 100 -a 4 -b 8
+./test -m . -i image.jpg -r 100 -a 4 -b 16
+./test -m . -i image.jpg -r 100 -a 4 -b 32
+./test -m . -i image.jpg -r 100 -a 4 -b 64
