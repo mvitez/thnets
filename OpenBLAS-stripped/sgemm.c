@@ -75,7 +75,7 @@
 
 #endif
 
-#define BUFFER_SIZE ((GEMM_P * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN) * 3
+#define BUFFER_SIZE (((GEMM_P + GEMM_R) * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN)
 #define GEMM_ALIGN 0x03fffUL
 
 #define MIN(a,b) ((a)>(b) ? (b) : (a))
