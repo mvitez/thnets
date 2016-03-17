@@ -181,10 +181,14 @@ static int readtorchstorage(const char *type, struct thfile *f, struct thobject 
 	if(readlong(f, &obj->storage->nelem))
 		return ERR_READFILE;
 	obj->storage->data = malloc(obj->storage->nelem * ss);
+	if(!obj->storage->data)
+		THError("Out of memory trying to allocate %ld bytes", obj->storage->nelem * ss);
 	if(obj->storage->scalartype == TYPE_LONG && f->longsize > 0 && f->longsize == 4 && sizeof(long) == 8)
 	{
 		long i;
 		int *tmp = malloc(obj->storage->nelem * 4);
+		if(!tmp)
+			THError("Out of memory trying to allocate %ld bytes", obj->storage->nelem * 4);
 		if(fread(tmp, 4, obj->storage->nelem, f->fp) != obj->storage->nelem)
 			return ERR_READFILE;
 		for(i = 0; i < obj->storage->nelem; i++)
@@ -194,6 +198,8 @@ static int readtorchstorage(const char *type, struct thfile *f, struct thobject 
 	{
 		long i;
 		long *tmp = malloc(obj->storage->nelem * 8);
+		if(!tmp)
+			THError("Out of memory trying to allocate %ld bytes", obj->storage->nelem * 8);
 		if(fread(tmp, 8, obj->storage->nelem, f->fp) != obj->storage->nelem)
 			return ERR_READFILE;
 		for(i = 0; i < obj->storage->nelem; i++)
