@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include "thnets.h"
 
 static int lasterror;
 static short TB_YUR[256], TB_YUB[256], TB_YUGU[256], TB_YUGV[256], TB_Y[256];
 static unsigned char TB_SAT[1024 + 1024 + 256];
-int th_debug;
+int th_debug, th_profile;
 
 #ifdef CUDNN
 int cuda_maphostmem;
@@ -117,12 +118,26 @@ static void yuyv2fRGB(const unsigned char *frame, float *dst_float, int imgstrid
 	}
 }
 
+double th_seconds()
+{
+	static double s;
+	struct timespec ts;
+	
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	if(!s)
+		s = ts.tv_sec + ts.tv_nsec * 1e-9;
+	return ts.tv_sec + ts.tv_nsec * 1e-9 - s;
+}
+
 THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
 	int i;
+	double t = 0, convtot = 0, convflops = 0;
 	
 	for(i = 0; i < net->nelem; i++)
 	{
+		if(th_profile)
+			t = th_seconds();
 		in = net->modules[i].updateOutput(&net->modules[i], in);
 		// You can remove these lines if you don't have problems with memory
 		// These lines free intermediate results
@@ -131,9 +146,25 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			THFloatTensor_free(net->modules[i-1].output);
 			net->modules[i-1].output = THFloatTensor_new();
 		}
+		if(th_profile)
+		{
+			t = th_seconds() - t;
+			if(net->modules[i].type == MT_SpatialConvolutionMM ||
+				net->modules[i].type == MT_SpatialConvolutionVirtMM ||
+				net->modules[i].type == MT_SpatialConvolution)
+			{
+				double flops = 2.0 * THFloatTensor_nElement(in) * net->modules[i].SpatialConvolution.nInputPlane *
+					net->modules[i].SpatialConvolution.kW * net->modules[i].SpatialConvolution.kH;
+				printf("%f seconds for module %d, %f Gflops/s\n", t, i+1, flops * 1e-9 / t);
+				convtot += t;
+				convflops += flops;
+			} else printf("%f seconds for module %d\n", t, i+1);
+		}
 		if(th_debug > 1)
 			printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
+	if(th_profile)
+		printf("%f seconds for convolutions %f Gflops/s\n", convtot, convflops * 1e-9 / convtot);
 	return in;
 }
 

@@ -61,6 +61,9 @@ int main(int argc, char **argv)
 			if(i+1 < argc)
 				th_debug = atoi(argv[++i]);
 			break;
+		case 'P':
+			th_profile = 1;
+			break;
 		case 'b':
 			if(i+1 < argc)
 			{
@@ -74,7 +77,7 @@ int main(int argc, char **argv)
 	if(!modelsdir || !inputfile)
 	{
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
-		fprintf(stderr, "             [-r <number of runs] [-p(rint results)]\n");
+		fprintf(stderr, "             [-r <number of runs] [-p(rint results)] [-P(rofile)]\n");
 		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>]\n");
 		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
 		return -1;
