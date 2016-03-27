@@ -134,6 +134,10 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	int i;
 	double t = 0, convtot = 0, convflops = 0;
 	
+#ifdef OPENCL
+	if(net->opencl == 1)
+		OpenCL_Build(net, in);
+#endif
 	for(i = 0; i < net->nelem; i++)
 	{
 		if(th_profile)
@@ -148,6 +152,10 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		}
 		if(th_profile)
 		{
+#ifdef OPENCL
+			if(net->opencl)
+				clFinish(cl_queue);
+#endif
 			t = th_seconds() - t;
 			if(net->modules[i].type == MT_SpatialConvolutionMM ||
 				net->modules[i].type == MT_SpatialConvolutionVirtMM ||
@@ -253,6 +261,9 @@ void THInit()
 		cuda_maphostmem = 1;
 	}
 #endif
+#ifdef OPENCL
+	thopencl_init();
+#endif
 }
 
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
@@ -288,6 +299,18 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 		out = network->out;
 	} else
 #endif
+#ifdef OPENCL
+	if(network->net->opencl)
+	{
+		THFloatTensor *t2 = THOpenCLTensor_newFromImageTensor(t);
+		out = forward(network->net, t2);
+		THFloatTensor_free(t2);
+		if(network->out)
+			THFloatTensor_free(network->out);
+		network->out = THFloatTensor_newFromOpenCLImageTensor(out);
+		out = network->out;
+	} else
+#endif
 	out = forward(network->net, t);
 	THFloatTensor_free(t);
 	*result = out->storage->data;
@@ -302,7 +325,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight, int bgr)
 {
 	int i;
-	THFloatTensor *out;
+	THFloatTensor *out, *t = 0;
 	THFloatStorage *st;
 	
 #ifdef CUDNN
@@ -323,6 +346,11 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		}
 	} else
 #endif
+#ifdef OPENCL
+	if(network->net->opencl)
+		t = OpenCL_LoadImage(images[0], width, height, stride, network->mean, network->std, bgr);
+	else
+#endif
 	{
 		st = THFloatStorage_new(batchsize * width * height * 3);
 		if(bgr)
@@ -334,27 +362,30 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 			for(i = 0; i < batchsize; i++)
 				rgb2float(st->data + i * width * height * 3, images[i], width, height, stride, network->mean, network->std);
 	}
-	THFloatTensor *t = THFloatTensor_new();
-	t->storage = st;
-	if(batchsize == 1)
+	if(!t)
 	{
-		t->nDimension = 3;
-		t->size[0] = 3;
-		t->size[1] = height;
-		t->size[2] = width;
-		t->stride[0] = width * height;
-		t->stride[1] = width;
-		t->stride[2] = 1;
-	} else {
-		t->nDimension = 4;
-		t->size[0] = batchsize;
-		t->size[1] = 3;
-		t->size[2] = height;
-		t->size[3] = width;
-		t->stride[0] = 3 * width * height;
-		t->stride[1] = width * height;
-		t->stride[2] = width;
-		t->stride[3] = 1;
+		t = THFloatTensor_new();
+		t->storage = st;
+		if(batchsize == 1)
+		{
+			t->nDimension = 3;
+			t->size[0] = 3;
+			t->size[1] = height;
+			t->size[2] = width;
+			t->stride[0] = width * height;
+			t->stride[1] = width;
+			t->stride[2] = 1;
+		} else {
+			t->nDimension = 4;
+			t->size[0] = batchsize;
+			t->size[1] = 3;
+			t->size[2] = height;
+			t->size[3] = width;
+			t->stride[0] = 3 * width * height;
+			t->stride[1] = width * height;
+			t->stride[2] = width;
+			t->stride[3] = 1;
+		}
 	}
 #ifdef CUDNN
 	if(network->net->cuda)
@@ -368,6 +399,16 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		else
 #endif
 			network->out = THFloatTensor_newFromCudaTensor(out);
+		out = network->out;
+	} else
+#endif
+#ifdef OPENCL
+	if(network->net->opencl)
+	{
+		out = forward(network->net, t);
+		if(network->out)
+			THFloatTensor_free(network->out);
+		network->out = THFloatTensor_newFromOpenCLImageTensor(out);
 		out = network->out;
 	} else
 #endif
@@ -390,6 +431,10 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 #ifdef CUDNN
 	if(network->net->cuda)
 		THError("This function is not supported with CUDNN");
+#endif
+#ifdef OPENCL
+	if(network->net->cuda)
+		THError("This function is not supported with OpenCL");
 #endif
 	st = THFloatStorage_new(width * height * 3);
 	yuyv2fRGB(image, st->data, width*height, width, width, height, network->mean, network->std);
@@ -546,5 +591,19 @@ int THCudaHalfFloat(int enable)
 	return 0;
 #else
 	return ERR_NOTIMPLEMENTED;
+#endif
+}
+
+THNETWORK *THCreateOpenCLNetwork(THNETWORK *net)
+{
+#ifdef OPENCL
+	THNETWORK *nn = malloc(sizeof(*nn));
+	memcpy(nn, net, sizeof(*nn));
+	nn->netobj = 0;
+	nn->statobj = 0;
+	nn->net = THOpenCL_ToOpenCL(net->net);
+	return nn;
+#else
+	return 0;
 #endif
 }

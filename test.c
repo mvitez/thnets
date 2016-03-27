@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 	{
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
 		fprintf(stderr, "             [-r <number of runs] [-p(rint results)] [-P(rofile)]\n");
-		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>]\n");
+		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>,5:OpenCL]\n");
 		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
 		return -1;
 	}
@@ -103,6 +103,13 @@ int main(int argc, char **argv)
 				THError("CUDA not compiled in");
 			THFreeNetwork(net);
 			net = net2;
+		} else if(alg == 5)
+		{
+			THNETWORK *net2 = THCreateOpenCLNetwork(net);
+			if(!net2)
+				THError("OpenCL not compiled in");
+			THFreeNetwork(net);
+			net = net2;
 		}
 		if(strstr(inputfile, ".t7"))
 		{
@@ -113,7 +120,7 @@ int main(int argc, char **argv)
 			{
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
-				if(alg == 3)
+				if(alg == 3 || alg == 5)
 					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
 				t = seconds();
 				for(i = 0; i < runs; i++)
@@ -132,7 +139,7 @@ int main(int argc, char **argv)
 				for(i = 0; i < nbatch; i++)
 					bitmaps[i] = image.bitmap;
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
-				if(alg == 3)
+				if(alg == 3 || alg == 5)
 					THProcessImages(net, bitmaps, nbatch, image.width, image.height, 3*image.width, &result, &outwidth, &outheight, 0);
 				t = seconds();
 				for(i = 0; i < runs; i++)

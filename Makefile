@@ -4,6 +4,8 @@ MEMORYDEBUG = no
 DEBUG = 0
 # Can be 0 or 1
 CUDNN = 0
+#Can be 0 or 1
+OPENCL = 0
 
 CUDAPATH=/usr/local/cuda
 CUDNNPATH=/home/ubuntu/cudnn/cuda
@@ -13,7 +15,7 @@ UNAME_P := $(shell uname -p)
 CFLAGS = -Wall -c -fopenmp -fPIC
 LIBS = -lm
 CC = gcc
-VPATH = modules cudnn OpenBLAS-stripped
+VPATH = modules cudnn OpenBLAS-stripped opencl
 LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o Threshold.o \
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
@@ -62,6 +64,13 @@ ifeq ($(CUDNN),1)
 		cunn_SpatialFullConvolution.o
 	CFLAGS += -DCUDNN -I$(CUDAPATH)/include -I$(CUDNNPATH)/include
 	LIBS += -L$(CUDAPATH)/lib -L$(CUDNNPATH)/lib -lcudart -lcudnn -lcublas
+endif
+
+ifeq ($(OPENCL),1)
+	LIBOBJS += opencl_basic.o opencl_SpatialConvolution.o opencl_SpatialMaxPooling.o \
+		opencl_Threshold.o opencl_SoftMax.o opencl_img.o
+	CFLAGS += -DOPENCL
+	LIBS += -lOpenCL
 endif
 
 .PHONY : all

@@ -4,6 +4,10 @@
 #include "memory.h"
 #endif
 
+#ifdef OPENCL
+#include "CL/opencl.h"
+#endif
+
 enum therror {
 	ERR_OPENFILE = -1,
 	ERR_READFILE = -2,
@@ -202,6 +206,10 @@ struct module
 	THFloatTensor *output;
 	struct network *net;
 	struct nnmodule *nnmodule;
+#ifdef OPENCL
+	cl_kernel kernel;
+	int clstatus;
+#endif
 	union {
 		struct SpatialConvolution SpatialConvolution;
 		struct SpatialMaxPooling SpatialMaxPooling;
@@ -219,7 +227,7 @@ struct module
 
 struct network
 {
-	int nelem, cuda;
+	int nelem, cuda, opencl;
 	struct module *modules;
 };
 
@@ -334,6 +342,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight, int bgr);
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight);
 THNETWORK *THCreateCudaNetwork(THNETWORK *net);
+THNETWORK *THCreateOpenCLNetwork(THNETWORK *net);
 int THCudaHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
@@ -342,4 +351,8 @@ extern int th_debug, th_profile;
 
 #ifdef CUDNN
 #include "cudnn/cudnn_th.h"
+#endif
+
+#ifdef OPENCL
+#include "opencl/opencl_th.h"
 #endif

@@ -41,6 +41,11 @@ void THFloatStorage_free(THFloatStorage *s)
 			cudaFree(s->data);
 		else
 #endif
+#ifdef OPENCL
+		if(s->mustfree == 3)
+			clReleaseMemObject((cl_mem)s->data);
+		else
+#endif
 		if(s->mustfree)
 			free(s->data);
 		free(s);
