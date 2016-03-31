@@ -22,7 +22,7 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 	sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o
 
 ifneq ($(filter arm%,$(UNAME_P)),)
-	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
+	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -DHAVEFP16 -mfp16-format=ieee
 	LIBOBJS += axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
 	VPATH += OpenBLAS-stripped/arm
 endif

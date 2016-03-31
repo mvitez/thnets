@@ -10,8 +10,9 @@
 
 static cl_context ctx;
 static cl_device_id device = 0;
-static int cl_datasize = 4;
+int cl_datasize = 4;
 cl_command_queue cl_queue;
+int cl_order = 1;
 
 int thopencl_init()
 {
@@ -19,6 +20,9 @@ int thopencl_init()
 	cl_platform_id platform = 0;
 	cl_context_properties props[3] = { CL_CONTEXT_PLATFORM, 0, 0 };
 	size_t param[5];
+	cl_ulong ulparam;
+	cl_uint uiparam;
+	
 	char version[300];
 	int i, n;
 
@@ -42,20 +46,26 @@ int thopencl_init()
 		printf("CL_DEVICE_VERSION=%s\n", version);
 		clGetDeviceInfo(device, CL_DRIVER_VERSION, sizeof(version), version, NULL);
 		printf("CL_DRIVER_VERSION=%s\n", version);
-		clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(param[0]), param, NULL);
-		printf("CL_DEVICE_LOCAL_MEM_SIZE=%d\n", (int)param[0]);
+		clGetDeviceInfo(device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(ulparam), &ulparam, NULL);
+		printf("CL_DEVICE_LOCAL_MEM_SIZE=%llu bytes\n", ulparam);
+		clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(ulparam), &ulparam, NULL);
+		printf("CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE=%llu\n", ulparam);
+		clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(ulparam), &ulparam, NULL);
+		printf("CL_DEVICE_GLOBAL_MEM_SIZE=%llu\n", ulparam);
+		clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, sizeof(ulparam), &ulparam, NULL);
+		printf("CL_DEVICE_GLOBAL_MEM_CACHE_SIZE=%llu\n", ulparam);
+		clGetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(uiparam), &uiparam, NULL);
+		printf("CL_DEVICE_MAX_COMPUTE_UNITS=%d\n", uiparam);
 		clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(param[0]), param, NULL);
-		printf("CL_DEVICE_MAX_WORK_GROUP_SIZE=%d\n", (int)param[0]);
-		clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(param[0]), param, NULL);
-		printf("CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS=%d\n", (int)param[0]);
-		n = param[0];
+		printf("CL_DEVICE_MAX_WORK_GROUP_SIZE=%u\n", param[0]);
+		clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(uiparam), &uiparam, NULL);
+		printf("CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS=%d\n", uiparam);
+		n = uiparam;
 		clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(param[0])*n, param, NULL);
 		printf("CL_DEVICE_MAX_WORK_ITEM_SIZES=");
 		for(i = 0; i < n; i++)
-			printf("%d ", (int)param[i]);
+			printf("%u ", (int)param[i]);
 		printf("\n");
-		clGetDeviceInfo(device, CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, sizeof(param[0]), param, NULL);
-		printf("CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE=%d\n", (int)param[0]);
 	}
 	return 0;
 }
@@ -108,6 +118,8 @@ THFloatTensor *THFloatTensor_newFromOpenCLTensor(THFloatTensor *t)
 
 THFloatTensor *THOpenCLTensor_newFromImageTensor(THFloatTensor *t)
 {
+	if(!cl_order)
+		return THOpenCLTensor_newFromFloatTensor(t);
 	int x, y, c;
 	long *srcstride = t->stride;
 	long *srcsize = t->size;
@@ -134,6 +146,8 @@ THFloatTensor *THOpenCLTensor_newFromImageTensor(THFloatTensor *t)
 
 THFloatTensor *THFloatTensor_newFromOpenCLImageTensor(THFloatTensor *t)
 {
+	if(!cl_order)
+		return THFloatTensor_newFromOpenCLTensor(t);
 	int x, y, c;
 	if(t->nDimension != 3)
 		THError("Only 3D tensors are supported for OpenCL images");
@@ -153,6 +167,8 @@ THFloatTensor *THFloatTensor_newFromOpenCLImageTensor(THFloatTensor *t)
 
 THFloatTensor *THOpenCLTensor_newFromWeightTensor(THFloatTensor *t, int nInputPlanes, int kW, int kH)
 {
+	if(!cl_order)
+		return THOpenCLTensor_newFromFloatTensor(t);
 	int x, y, c, o;
 	float *src = THFloatTensor_data(t);
 	int nOutputPlanes = t->size[0];
@@ -169,6 +185,174 @@ THFloatTensor *THOpenCLTensor_newFromWeightTensor(THFloatTensor *t, int nInputPl
 	THFloatTensor_free(tmp);
 	return out;
 }
+
+#ifdef HAVEFP16
+
+void THHalfFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3)
+{
+	long nElement = THFloatTensor_nElement(t);
+	t->nDimension = 4;
+	t->size[0] = size0;
+	t->size[1] = size1;
+	t->size[2] = size2;
+	t->size[3] = size3;
+	t->stride[3] = 1;
+	t->stride[2] = size3;
+	t->stride[1] = size2 * size3;
+	t->stride[0] = size1 * size2 * size3;
+	if(!t->storage)
+		t->storage = THFloatStorage_new(size0 * size1 * size2 * size3);
+	else if(nElement != size0 * size1 * size2 * size3)
+		t->storage->data = realloc(t->storage->data, 2 * size0 * size1 * size2 * size3);
+}
+
+void THHalfFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2)
+{
+	long nElement = THFloatTensor_nElement(t);
+	t->nDimension = 3;
+	t->size[0] = size0;
+	t->size[1] = size1;
+	t->size[2] = size2;
+	t->stride[2] = 1;
+	t->stride[1] = size2;
+	t->stride[0] = size1 * size2;
+	if(!t->storage)
+		t->storage = THFloatStorage_new(size0 * size1 * size2);
+	else if(nElement != size0 * size1 * size2)
+		t->storage->data = realloc(t->storage->data, 2 * size0 * size1 * size2);
+}
+
+THFloatTensor *THHalfOpenCLTensor_newFromFloatTensor(THFloatTensor *t)
+{
+	THFloatTensor *n = malloc(sizeof(*n));
+	memcpy(n, t, sizeof(*n));
+	if(t->storage)
+	{
+		n->storage = malloc(sizeof(*n->storage));
+		n->storage->nref = 1;
+		n->storage->mustfree = 3;
+		int nelem = THFloatTensor_nElement(t);
+		__fp16 *tmp = malloc(nelem * 2);
+		if(!tmp)
+			THError("Error allocating %d bytes", nelem * 2);
+		tofp16(tmp, THFloatTensor_data(t), nelem);
+		n->storage->data = (float *)OpenCL_Buffer(tmp, nelem * 2);
+		free(tmp);
+	}
+	return n;
+}
+
+THFloatTensor *THFloatTensor_newFromHalfOpenCLTensor(THFloatTensor *t)
+{
+	THFloatTensor *n = malloc(sizeof(*n));
+	memcpy(n, t, sizeof(*n));
+	if(t->storage)
+	{
+		n->storage = malloc(sizeof(*n->storage));
+		n->storage->nref = 1;
+		n->storage->mustfree = 1;
+		int nelem = THFloatTensor_nElement(t);
+		__fp16 *tmp = malloc(2 * nelem);
+		if(!tmp)
+			THError("Error allocating %d bytes", nelem * 2);
+		cl_int err = clEnqueueReadBuffer(cl_queue, (cl_mem)THFloatTensor_data(t), CL_TRUE, 0, 2 * nelem, tmp, 0, NULL, NULL );
+		if(err)
+			THError("cEnqueueReadBuffer(%d) failed with err = %d\n", 2 * nelem, err);
+		n->storage->data = malloc(4 * nelem);
+		if(!n->storage->data)
+			THError("Error allocating %d bytes", 4 * nelem);
+		fromfp16(n->storage->data, tmp, nelem);
+		free(tmp);
+	}
+	return n;
+}
+
+THFloatTensor *THHalfOpenCLTensor_newFromImageTensor(THFloatTensor *t)
+{
+	int x, y, c;
+	long *srcstride = t->stride;
+	long *srcsize = t->size;
+	float *src = THFloatTensor_data(t);
+	if(t->nDimension != 3 && t->size[0] != 1)
+		THError("Batches are not supported in OpenCL");
+	if(t->nDimension == 4)
+	{
+		srcstride++;
+		srcsize++;
+	}
+	THFloatTensor *tmp = THFloatTensor_new();
+	if(!cl_order)
+	{
+		THHalfFloatTensor_resize3d(tmp, srcsize[0], srcsize[1], srcsize[2]);
+		__fp16 *dst = (__fp16 *)THFloatTensor_data(tmp);
+		tofp16(dst, src, THFloatTensor_nElement(t));
+	} else {
+		THHalfFloatTensor_resize3d(tmp, srcsize[1], srcsize[2], srcsize[0]);
+		__fp16 *dst = (__fp16 *)THFloatTensor_data(tmp);
+		for(y = 0; y < tmp->size[0]; y++)
+			for(x = 0; x < tmp->size[1]; x++)
+				for(c = 0; c < tmp->size[2]; c++)
+					dst[y * tmp->stride[0] + x * tmp->stride[1] + c] =
+						src[y * srcstride[1] + x * srcstride[2] + c * srcstride[0]];
+	}
+	THFloatTensor *out = THOpenCLTensor_newFromFloatTensor(tmp);
+	THFloatTensor_free(tmp);
+	return out;
+}
+
+THFloatTensor *THFloatTensor_newFromHalfOpenCLImageTensor(THFloatTensor *t)
+{
+	int x, y, c;
+	if(t->nDimension != 3)
+		THError("Only 3D tensors are supported for OpenCL images");
+	THFloatTensor *tmp = THFloatTensor_newFromOpenCLTensor(t);
+	__fp16 *src = (__fp16 *)THFloatTensor_data(tmp);
+	THFloatTensor *out = THFloatTensor_new();
+	if(!cl_order)
+	{
+		THFloatTensor_resize3d(out, tmp->size[0], tmp->size[1], tmp->size[2]);
+		float *dst = THFloatTensor_data(out);
+		fromfp16(dst, src, THFloatTensor_nElement(t));
+	} else {
+		THFloatTensor_resize3d(out, tmp->size[2], tmp->size[0], tmp->size[1]);
+		float *dst = THFloatTensor_data(out);
+		for(c = 0; c < out->size[0]; c++)
+			for(y = 0; y < out->size[1]; y++)
+				for(x = 0; x < out->size[2]; x++)
+					dst[c * out->stride[0] + y * out->stride[1] + x] =
+						src[y * tmp->stride[0] + x * tmp->stride[1] + c];
+	}
+	THFloatTensor_free(tmp);
+	return out;
+}
+
+THFloatTensor *THHalfOpenCLTensor_newFromWeightTensor(THFloatTensor *t, int nInputPlanes, int kW, int kH)
+{
+	int x, y, c, o;
+	float *src = THFloatTensor_data(t);
+	int nOutputPlanes = t->size[0];
+	THFloatTensor *tmp = THFloatTensor_new();
+	if(!cl_order)
+	{
+		THHalfFloatTensor_resize4d(tmp, nOutputPlanes, nInputPlanes, kH, kW);
+		__fp16 *dst = (__fp16 *)THFloatTensor_data(tmp);
+		tofp16(dst, src, THFloatTensor_nElement(t));
+	} else {
+		THHalfFloatTensor_resize4d(tmp, kH, kW, nInputPlanes, nOutputPlanes);
+		__fp16 *dst = (__fp16 *)THFloatTensor_data(tmp);
+		for(y = 0; y < kH; y++)
+			for(x = 0; x < kW; x++)
+				for(c = 0; c < nInputPlanes; c++)
+					for(o = 0; o < nOutputPlanes; o++)
+						dst[y * tmp->stride[0] + x * tmp->stride[1] + c * tmp->stride[2] + o] =
+							src[y * kW + x + c * kW * kH + o * t->stride[0]];
+	}
+	THFloatTensor *out = THOpenCLTensor_newFromFloatTensor(tmp);
+	THFloatTensor_free(tmp);
+	return out;
+}
+
+#endif
 
 THFloatStorage *THOpenCLStorage_new(long size)
 {
@@ -220,6 +404,22 @@ void THOpenCLTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
 		THError("Resizing of OpenCL tensors not supported");
 }
 
+void OpenCL_GetTensorSizes(THFloatTensor *t, int *nplanes, int *W, int *H)
+{
+	if(t->nDimension != 3)
+		THError("Only 3D tensors supported");
+	if(cl_order)
+	{
+		*nplanes = t->size[2];
+		*W = t->size[1];
+		*H = t->size[0];
+	} else {
+		*nplanes = t->size[0];
+		*W = t->size[2];
+		*H = t->size[1];
+	}
+}
+
 static char *build_src;
 static const char *build_kernelname;
 
@@ -257,7 +457,13 @@ void OpenCL_Build(struct network *net, THFloatTensor *in)
 	char *src = malloc(100000);
 	cl_program program;
 	
-	*src = 0;
+#ifdef HAVEFP16
+	if(cl_datasize == 2)
+		strcpy(src, "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#define THInf 1e4\n");
+	else
+#endif
+		strcpy(src, "#define THInf 1e38\n");
+	strcpy(src, "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#define THInf 1e4\n");
 	for(i = 0; i < net->nelem; i++)
 	{
 		build_src = 0;
@@ -313,13 +519,23 @@ struct network *THOpenCL_ToOpenCL(struct network *net)
 		case MT_SpatialConvolution:
 		case MT_SpatialConvolutionVirtMM:
 			nn->modules[i].updateOutput = OpenCL_SpatialConvolution_updateOutput;
-			nn->modules[i].SpatialConvolution.weight = THOpenCLTensor_newFromWeightTensor(net->modules[i].SpatialConvolution.weight,
-				nn->modules[i].SpatialConvolution.nInputPlane, nn->modules[i].SpatialConvolution.kH, nn->modules[i].SpatialConvolution.kW);
-			nn->modules[i].SpatialConvolution.bias = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+#ifdef HAVEFP16
+			if(cl_datasize == 2)
+			{
+				nn->modules[i].SpatialConvolution.weight = THHalfOpenCLTensor_newFromWeightTensor(net->modules[i].SpatialConvolution.weight,
+					nn->modules[i].SpatialConvolution.nInputPlane, nn->modules[i].SpatialConvolution.kH, nn->modules[i].SpatialConvolution.kW);
+				nn->modules[i].SpatialConvolution.bias = THHalfOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			} else
+#endif
+			{
+				nn->modules[i].SpatialConvolution.weight = THOpenCLTensor_newFromWeightTensor(net->modules[i].SpatialConvolution.weight,
+					nn->modules[i].SpatialConvolution.nInputPlane, nn->modules[i].SpatialConvolution.kH, nn->modules[i].SpatialConvolution.kW);
+				nn->modules[i].SpatialConvolution.bias = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			}
 			nn->modules[i].SpatialConvolution.finput = 0;
 			break;
 		case MT_SpatialMaxPooling:
-			nn->modules[i].SpatialMaxPooling.indices = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialMaxPooling.indices);
+			nn->modules[i].SpatialMaxPooling.indices = 0;
 			nn->modules[i].updateOutput = OpenCL_SpatialMaxPooling_updateOutput;
 			break;
 		case MT_SpatialMaxUnpooling:
@@ -348,8 +564,18 @@ struct network *THOpenCL_ToOpenCL(struct network *net)
 			c->kW = c->kH = 1;
 			c->nOutputPlane = c->weight->size[0];
 			c->nInputPlane = c->weight->size[1];
-			nn->modules[i].SpatialConvolution.weight = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
-			nn->modules[i].SpatialConvolution.bias = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+#ifdef HAVEFP16
+			if(cl_datasize == 2)
+			{
+				// kH and kW = 1, so it's not necessary to recorder the dimensions and use newFromWeightTensor
+				nn->modules[i].SpatialConvolution.weight = THHalfOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THHalfOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			} else
+#endif
+			{
+				nn->modules[i].SpatialConvolution.weight = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
+				nn->modules[i].SpatialConvolution.bias = THOpenCLTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			}
 			break;
 		case MT_SpatialBatchNormalization:
 			THError("MT_SpatialBatchNormalization not supported in OpenCL");
@@ -396,7 +622,7 @@ void substf(char *buf, const char *from, float to)
 
 char *strdup_more(const char *src)
 {
-	char *dst = malloc(strlen(src) + 100);
+	char *dst = malloc(strlen(src) + 200);
 	strcpy(dst, src);
 	return dst;
 }

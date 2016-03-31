@@ -34,6 +34,10 @@ THFloatTensor *OpenCL_Threshold_updateOutput(struct module *module, THFloatTenso
 		if(!module->kernel)
 		{
 			char *src = strdup_more(source_inplace);
+#ifdef HAVEFP16
+			if(cl_datasize == 2)
+				subst(src, "float", "half");
+#endif
 			substf(src, "threshold", threshold);
 			substf(src, "val", val);
 			OpenCL_AddSource(src, "thr");
@@ -52,6 +56,10 @@ THFloatTensor *OpenCL_Threshold_updateOutput(struct module *module, THFloatTenso
 		if(!module->kernel)
 		{
 			char *src = strdup_more(source_copy);
+#ifdef HAVEFP16
+			if(cl_datasize == 2)
+				subst(src, "float", "half");
+#endif
 			substf(src, "threshold", threshold);
 			substf(src, "val", val);
 			OpenCL_AddSource(src, "thr");

@@ -408,7 +408,12 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 		out = forward(network->net, t);
 		if(network->out)
 			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromOpenCLImageTensor(out);
+#ifdef HAVEFP16
+		if(cl_datasize == 2)
+			network->out = THFloatTensor_newFromHalfOpenCLImageTensor(out);
+		else
+#endif
+			network->out = THFloatTensor_newFromOpenCLImageTensor(out);
 		out = network->out;
 	} else
 #endif
@@ -588,6 +593,19 @@ int THCudaHalfFloat(int enable)
 	{
 		floattype = CUDNN_DATA_HALF;
 	} else floattype = CUDNN_DATA_FLOAT;
+	return 0;
+#else
+	return ERR_NOTIMPLEMENTED;
+#endif
+}
+
+int THOpenCLHalfFloat(int enable)
+{
+#if defined OPENCL && defined HAVEFP16
+	if(enable)
+	{
+		cl_datasize = 2;
+	} else cl_datasize = 4;
 	return 0;
 #else
 	return ERR_NOTIMPLEMENTED;

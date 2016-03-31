@@ -285,6 +285,11 @@ void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatT
 
 #define THInf FLT_MAX
 
+#ifdef HAVEFP16
+void tofp16(__fp16 *dst, const float *src, size_t len);
+void fromfp16(float *dst, const __fp16 *src, size_t len);
+#endif
+
 int loadtorch(const char *path, struct thobject *obj, int longsize);
 int printobject(struct thobject *obj, int indent);
 int freeobject(struct thobject *obj);
@@ -344,6 +349,7 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 THNETWORK *THCreateCudaNetwork(THNETWORK *net);
 THNETWORK *THCreateOpenCLNetwork(THNETWORK *net);
 int THCudaHalfFloat(int enable);
+int THOpenCLHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();

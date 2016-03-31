@@ -957,3 +957,23 @@ void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTens
 	sgemmargs(&args);
 }
 #endif
+
+#ifdef HAVEFP16
+
+void tofp16(__fp16 *dst, const float *src, size_t len)
+{
+	size_t i;
+
+	for(i = 0; i < len; i++)
+		dst[i] = src[i];
+}
+
+void fromfp16(float *dst, const __fp16 *src, size_t len)
+{
+	size_t i;
+
+	for(i = 0; i < len; i++)
+		dst[i] = src[i];
+}
+
+#endif

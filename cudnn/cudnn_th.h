@@ -19,8 +19,6 @@ unsigned short *cuda_rgb2half(unsigned short *dst, const unsigned char *src, int
 void cuda_fillwithone(int n1, int n2, float *data, int stride);
 void cuda_fillwithoneH(int n1, int n2, float *data, int stride);
 #ifdef HAVEFP16
-void tofp16(__fp16 *dst, const float *src, size_t len);
-void fromfp16(float *dst, const __fp16 *src, size_t len);
 THFloatTensor *THHalfCudaTensor_newFromFloatTensor(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newFromHalfCudaTensor(THFloatTensor *t);
 #endif

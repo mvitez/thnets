@@ -78,7 +78,8 @@ int main(int argc, char **argv)
 	{
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
 		fprintf(stderr, "             [-r <number of runs] [-p(rint results)] [-P(rofile)]\n");
-		fprintf(stderr, "             [-a <alg=0:norm,1:MM,2:virtMM (default),3:cuDNN,4:cudNNhalf>,5:OpenCL]\n");
+		fprintf(stderr, "             [-a <alg=0:norm, 1:MM, 2:virtMM (default), 3:cuDNN, 4:cudNNhalf,\n");
+		fprintf(stderr, "                 5:OpenCL, 6:OpenCLhalf>]\n");
 		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
 		return -1;
 	}
@@ -86,6 +87,11 @@ int main(int argc, char **argv)
 	{
 		alg = 3;
 		THCudaHalfFloat(1);
+	}
+	if(alg == 6)
+	{
+		alg = 5;
+		THOpenCLHalfFloat(1);
 	}
 	THInit();
 	net = THLoadNetwork(modelsdir);
@@ -120,8 +126,7 @@ int main(int argc, char **argv)
 			{
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
-				if(alg == 3 || alg == 5)
-					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+				THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
 				t = seconds();
 				for(i = 0; i < runs; i++)
 					n = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
