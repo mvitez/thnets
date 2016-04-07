@@ -68,6 +68,7 @@ THFloatTensor *THCudaTensor_newFromFloatTensor(THFloatTensor *t)
 		n->storage = malloc(sizeof(*n->storage));
 		n->storage->nref = 1;
 		n->storage->mustfree = 2;
+		n->storageOffset = 0;
 		int datasize = floattype == CUDNN_DATA_HALF ? 2 : 4;
 		errcheck(cudaMalloc((void **)&n->storage->data, THFloatTensor_nElement(t) * datasize));
 		errcheck(cudaMemcpy(n->storage->data, THFloatTensor_data(t), THFloatTensor_nElement(t) * datasize, cudaMemcpyHostToDevice));
@@ -82,6 +83,7 @@ THFloatTensor *THFloatTensor_newFromCudaTensor(THFloatTensor *t)
 	if(t->storage)
 	{
 		n->storage = malloc(sizeof(*n->storage));
+		n->storageOffset = 0;
 		n->storage->nref = 1;
 		n->storage->mustfree = 1;
 		n->storage->data = malloc(THFloatTensor_nElement(t) * sizeof(*n->storage->data));
@@ -234,6 +236,7 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 		case MT_Dropout:
 			if(!nn->modules[i].Dropout.v2)
 				THError("Non v2 dropout not supported in CUDNN");
+			nn->modules[i].Dropout.inplace = 1;
 			break;
 		case MT_SpatialZeroPadding:
 			THError("SpatialZeroPadding not supported in CUDNN");

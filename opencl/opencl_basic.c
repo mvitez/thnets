@@ -91,6 +91,7 @@ THFloatTensor *THOpenCLTensor_newFromFloatTensor(THFloatTensor *t)
 		n->storage = malloc(sizeof(*n->storage));
 		n->storage->nref = 1;
 		n->storage->mustfree = 3;
+		n->storageOffset = 0;
 		n->storage->data = (float *)OpenCL_Buffer(THFloatTensor_data(t), THFloatTensor_nElement(t) * cl_datasize);
 	}
 	return n;
@@ -105,6 +106,7 @@ THFloatTensor *THFloatTensor_newFromOpenCLTensor(THFloatTensor *t)
 		n->storage = malloc(sizeof(*n->storage));
 		n->storage->nref = 1;
 		n->storage->mustfree = 1;
+		n->storageOffset = 0;
 		int len = THFloatTensor_nElement(t) * cl_datasize;
 		n->storage->data = malloc(len);
 		if(!n->storage->data)

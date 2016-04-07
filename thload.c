@@ -469,6 +469,10 @@ int printobject(struct thobject *obj, int indent)
 			printf("%s tensor of dimension %d (", scalarname(obj->tensor->scalartype), obj->tensor->ndim);
 			for(i = 0; i < obj->tensor->ndim; i++)
 				printf("%ld%s", obj->tensor->size[i], i == obj->tensor->ndim - 1 ? ")\n" : ",");
+			printindent(indent);
+			printf("offset = %ld, strides = (", obj->tensor->storageoffset);
+			for(i = 0; i < obj->tensor->ndim; i++)
+				printf("%ld%s", obj->tensor->stride[i], i == obj->tensor->ndim - 1 ? ")\n" : ",");
 		}
 		break;
 	case TYPE_NNMODULE:
