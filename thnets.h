@@ -1,4 +1,5 @@
 #include <float.h>
+#include <stdlib.h>
 #include "thvector.h"
 #ifdef MEMORYDEBUG
 #include "memory.h"
