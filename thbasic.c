@@ -57,6 +57,7 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 	int i;
 	long stride = 1;
 
+	long nelem = THFloatTensor_nElement(t);
 	t->nDimension = nDimension;
 	memcpy(t->size, size, nDimension * sizeof(*t->size));
 	for(i = nDimension - 1; i >= 0; i--)
@@ -64,8 +65,12 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 		t->stride[i] = stride;
 		stride *= t->size[i];
 	}
-	if(!t->storage)
-		t->storage = THFloatStorage_new(stride);
+	if(nelem != THFloatTensor_nElement(t))
+	{
+		if(t->storage)
+			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * stride);
+		else t->storage = THFloatStorage_new(stride);
+	}
 }
 
 void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3)
@@ -80,10 +85,12 @@ void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2
 	t->stride[2] = size3;
 	t->stride[1] = size2 * size3;
 	t->stride[0] = size1 * size2 * size3;
-	if(!t->storage)
-		t->storage = THFloatStorage_new(size0 * size1 * size2 * size3);
-	else if(nElement != size0 * size1 * size2 * size3)
-		t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2 * size3);
+	if(nElement != size0 * size1 * size2 * size3)
+	{
+		if(t->storage)
+			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2 * size3);
+		else t->storage = THFloatStorage_new(size0 * size1 * size2 * size3);
+	}
 }
 
 void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2)
@@ -96,10 +103,12 @@ void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2
 	t->stride[2] = 1;
 	t->stride[1] = size2;
 	t->stride[0] = size1 * size2;
-	if(!t->storage)
-		t->storage = THFloatStorage_new(size0 * size1 * size2);
-	else if(nElement != size0 * size1 * size2)
-		t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2);
+	if(nElement != size0 * size1 * size2)
+	{
+		if(t->storage)
+			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2);
+		else t->storage = THFloatStorage_new(size0 * size1 * size2);
+	}
 }
 
 void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1)
@@ -110,10 +119,12 @@ void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1)
 	t->size[1] = size1;
 	t->stride[1] = 1;
 	t->stride[0] = size1;
-	if(!t->storage)
-		t->storage = THFloatStorage_new(size0 * size1);
-	else if(nElement != size0 * size1)
-		t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1);
+	if(nElement != size0 * size1)
+	{
+		if(t->storage)
+			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1);
+		else t->storage = THFloatStorage_new(size0 * size1);
+	}
 }
 
 void THFloatTensor_resize1d(THFloatTensor *t, long size0)
@@ -122,10 +133,12 @@ void THFloatTensor_resize1d(THFloatTensor *t, long size0)
 	t->nDimension = 1;
 	t->size[0] = size0;
 	t->stride[0] = 1;
-	if(!t->storage)
-		t->storage = THFloatStorage_new(size0);
-	else if(nElement != size0)
-		t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0);
+	if(nElement != size0)
+	{
+		if(t->storage)
+			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0);
+		else t->storage = THFloatStorage_new(size0);
+	}
 }
 
 void THError(const char *fmt, ...)
@@ -201,13 +214,12 @@ void THFloatTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
 {
 	if(tsrc == tdst)
 		return;
+	long nelemdst = THFloatTensor_nElement(tdst);
 	long nelemsrc = THFloatTensor_nElement(tsrc);
 	tdst->nDimension = tsrc->nDimension;
 	memcpy(tdst->size, tsrc->size, sizeof(tsrc->size));
 	memcpy(tdst->stride, tsrc->stride, sizeof(tsrc->stride));
-	if(!tdst->storage)
-		tdst->storage = THFloatStorage_new(nelemsrc);
-	else if(nelemsrc != THFloatTensor_nElement(tdst))
+	if(nelemsrc != nelemdst)
 	{
 		if(tdst->storage)
 			tdst->storage->data = realloc(tdst->storage->data, sizeof(*tdst->storage->data) * nelemsrc);
