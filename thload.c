@@ -748,8 +748,7 @@ struct network *Object2Network(struct thobject *obj)
 	if(i == obj->nnmodule->table->nelem)
 		return 0;
 	net = malloc(sizeof(*net));
-	net->cuda = 0;
-	net->opencl = 0;
+	net->engine = ENGINE_CPU;
 	mt = obj->nnmodule->table->records[i].value.table;
 	net->nelem = mt->nelem;
 	net->modules = calloc(mt->nelem, sizeof(*net->modules));

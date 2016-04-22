@@ -193,7 +193,7 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 
 	nn->nelem = net->nelem;
 	nn->modules = malloc(sizeof(net->modules[0]) * net->nelem);
-	nn->cuda = 1;
+	nn->engine = ENGINE_CUDA;
 	memcpy(nn->modules, net->modules, sizeof(net->modules[0]) * net->nelem);
 	for(i = 0; i < net->nelem; i++)
 	{

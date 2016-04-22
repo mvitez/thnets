@@ -166,6 +166,10 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 	int i;
 
 	THFloatTensor *t = malloc(sizeof(*t));
+#ifdef LOWP
+	t->mult = tensor->mult;
+	t->sub = tensor->sub;
+#endif
 	t->nDimension = tensor->nDimension - 1;
 	t->storageOffset = sliceIndex * tensor->stride[dimension];
 	for(i = 0; i < dimension; i++)

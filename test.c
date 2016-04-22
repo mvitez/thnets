@@ -29,7 +29,8 @@ int main(int argc, char **argv)
 {
 	THNETWORK *net;
 	float *result;
-	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 2, nbatch = 1;
+	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 2, nbatch = 1,
+		lastlayer = 0x7fffffff, maxoutput = 0x7fffffff;
 	const char *modelsdir = 0, *inputfile = 0;
 
 	for(i = 1; i < argc; i++)
@@ -61,6 +62,14 @@ int main(int argc, char **argv)
 			if(i+1 < argc)
 				th_debug = atoi(argv[++i]);
 			break;
+		case 'l':
+			if(i+1 < argc)
+				lastlayer = atoi(argv[++i]);
+			break;
+		case 'L':
+			if(i+1 < argc)
+				maxoutput = atoi(argv[++i]);
+			break;
 		case 'P':
 			th_profile = 1;
 			break;
@@ -79,8 +88,10 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Syntax: test -m <models directory> -i <input file>\n");
 		fprintf(stderr, "             [-r <number of runs] [-p(rint results)] [-P(rofile)]\n");
 		fprintf(stderr, "             [-a <alg=0:norm, 1:MM, 2:virtMM (default), 3:cuDNN, 4:cudNNhalf,\n");
-		fprintf(stderr, "                 5:OpenCL, 6:OpenCLhalf>]\n");
+		fprintf(stderr, "                 5:OpenCL, 6:OpenCLhalf, 7:8bit>]\n");
 		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
+		fprintf(stderr, "             [-l <limit last processed layer to this>]\n");
+		fprintf(stderr, "             [-L <limit printout to max L numbers>]\n");
 		return -1;
 	}
 	if(alg == 4)
@@ -97,6 +108,8 @@ int main(int argc, char **argv)
 	net = THLoadNetwork(modelsdir);
 	if(net)
 	{
+		if(net->net->nelem > lastlayer)
+			net->net->nelem = lastlayer;
 		THMakeSpatial(net);
 		if(alg == 0)
 			THUseSpatialConvolutionMM(net, 0);
@@ -116,12 +129,21 @@ int main(int argc, char **argv)
 				THError("OpenCL not compiled in");
 			THFreeNetwork(net);
 			net = net2;
+		} else if(alg == 7)
+		{
+			THNETWORK *net2 = THCreateLowpNetwork(net, 10);
+			if(!net2)
+				THError("Lowp not compiled in");
+			THFreeNetwork(net);
+			net = net2;
 		}
 		if(strstr(inputfile, ".t7"))
 		{
 			struct thobject input_o;
 
 			rc = loadtorch(inputfile, &input_o, 8);
+			if(rc)
+				rc = loadtorch(inputfile, &input_o, 4);
 			if(!rc)
 			{
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
@@ -158,8 +180,12 @@ int main(int argc, char **argv)
 			} else printf("Error loading image %s\n", inputfile);
 		}
 		if(print)
+		{
+			if(n > maxoutput)
+				n = maxoutput;
 			for(i = 0; i < n; i++)
 				printf("(%d,%d,%d): %f\n", i/(outwidth*outheight), i % (outwidth*outheight) / outwidth, i % outwidth, result[i]);
+		}
 		printf("1 run processing time: %lf\n", t);
         THFreeNetwork(net);
 	} else printf("The network could not be loaded: %d\n", THLastError());

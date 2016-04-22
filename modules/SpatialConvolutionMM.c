@@ -99,7 +99,6 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 #ifndef USEBLAS
 	else THFloatTensor_convmm(output, 1, 1, weight, input, kH, kW, dH, dW, padH, padW);
 #endif
-
 }
 
 THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFloatTensor *input)

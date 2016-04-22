@@ -6,6 +6,8 @@ DEBUG = 0
 CUDNN = 0
 #Can be 0 or 1
 OPENCL = 0
+#Can be 0 or 1
+LOWP = 0
 
 CUDAPATH=/usr/local/cuda
 CUDNNPATH=/home/ubuntu/cudnn/cuda
@@ -13,9 +15,11 @@ OPENBLASPATH=/opt/OpenBLAS/lib
 
 UNAME_P := $(shell uname -p)
 CFLAGS = -Wall -c -fopenmp -fPIC
+CPPFLAGS = -Wall -c -fopenmp -fPIC -std=c++11
 LIBS = -lm
 CC = gcc
-VPATH = modules cudnn OpenBLAS-stripped opencl
+CXX = g++
+VPATH = modules cudnn OpenBLAS-stripped opencl lowp lowp/gemmlowp/eight_bit_int_gemm
 LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o Threshold.o \
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
@@ -52,10 +56,12 @@ endif
 ifeq ($(DEBUG),1)
 	CFLAGS += -g
 	CUFLAGS += -g
+	CFLAGS += -g
 	ASFLAGS += -g
 else
 	CFLAGS += -O3
 	CUFLAGS += -O3
+	CPPFLAGS += -O3
 endif
 
 ifeq ($(CUDNN),1)
@@ -73,6 +79,12 @@ ifeq ($(OPENCL),1)
 	LIBS += -lOpenCL
 endif
 
+ifeq ($(LOWP),1)
+	LIBOBJS += lowp_basic.o lowp_SpatialConvolution.o lowp_SpatialMaxPooling.o \
+		lowp_Threshold.o lowp_SoftMax.o gemm8.o eight_bit_int_gemm.o
+	CFLAGS += -DLOWP
+endif
+
 .PHONY : all
 all : libthnets.so test
 
@@ -85,7 +97,7 @@ all : libthnets.so test
 	nvcc -c -Xcompiler -fPIC $(CUFLAGS) -DCUDNN $<
 
 libthnets.so: $(LIBOBJS)
-	$(CC) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
+	$(CXX) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
 
 test: $(LIBOBJS) test.o images.o
 	$(CC) -o $@ test.o images.o libthnets.so $(LIBS) -lpng -ljpeg

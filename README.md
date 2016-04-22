@@ -2,7 +2,9 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS (already part of the library for ARM and x86_64), CuDNN version 4 if compiled with the CUDNN=1 option, OpenCL if compiled with the OPENCL option.
+Requirements for library: OpenBLAS (already part of the library for ARM and x86_64),
+CuDNN version 4 if compiled with the CUDNN=1 option, OpenCL if compiled with the OPENCL=1 option,
+gemmlowp if compiled with the LOWP=1 option.
 Requirements for test: libpng and libjpeg  
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 Make with "make".
@@ -12,6 +14,9 @@ Make options are:
    * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
    * *CUDNN* 0 is off, 1 uses CuDNN
    * *OPENCL* 0 is off, 1 uses OpenCL
+   * *LOWP* 0 is off, 1 uses gemmlowp
+
+gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp directory, if used.
 
 ## Test program
 
@@ -59,6 +64,11 @@ Enables the use of 16 bit floats on CUDA.
 ### THNETWORK *THCreateOpenCLNetwork(THNETWORK *net)
 
 Create a new network from the given network. The new network will use OpenCL.
+
+### THNETWORK *THCreateLowpNetwork(THNETWORK *net, float range)
+
+Create a new network from the given network. The new network will use gemmlowp (8 bit gemm). The output of
+the convolutions is supposed to be between -range/2 and +range/2. *This feature is experimental.*
 
 ### int THOpenCLHalfFloat(int enable)
 

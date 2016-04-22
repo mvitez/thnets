@@ -110,6 +110,9 @@ typedef struct THFloatTensor
     int nDimension;    
 	THFloatStorage *storage;
 	long storageOffset;
+#ifdef LOWP
+	float sub, mult;
+#endif
 } THFloatTensor;
 
 struct SpatialConvolution
@@ -226,9 +229,11 @@ struct module
 	};
 };
 
+enum {ENGINE_CPU, ENGINE_CUDA, ENGINE_OPENCL, ENGINE_OPENCLINIT, ENGINE_LOWP};
+
 struct network
 {
-	int nelem, cuda, opencl;
+	int nelem, engine;
 	struct module *modules;
 };
 
@@ -349,6 +354,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight);
 THNETWORK *THCreateCudaNetwork(THNETWORK *net);
 THNETWORK *THCreateOpenCLNetwork(THNETWORK *net);
+THNETWORK *THCreateLowpNetwork(THNETWORK *net, float range);
 int THCudaHalfFloat(int enable);
 int THOpenCLHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
@@ -362,4 +368,8 @@ extern int th_debug, th_profile;
 
 #ifdef OPENCL
 #include "opencl/opencl_th.h"
+#endif
+
+#ifdef LOWP
+#include "lowp/lowp.h"
 #endif

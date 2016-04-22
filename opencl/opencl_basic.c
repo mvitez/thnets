@@ -499,7 +499,7 @@ void OpenCL_Build(struct network *net, THFloatTensor *in)
 		}
 	}
 	free(src);
-	net->opencl = 2;
+	net->engine = ENGINE_OPENCLINIT;
 }
 
 struct network *THOpenCL_ToOpenCL(struct network *net)
@@ -509,7 +509,7 @@ struct network *THOpenCL_ToOpenCL(struct network *net)
 
 	nn->nelem = net->nelem;
 	nn->modules = malloc(sizeof(net->modules[0]) * net->nelem);
-	nn->opencl = 1;
+	nn->engine = ENGINE_OPENCL;
 	memcpy(nn->modules, net->modules, sizeof(net->modules[0]) * net->nelem);
 	for(i = 0; i < net->nelem; i++)
 	{
