@@ -57,7 +57,7 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 		if(in->nDimension == 1)
 		{
 			long i;
-			for(i = 0; in->size[0]; i++)
+			for(i = 0; i < in->size[0]; i++)
 				outd[out->stride[0] * i] = ((ind[in->stride[0] * i] - mean) * invstd) * w + b;
 		} else if(in->nDimension == 2)
 		{
@@ -71,7 +71,7 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 			long i, j, k;
 			for(i = 0; i < in->size[0]; i++)
 				for(j = 0; j < in->size[1]; j++)
-					for(k = 0; k < in->size[1]; k++)
+					for(k = 0; k < in->size[2]; k++)
 						outd[out->stride[0] * i + out->stride[1] * j + out->stride[2] * k] =
 							((ind[in->stride[0] * i + in->stride[1] * j + in->stride[2] * k] - mean) * invstd) * w + b;
 		} else THError("SpatialBatchNormalization not supported for input dimensions higher of 4");
