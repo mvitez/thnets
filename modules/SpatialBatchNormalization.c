@@ -31,16 +31,17 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 	THFloatTensor *running_var = module->SpatialBatchNormalization.running_var;
 	THFloatTensor *weight = module->SpatialBatchNormalization.weight;
 	THFloatTensor *bias = module->SpatialBatchNormalization.bias;
-	long nFeature = input->size[1];
+	long nFeature = input->nDimension == 4 ? input->size[1] : input->size[0];
 
 	double eps = module->SpatialBatchNormalization.eps;
 	THFloatTensor_resizeAs(output, input);
 	long f;
+
 #pragma omp parallel for
 	for (f = 0; f < nFeature; ++f)
 	{
-		THFloatTensor *in = THFloatTensor_newSelect(input, 1, f);
-		THFloatTensor *out = THFloatTensor_newSelect(output, 1, f);
+		THFloatTensor *in = THFloatTensor_newSelect(input, input->nDimension == 4 ? 1 : 0, f);
+		THFloatTensor *out = THFloatTensor_newSelect(output, input->nDimension == 4 ? 1 : 0, f);
 
 		float mean, invstd;
 
