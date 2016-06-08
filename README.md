@@ -126,6 +126,15 @@ THLoadNetwork and can give these results:
 
 See: https://github.com/teradeep/demo-apps.git The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
 
+### Android instructions (for experts only)
+
+I don't have the time to build a complete Android example, but just to give some hints, I created a
+sample Android.mk and Application.mk file that will create an executable file that will run on Android
+devices. If you don't have a rooted device, you can use SSHServer from Ice Cold Apps, ssh into the device
+and copy the executable here: /data/data/com.icecoldapps.sshserver (the only accessible place where
+you can set the executable flag on files). Before compiling, put the .c and .h files from
+https://github.com/julienr/libpng-android/tree/stable/jni into a libpng subdirectory of thnets. I've
+also removed every reference to JPEG from image.c. Otherwise you can try to compile libjpeg-turbo.
 
 ### Tegra TX1 results:
 
