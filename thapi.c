@@ -517,9 +517,9 @@ int THLastError()
 	return lasterror;
 }
 
-void THMakeSpatial(THNETWORK *network)
+void THMakeSpatial(THNETWORK *network, int size)
 {
-	int i, size = 231, nInputPlane = 3;
+	int i, nInputPlane = 3;
 	
 	for(i = 0; i < network->net->nelem; i++)
 	{

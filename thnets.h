@@ -348,7 +348,7 @@ typedef struct thnetwork
 
 void THInit();
 THNETWORK *THLoadNetwork(const char *path);
-void THMakeSpatial(THNETWORK *network);
+void THMakeSpatial(THNETWORK *network, int size);
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight);
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight, int bgr);
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight);

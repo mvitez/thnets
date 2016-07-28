@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 	THNETWORK *net;
 	float *result;
 	int i, n = 0, rc, outwidth, outheight, runs = 1, print = 0, alg = 2, nbatch = 1,
-		lastlayer = 0x7fffffff, maxoutput = 0x7fffffff;
+		lastlayer = 0x7fffffff, maxoutput = 0x7fffffff, side = 0;
 	const char *modelsdir = 0, *inputfile = 0;
 
 	for(i = 1; i < argc; i++)
@@ -81,6 +81,10 @@ int main(int argc, char **argv)
 					nbatch = 256;
 			}
 			break;
+		case 's':
+			if(i+1 < argc)
+				side = atoi(argv[++i]);
+			break;
 		}
 	}
 	if(!modelsdir || !inputfile)
@@ -92,6 +96,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "             [-b <nbatch>] [-d <debuglevel=0 (default),1 or 2>\n");
 		fprintf(stderr, "             [-l <limit last processed layer to this>]\n");
 		fprintf(stderr, "             [-L <limit printout to max L numbers>]\n");
+		fprintf(stderr, "             [-s(ide - make network spatial)]\n");
 		return -1;
 	}
 	if(alg == 4)
@@ -110,7 +115,8 @@ int main(int argc, char **argv)
 	{
 		if(net->net->nelem > lastlayer)
 			net->net->nelem = lastlayer;
-		THMakeSpatial(net);
+		if(side)
+			THMakeSpatial(net, side);
 		if(alg == 0)
 			THUseSpatialConvolutionMM(net, 0);
 		else if(alg == 1 || alg == 2)
