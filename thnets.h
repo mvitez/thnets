@@ -360,7 +360,7 @@ int THOpenCLHalfFloat(int enable);
 int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();
-extern int th_debug, th_profile;
+extern int th_debug, th_profile, th_minmax;
 
 #ifdef CUDNN
 #include "cudnn/cudnn_th.h"

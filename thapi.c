@@ -8,7 +8,7 @@
 static int lasterror;
 static short TB_YUR[256], TB_YUB[256], TB_YUGU[256], TB_YUGV[256], TB_Y[256];
 static unsigned char TB_SAT[1024 + 1024 + 256];
-int th_debug, th_profile;
+int th_debug, th_profile, th_minmax;
 
 #ifdef CUDNN
 int cuda_maphostmem;
@@ -129,6 +129,21 @@ double th_seconds()
 	return ts.tv_sec + ts.tv_nsec * 1e-9 - s;
 }
 
+void FindMixMax(THFloatTensor *t, float *min, float *max)
+{
+	*min = THInf;
+	*max = -THInf;
+	float *data = THFloatTensor_data(t);
+	long i, n = THFloatTensor_nElement(t);
+	for(i = 0; i < n; i++)
+	{
+		if(data[i] > *max)
+			*max = data[i];
+		if(data[i] < *min)
+			*min = data[i];
+	}
+}
+
 THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
 	int i;
@@ -145,6 +160,12 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		in = net->modules[i].updateOutput(&net->modules[i], in);
 		// You can remove these lines if you don't have problems with memory
 		// These lines free intermediate results
+		if(th_minmax)
+		{
+			float min, max;
+			FindMixMax(in, &min, &max);
+			printf("Layer %d output: min=%f, max=%f\n", i+1, min, max);
+		}
 		if(i > 0)
 		{
 			THFloatTensor_free(net->modules[i-1].output);

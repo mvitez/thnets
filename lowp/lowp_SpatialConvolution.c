@@ -136,9 +136,14 @@ THFloatTensor *Lowp_SpatialConvolution_updateOutput(struct module *module, THFlo
 	THFloatTensor *output = module->output;
 
 	int batch = 1;
-	if (input->nDimension == 3) {
+	if(input->nDimension == 3)
+	{
 		batch = 0;
 		THLowpTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
+	} else if(input->nDimension == 1)
+	{
+		batch = 0;
+		THLowpTensor_resize4d(input, 1, input->size[0], 1, 1);
 	}
 	
 	long batchSize = input->size[0];
@@ -152,7 +157,6 @@ THFloatTensor *Lowp_SpatialConvolution_updateOutput(struct module *module, THFlo
 	if (outputWidth < 1 || outputHeight < 1)
 		THError("Given input size: (%dx%dx%d). Calculated output size: (%dx%dx%d). Output size is too small",
 		nInputPlane,inputHeight,inputWidth,nOutputPlane,outputHeight,outputWidth);
-
 
 	THLowpTensor_resize3d(finput, batchSize, kW*kH*nInputPlane, outputHeight*outputWidth);
 	THLowpTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);

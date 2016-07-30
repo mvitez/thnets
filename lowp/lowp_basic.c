@@ -29,7 +29,8 @@ THFloatTensor *THLowpTensor_newFromFloatTensor(THFloatTensor *t)
 		else mult = 0;
 		unsigned char *dst = (unsigned char *)n->storage->data;
 		for(i = 0; i < len; i++)
-			dst[i] = roundf((buf[i] - min) * mult);
+			//dst[i] = roundf((buf[i] - min) * mult);
+			dst[i] = roundf(buf[i] * mult) - roundf(min*mult);
 		n->sub = min;
 		n->mult = mult;
 	}
@@ -188,6 +189,7 @@ struct network *THLowp_ToLowp(struct network *net, float range)
 			c->nInputPlane = c->weight->size[1];
 			nn->modules[i].SpatialConvolution.weight = THLowpTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.weight);
 			nn->modules[i].SpatialConvolution.bias = THLowpTensor_newFromFloatTensor(net->modules[i].SpatialConvolution.bias);
+			nn->modules[i].SpatialConvolution.finput = THFloatTensor_new();
 			break;
 		case MT_SpatialBatchNormalization:
 			THError("MT_SpatialBatchNormalization not supported in Lowp");

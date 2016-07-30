@@ -85,6 +85,9 @@ int main(int argc, char **argv)
 			if(i+1 < argc)
 				side = atoi(argv[++i]);
 			break;
+		case 'M':
+			th_minmax = 1;
+			break;
 		}
 	}
 	if(!modelsdir || !inputfile)
@@ -97,6 +100,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "             [-l <limit last processed layer to this>]\n");
 		fprintf(stderr, "             [-L <limit printout to max L numbers>]\n");
 		fprintf(stderr, "             [-s(ide - make network spatial)]\n");
+		fprintf(stderr, "             [-M(inmax - find limits useful for 8 bits op)]\n");
 		return -1;
 	}
 	if(alg == 4)
@@ -137,7 +141,7 @@ int main(int argc, char **argv)
 			net = net2;
 		} else if(alg == 7)
 		{
-			THNETWORK *net2 = THCreateLowpNetwork(net, 10);
+			THNETWORK *net2 = THCreateLowpNetwork(net, 4);
 			if(!net2)
 				THError("Lowp not compiled in");
 			THFreeNetwork(net);
