@@ -23,6 +23,8 @@ THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *inpu
 	int dimension = module->Concat.dimension;
 	int i, j, sizen = 0;
 	struct module *modules = module->Concat.modules;
+	if(dimension == 1 && (input->nDimension == 1 || input->nDimension == 3))
+		dimension--;
 	for(i = 0; i < nelem; i++)
 	{
 		modules[i].updateOutput(&modules[i], input);
