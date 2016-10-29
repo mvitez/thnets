@@ -714,6 +714,7 @@ struct object2module object2module[] =
 	{"nn.SpatialConvolutionMM", nnload_SpatialConvolution},
 	{"nn.SpatialConvolution", nnload_SpatialConvolution},
 	{"nn.SpatialMaxPooling", nnload_SpatialMaxPooling},
+	{"nn.SpatialAveragePooling", nnload_SpatialAveragePooling},
 	{"nn.Linear", nnload_Linear},
 	{"nn.SoftMax", nnload_SoftMax},
 	{"nn.Threshold", nnload_Threshold},
@@ -727,29 +728,29 @@ struct object2module object2module[] =
 	{"nn.SpatialFullConvolution", nnload_SpatialFullConvolution},
 	{"nn.SpatialMaxUnpooling", nnload_SpatialMaxUnpooling},
 	{"nn.SpatialBatchNormalization", nnload_SpatialBatchNormalization},
+	{"nn.Sequential", nnload_Sequential},
+	{"nn.Concat", nnload_Concat},
 	{0,0}
 };
 
-struct network *Object2Network(struct thobject *obj)
+struct network *Module2Network(struct nnmodule *mod)
 {
 	struct network *net;
 	struct table *mt;
 	int i, j;
 	
-	if(obj->type != TYPE_NNMODULE)
+	if(strcmp(mod->name, "nn.Sequential") && strcmp(mod->name, "nn.Concat"))
 		return 0;
-	if(strcmp(obj->nnmodule->name, "nn.Sequential"))
-		return 0;
-	for(i = 0; i < obj->nnmodule->table->nelem; i++)
+	for(i = 0; i < mod->table->nelem; i++)
 	{
-		if(!strcmp(obj->nnmodule->table->records[i].name.string.data, "modules"))
+		if(!strcmp(mod->table->records[i].name.string.data, "modules"))
 			break;
 	}
-	if(i == obj->nnmodule->table->nelem)
+	if(i == mod->table->nelem)
 		return 0;
 	net = malloc(sizeof(*net));
 	net->engine = ENGINE_CPU;
-	mt = obj->nnmodule->table->records[i].value.table;
+	mt = mod->table->records[i].value.table;
 	net->nelem = mt->nelem;
 	net->modules = calloc(mt->nelem, sizeof(*net->modules));
 	for(i = 0; i < mt->nelem; i++)

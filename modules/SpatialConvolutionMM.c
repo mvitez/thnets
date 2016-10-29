@@ -129,6 +129,8 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 	long outputWidth  = (inputWidth + 2*padW - kW) / dW + 1;
 	long outputHeight = (inputHeight + 2*padH - kH) / dH + 1;
 
+	if(nInputPlane != input->size[1])
+		THError("nInputPlane %ld does not match input planes %ld", nInputPlane, input->size[1]);
 
 	if (outputWidth < 1 || outputHeight < 1)
 		THError("Given input size: (%dx%dx%d). Calculated output size: (%dx%dx%d). Output size is too small",

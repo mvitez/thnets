@@ -136,6 +136,12 @@ struct SpatialMaxPooling
 	THFloatTensor *indices;
 };
 
+struct SpatialAveragePooling
+{
+	int padW, padH, dW, dH, kW, kH, ceil_mode;
+	int iwidth, iheight, count_include_pad;
+};
+
 struct Linear
 {
 	THFloatTensor *bias, *weight, *addBuffer;
@@ -181,12 +187,25 @@ struct SpatialBatchNormalization
 	double eps;
 };
 
+struct Concat
+{
+	struct module *modules;
+	int nelem, dimension;
+};
+
+struct Sequential
+{
+	struct module *modules;
+	int nelem;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
 	MT_SpatialConvolutionVirtMM,
 	MT_SpatialConvolution,
 	MT_SpatialMaxPooling,
+	MT_SpatialAveragePooling,
 	MT_Linear,
 	MT_SoftMax,
 	MT_Threshold,
@@ -197,7 +216,9 @@ enum moduletype {
 	MT_Normalize,
 	MT_SpatialFullConvolution,
 	MT_SpatialMaxUnpooling,
-	MT_SpatialBatchNormalization
+	MT_SpatialBatchNormalization,
+	MT_Sequential,
+	MT_Concat
 };
 
 struct network;
@@ -217,6 +238,7 @@ struct module
 	union {
 		struct SpatialConvolution SpatialConvolution;
 		struct SpatialMaxPooling SpatialMaxPooling;
+		struct SpatialAveragePooling SpatialAveragePooling;
 		struct Linear Linear;
 		struct Threshold Threshold;
 		struct View View;
@@ -226,6 +248,8 @@ struct module
 		struct SpatialFullConvolution SpatialFullConvolution;
 		struct SpatialMaxUnpooling SpatialMaxUnpooling;
 		struct SpatialBatchNormalization SpatialBatchNormalization;
+		struct Sequential Sequential;
+		struct Concat Concat;
 	};
 };
 
@@ -302,13 +326,15 @@ int freeobject(struct thobject *obj);
 void freenetwork(struct network *net);
 THFloatTensor *forward(struct network *net, THFloatTensor *in);
 THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj);
-struct network *Object2Network(struct thobject *obj);
+struct network *Module2Network(struct nnmodule *obj);
 void printtensor(THFloatTensor *t);
 void blas_init();
+double th_seconds();
 
 THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SoftMax_updateOutput(struct module *module, THFloatTensor *input);
@@ -320,9 +346,12 @@ THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *i
 THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
+int nnload_SpatialAveragePooling(struct module *mod, struct nnmodule *n);
 int nnload_Threshold(struct module *mod, struct nnmodule *n);
 int nnload_View(struct module *mod, struct nnmodule *n);
 int nnload_SoftMax(struct module *mod, struct nnmodule *n);
@@ -334,6 +363,8 @@ int nnload_Normalize(struct module *mod, struct nnmodule *n);
 int nnload_SpatialFullConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxUnpooling(struct module *mod, struct nnmodule *n);
 int nnload_SpatialBatchNormalization(struct module *mod, struct nnmodule *n);
+int nnload_Sequential(struct module *mod, struct nnmodule *n);
+int nnload_Concat(struct module *mod, struct nnmodule *n);
 
 /* High level API */
 
@@ -361,6 +392,7 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type);
 void THFreeNetwork(THNETWORK *network);
 int THLastError();
 extern int th_debug, th_profile, th_minmax;
+extern double th_convtot, th_convflops;
 
 #ifdef CUDNN
 #include "cudnn/cudnn_th.h"

@@ -144,11 +144,15 @@ void FindMixMax(THFloatTensor *t, float *min, float *max)
 	}
 }
 
+double th_convtot, th_convflops;
+
 THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
 	int i;
-	double t = 0, convtot = 0, convflops = 0;
+	double t = 0;
 	
+	th_convtot = 0;
+	th_convflops = 0;
 #ifdef OPENCL
 	if(net->engine == ENGINE_OPENCL)
 		OpenCL_Build(net, in);
@@ -185,15 +189,15 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 				double flops = 2.0 * THFloatTensor_nElement(in) * net->modules[i].SpatialConvolution.nInputPlane *
 					net->modules[i].SpatialConvolution.kW * net->modules[i].SpatialConvolution.kH;
 				printf("%f seconds for module %d, %f Gflops/s\n", t, i+1, flops * 1e-9 / t);
-				convtot += t;
-				convflops += flops;
+				th_convtot += t;
+				th_convflops += flops;
 			} else printf("%f seconds for module %d\n", t, i+1);
 		}
 		if(th_debug > 1)
 			printf("%d) %d %d %ld %ld %ld %ld\n", i+1, net->modules[i].type, in->nDimension, in->size[0], in->size[1], in->size[2], in->size[3]);
 	}
 	if(th_profile)
-		printf("%f seconds for convolutions %f Gflops/s\n", convtot, convflops * 1e-9 / convtot);
+		printf("%f seconds for convolutions %f Gflops/s\n", th_convtot, th_convflops * 1e-9 / th_convtot);
 	return in;
 }
 
@@ -216,7 +220,13 @@ THNETWORK *THLoadNetwork(const char *path)
 	}
 	if(th_debug)
 		printobject(net->netobj, 0);
-	net->net = Object2Network(net->netobj);
+	if(net->netobj->type != TYPE_NNMODULE)
+	{
+		free(net->netobj);
+		free(net);
+		return 0;
+	}
+	net->net = Module2Network(net->netobj->nnmodule);
 	if(!net->net)
 	{
 		lasterror = ERR_WRONGOBJECT;

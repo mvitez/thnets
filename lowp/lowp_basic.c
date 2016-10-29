@@ -197,6 +197,15 @@ struct network *THLowp_ToLowp(struct network *net, float range)
 		case MT_SpatialFullConvolution:
 			THError("MT_SpatialFullConvolution not supported in Lowp");
 			break;
+		case MT_SpatialAveragePooling:
+			THError("MT_SpatialAveragePooling not supported in lowp");
+			break;
+		case MT_Sequential:
+			THError("MT_Sequential not supported in lowp");
+			break;
+		case MT_Concat:
+			THError("MT_Concat not supported in lowp");
+			break;
 		}
 	}
 	return nn;

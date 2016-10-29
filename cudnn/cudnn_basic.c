@@ -288,6 +288,15 @@ struct network *THcudnn_ToCUDNN(struct network *net)
 				nn->modules[i].SpatialFullConvolution.ones = THCudaTensor_newFromFloatTensor(net->modules[i].SpatialFullConvolution.ones);
 			}
 			break;
+		case MT_SpatialAveragePooling:
+			THError("MT_SpatialAveragePooling not supported in CUDNN");
+			break;
+		case MT_Sequential:
+			THError("MT_Sequential not supported in CUDNN");
+			break;
+		case MT_Concat:
+			THError("MT_Concat not supported in CUDNN");
+			break;
 		}
 	}
 	return nn;

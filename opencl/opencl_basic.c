@@ -585,6 +585,15 @@ struct network *THOpenCL_ToOpenCL(struct network *net)
 		case MT_SpatialFullConvolution:
 			THError("MT_SpatialFullConvolution not supported in OpenCL");
 			break;
+		case MT_SpatialAveragePooling:
+			THError("MT_SpatialAveragePooling not supported in OpenCL");
+			break;
+		case MT_Sequential:
+			THError("MT_Sequential not supported in OpenCL");
+			break;
+		case MT_Concat:
+			THError("MT_Concat not supported in OpenCL");
+			break;
 		}
 	}
 	return nn;
