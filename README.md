@@ -29,8 +29,6 @@ The model directory must contain 2 files:
 
 Input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
 
-A demo model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
-
 ## High level API description
 
 ### void THInit()
@@ -124,7 +122,7 @@ THLoadNetwork and can give these results:
 
 ### Demonstration application
 
-See: https://github.com/teradeep/demo-apps.git The neural network model can be downloaded from [teradeep/demo-apps](https://www.dropbox.com/sh/qw2o1nwin5f1r1n/AADYWtqc18G035ZhuOwr4u5Ea)
+See: https://github.com/teradeep/demo-apps.git.
 
 ### Android instructions (for experts only)
 
