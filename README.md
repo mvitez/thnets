@@ -122,7 +122,8 @@ THLoadNetwork and can give these results:
 
 ### Demonstration application
 
-See: https://github.com/teradeep/demo-apps.git.
+See: https://github.com/teradeep/demo-apps.git. Please note that the application is
+older of this library and will require some modifications in order to be compiled.
 
 ### Android instructions (for experts only)
 
