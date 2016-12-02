@@ -312,7 +312,11 @@ void THFloatTensor_fill(THFloatTensor *t, float value)
 
 void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc)
 {
-	memcpy(tdst->storage->data, tsrc->storage->data, sizeof(*tdst->storage->data) * THFloatTensor_nElement(tsrc));
+	float *src, *dst;
+
+	src = THFloatTensor_data(tsrc);
+	dst = THFloatTensor_data(tdst);
+	memcpy(dst, src, sizeof(*dst) * THFloatTensor_nElement(tsrc));
 }
 
 void THFloatTensor_transpose(THFloatTensor *tdst, THFloatTensor *tsrc, int dimension1, int dimension2)
