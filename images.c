@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef NOJPEG
 #include <jpeglib.h>
+#endif
 #include <png.h>
 #ifdef MEMORYDEBUG
-#include "memory.h"
+#include "memorydebug.h"
 #endif
 
 #ifdef USECUDAHOSTALLOC
@@ -28,6 +30,7 @@ typedef struct {
 	int width, height, cp;
 } img_t;
 
+#ifndef NOJPEG
 static int loadjpeg(const char *path, img_t *image)
 {
 	struct jpeg_decompress_struct cinfo;
@@ -68,6 +71,7 @@ static int loadjpeg(const char *path, img_t *image)
 	image->cp = cp;
 	return 0;
 }
+#endif
 
 static int loadpng(const char *path, img_t *image)
 {
@@ -171,8 +175,10 @@ int loadimage(const char *path, img_t *image)
 		fn++;
 	else fn = path;
 	strcpy(image->filename, fn);
+#ifndef NOJPEG
 	if(!strcasecmp(p, ".jpeg") || !strcasecmp(p, ".jpg"))
 		return loadjpeg(path, image);
+#endif
 	if(!strcasecmp(p, ".png"))
 		return loadpng(path, image);
 	return -1;

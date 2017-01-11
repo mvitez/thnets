@@ -51,14 +51,21 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := thnets
 
-LOCAL_CFLAGS += -fopenmp
+LOCAL_CFLAGS += -fopenmp -DNOJPEG
 
 LOCAL_SRC_FILES := thload.c thbasic.c thapi.c images.c test.c \
+	modules/CAddTable.c \
+	modules/Concat.c \
+	modules/ConcatTable.c \
 	modules/Dropout.c \
+	modules/JoinTable.c \
 	modules/Linear.c \
 	modules/Normalize.c \
+	modules/PReLu.c \
 	modules/Reshape.c \
+	modules/Sequential.c \
 	modules/SoftMax.c \
+	modules/SpatialAveragePooling.c \
 	modules/SpatialBatchNormalization.c \
 	modules/SpatialConvolution.c \
 	modules/SpatialConvolutionMM.c \

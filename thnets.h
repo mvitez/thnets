@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "thvector.h"
 #ifdef MEMORYDEBUG
-#include "memory.h"
+#include "memorydebug.h"
 #endif
 
 #ifdef OPENCL

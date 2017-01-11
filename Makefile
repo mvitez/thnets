@@ -50,7 +50,7 @@ ifeq ($(filter x86_64% arm% aarc%,$(UNAME_P)),)
 endif
 	
 ifneq ($(MEMORYDEBUG),no)
-	LIBOBJS += memory.o
+	LIBOBJS += memorydebug.o
 	CFLAGS += -DMEMORYDEBUG=$(MEMORYDEBUG)
 endif
 
