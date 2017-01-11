@@ -21,7 +21,7 @@ THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *inp
 		THFloatTensor_resizeAs(module->output, input);
 		THFloatTensor_copy(module->output, input);
 	}
-	if(!module->Dropout.v2)
+	if(module->Dropout.v2 != 1)
 	{
 		long i, n = THFloatTensor_nElement(input);
 		for(i = 0; i < n; i++)

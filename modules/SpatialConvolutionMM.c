@@ -86,7 +86,7 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	for (i = 0; i < nOutputPlane; i++)
 	{
 		float *data = output->storage->data + output->storageOffset + output->stride[0]*i;
-		float what = THFloatTensor_data(bias)[i];
+		float what = bias && bias->storage ? THFloatTensor_data(bias)[i] : 0;
 		long len = outputHeight*outputWidth;
 		THFloatVector_fill(data, what, len);
 	}

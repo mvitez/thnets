@@ -721,6 +721,9 @@ struct object2module object2module[] =
 	{"nn.ReLU", nnload_Threshold},
 	{"nn.View", nnload_View},
 	{"nn.Dropout", nnload_Dropout},
+	{"nn.Padding", nnload_Dropout},	// Danger, it will only work for E-net and similar cases
+	{"nn.SpatialDropout", nnload_Dropout},
+	{"nn.Identity", nnload_Dropout},
 	{"nn.SpatialZeroPadding", nnload_SpatialZeroPadding},
 	{"nn.Reshape", nnload_Reshape},
 	{"nn.Normalize", nnload_Normalize},
@@ -730,6 +733,10 @@ struct object2module object2module[] =
 	{"nn.SpatialBatchNormalization", nnload_SpatialBatchNormalization},
 	{"nn.Sequential", nnload_Sequential},
 	{"nn.Concat", nnload_Concat},
+	{"nn.ConcatTable", nnload_ConcatTable},
+	{"nn.JoinTable", nnload_JoinTable},
+	{"nn.CAddTable", nnload_CAddTable},
+	{"nn.PReLU", nnload_PReLU},
 	{0,0}
 };
 
@@ -739,7 +746,7 @@ struct network *Module2Network(struct nnmodule *mod)
 	struct table *mt;
 	int i, j;
 	
-	if(strcmp(mod->name, "nn.Sequential") && strcmp(mod->name, "nn.Concat"))
+	if(strcmp(mod->name, "nn.Sequential") && strcmp(mod->name, "nn.Concat") && strcmp(mod->name, "nn.ConcatTable"))
 		return 0;
 	for(i = 0; i < mod->table->nelem; i++)
 	{

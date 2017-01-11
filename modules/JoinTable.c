@@ -2,34 +2,28 @@
 #include <string.h>
 #include "../thnets.h"
 
-int nnload_Concat(struct module *mod, struct nnmodule *n)
+int nnload_JoinTable(struct module *mod, struct nnmodule *n)
 {
 	struct table *t = n->table;
-	mod->type = MT_Concat;
-	mod->Concat.dimension = TableGetNumber(t, "dimension") - 1;
-	struct network *net = Module2Network(n);
-	mod->Concat.nelem = net->nelem;
-	mod->Concat.modules = net->modules;
-	free(net);
-	mod->updateOutput = nn_Concat_updateOutput;
+	mod->type = MT_JoinTable;
+	mod->JoinTable.dimension = TableGetNumber(t, "dimension") - 1;
+	mod->updateOutput = nn_JoinTable_updateOutput;
 	return 0;
 }
 
-THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *input)
+THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;
-	int nelem = module->Concat.nelem;
+	struct module *concattable_module = (struct module *)input;
+	int nelem = concattable_module->ConcatTable.nelem;
 	long size[4];
-	int dimension = module->Concat.dimension;
+	int dimension = module->JoinTable.dimension;
 	int i, j, sizen = 0;
-	struct module *modules = module->Concat.modules;
-	if(dimension == 1 && (input->nDimension == 1 || input->nDimension == 3))
+	struct module *modules = concattable_module->ConcatTable.modules;
+	if(dimension == 1 && (modules[0].output->nDimension == 1 || modules[0].output->nDimension == 3))
 		dimension--;
 	for(i = 0; i < nelem; i++)
-	{
-		modules[i].updateOutput(&modules[i], input);
 		sizen += modules[i].output->size[dimension];
-	}
 	// Check correctness
 	for(i = 1; i < nelem; i++)
 	{
@@ -69,5 +63,4 @@ THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *inpu
 		}
 	}
 	return output;
-
 }

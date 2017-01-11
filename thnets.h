@@ -199,6 +199,17 @@ struct Sequential
 	int nelem;
 };
 
+struct PReLU
+{
+	THFloatTensor *weight;
+	int nOutputPlane;
+};
+
+struct Padding
+{
+	float dim, pad, nInputDim, index, value;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -218,7 +229,13 @@ enum moduletype {
 	MT_SpatialMaxUnpooling,
 	MT_SpatialBatchNormalization,
 	MT_Sequential,
-	MT_Concat
+	MT_Concat,
+	MT_ConcatTable,
+	MT_JoinTable,
+	MT_CAddTable,
+	MT_PReLU,
+	MT_Identity,
+	MT_Padding
 };
 
 struct network;
@@ -250,6 +267,9 @@ struct module
 		struct SpatialBatchNormalization SpatialBatchNormalization;
 		struct Sequential Sequential;
 		struct Concat Concat;
+		struct Sequential ConcatTable;
+		struct Concat JoinTable;
+		struct PReLU PReLU;
 	};
 };
 
@@ -348,6 +368,11 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_ConcatTable_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Identity_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -365,6 +390,12 @@ int nnload_SpatialMaxUnpooling(struct module *mod, struct nnmodule *n);
 int nnload_SpatialBatchNormalization(struct module *mod, struct nnmodule *n);
 int nnload_Sequential(struct module *mod, struct nnmodule *n);
 int nnload_Concat(struct module *mod, struct nnmodule *n);
+int nnload_ConcatTable(struct module *mod, struct nnmodule *n);
+int nnload_JoinTable(struct module *mod, struct nnmodule *n);
+int nnload_CAddTable(struct module *mod, struct nnmodule *n);
+int nnload_PReLU(struct module *mod, struct nnmodule *n);
+int nnload_Identity(struct module *mod, struct nnmodule *n);
+
 
 /* High level API */
 

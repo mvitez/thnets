@@ -129,7 +129,7 @@ double th_seconds()
 	return ts.tv_sec + ts.tv_nsec * 1e-9 - s;
 }
 
-void FindMixMax(THFloatTensor *t, float *min, float *max)
+void FindMinMax(THFloatTensor *t, float *min, float *max)
 {
 	*min = THInf;
 	*max = -THInf;
@@ -167,7 +167,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		if(th_minmax)
 		{
 			float min, max;
-			FindMixMax(in, &min, &max);
+			FindMinMax(in, &min, &max);
 			printf("Layer %d output: min=%f, max=%f\n", i+1, min, max);
 		}
 		if(i > 0)

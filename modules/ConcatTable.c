@@ -3,29 +3,29 @@
 #include <stdio.h>
 #include "../thnets.h"
 
-int nnload_Sequential(struct module *mod, struct nnmodule *n)
+int nnload_ConcatTable(struct module *mod, struct nnmodule *n)
 {
-	mod->type = MT_Sequential;
+	mod->type = MT_ConcatTable;
 	struct network *net = Module2Network(n);
-	mod->Sequential.nelem = net->nelem;
-	mod->Sequential.modules = net->modules;
+	mod->ConcatTable.nelem = net->nelem;
+	mod->ConcatTable.modules = net->modules;
 	free(net);
-	mod->updateOutput = nn_Sequential_updateOutput;
+	mod->updateOutput = nn_ConcatTable_updateOutput;
 	return 0;
 }
 
-THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input)
+THFloatTensor *nn_ConcatTable_updateOutput(struct module *module, THFloatTensor *input)
 {
-	int nelem = module->Sequential.nelem;
+	int nelem = module->ConcatTable.nelem;
 	int i;
-	struct module *modules = module->Sequential.modules;
+	struct module *modules = module->ConcatTable.modules;
 	double t = 0;
 
 	for(i = 0; i < nelem; i++)
 	{
 		if(th_profile)
 			t = th_seconds();
-		input = modules[i].updateOutput(&modules[i], input);
+		modules[i].updateOutput(&modules[i], input);
 		if(th_profile)
 		{
 			t = th_seconds() - t;
@@ -43,6 +43,5 @@ THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *
 		if(th_debug > 1)
 			printf("  %d) %d %d %ld %ld %ld %ld\n", i+1, modules[i].type, input->nDimension, input->size[0], input->size[1], input->size[2], input->size[3]);
 	}
-	module->output = input;
-	return input;
+	return (THFloatTensor *)module;
 }
