@@ -101,7 +101,7 @@ libthnets.so: $(LIBOBJS)
 	$(CXX) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
 
 test: $(LIBOBJS) test.o images.o
-	$(CC) -o $@ test.o images.o libthnets.so $(LIBS) -lpng -ljpeg
+	$(CC) -o $@ test.o images.o libthnets.so
 
 .PHONY : clean
 clean :
