@@ -35,7 +35,7 @@ typedef struct {
 static int loadImg(const char *path, img_t *image)
 { 
 	int w, h, cp;
-	unsigned char *data = stbi_load(path, w, h, cp, 0);
+	unsigned char *data = stbi_load(path, &w, &h, &cp, 0);
 	if ((cp != 3 && cp != 1) || (data == NULL))
 	{
 		if (data)
