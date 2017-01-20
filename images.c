@@ -67,7 +67,12 @@ int loadimage(const char *path, img_t *image)
 	if (fn)
 		fn++;
 	else fn = path;
+#ifdef _MSC_VER
+	strcpy_s(image->filename,strlen(fn), fn);
+#else
 	strcpy(image->filename, fn);
+#endif // _MSC_VER
+
  
 	return loadImg(path, image); 
 }

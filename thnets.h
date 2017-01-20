@@ -1,3 +1,19 @@
+#ifdef _MSC_VER   
+#include <windows.h>
+#include <time.h> 
+#define  inline __inline
+#define NAME_MAX 255
+#define M_PI 3.14159265358979323846 
+struct timespec {
+	time_t   tv_sec;        /* seconds */
+	long     tv_nsec;       /* nanoseconds */
+};
+
+typedef int clockid_t;
+#define CLOCK_MONOTONIC 0 
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);  
+#endif 
 #include <float.h>
 #include <stdlib.h>
 #include "thvector.h"
@@ -18,25 +34,25 @@ enum therror {
 };
 
 enum thtype {
-   TYPE_NIL      = 0,
-   TYPE_NUMBER   = 1,
-   TYPE_STRING   = 2,
-   TYPE_TABLE    = 3,
-   TYPE_TORCH    = 4,
-   TYPE_BOOLEAN  = 5,
-   TYPE_FUNCTION = 6,
-   LEGACY_TYPE_RECUR_FUNCTION = 7,
-   TYPE_RECUR_FUNCTION = 8,
-   TYPE_BYTE     = 100,
-   TYPE_CHAR     = 101,
-   TYPE_SHORT    = 102,
-   TYPE_INT      = 103,
-   TYPE_LONG     = 104,
-   TYPE_FLOAT    = 105,
-   TYPE_DOUBLE   = 106,
-   TYPE_STORAGE  = 200,
-   TYPE_TENSOR   = 201,
-   TYPE_NNMODULE = 202
+	TYPE_NIL = 0,
+	TYPE_NUMBER = 1,
+	TYPE_STRING = 2,
+	TYPE_TABLE = 3,
+	TYPE_TORCH = 4,
+	TYPE_BOOLEAN = 5,
+	TYPE_FUNCTION = 6,
+	LEGACY_TYPE_RECUR_FUNCTION = 7,
+	TYPE_RECUR_FUNCTION = 8,
+	TYPE_BYTE = 100,
+	TYPE_CHAR = 101,
+	TYPE_SHORT = 102,
+	TYPE_INT = 103,
+	TYPE_LONG = 104,
+	TYPE_FLOAT = 105,
+	TYPE_DOUBLE = 106,
+	TYPE_STORAGE = 200,
+	TYPE_TENSOR = 201,
+	TYPE_NNMODULE = 202
 };
 
 struct thobject;

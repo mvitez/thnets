@@ -41,7 +41,6 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <sched.h>
 #include "blas.h"
 #include "../sgemm.h"
 

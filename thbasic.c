@@ -7,6 +7,16 @@
 #ifndef USEBLAS
 #include "sgemm.h"
 #endif
+#define strOutOfMemory "Out of memory"  
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp)
+{
+	unsigned long msec;
+	msec = GetTickCount();
+	tp->tv_sec = msec / 1000;
+	tp->tv_nsec = (msec % 1000) * 1000000L;
+	return 0;
+}
 
 #define THAtomicIncrement(a) __sync_fetch_and_add(a, 1);
 #define THAtomicDecrement(a) __sync_fetch_and_add(a, -1);
@@ -14,9 +24,11 @@
 THFloatStorage *THFloatStorage_new(long size)
 {
 	THFloatStorage *s = malloc(sizeof(*s));
+	if(!s)
+		THError(strOutOfMemory);
 	s->data = malloc(sizeof(*s->data) * size);
 	if(!s->data)
-		THError("Out of memory");
+		THError(strOutOfMemory);
 	s->nref = 1;
 	s->mustfree = 1;
 	return s;
@@ -25,6 +37,8 @@ THFloatStorage *THFloatStorage_new(long size)
 THFloatStorage *THFloatStorage_newwithbuffer(void *buffer)
 {
 	THFloatStorage *s = malloc(sizeof(*s));
+	if(!s)
+		THError(strOutOfMemory);
 	s->data = buffer;
 	s->nref = 1;
 	s->mustfree = 0;
@@ -166,6 +180,8 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 	int i;
 
 	THFloatTensor *t = malloc(sizeof(*t));
+	if(!t)
+		THError(strOutOfMemory);
 #ifdef LOWP
 	t->mult = tensor->mult;
 	t->sub = tensor->sub;

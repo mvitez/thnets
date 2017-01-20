@@ -1,7 +1,10 @@
+#ifndef _MSC_VER  
+#include <sys/time.h> 
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
+#include "thnets.h"
 
 #define MAXALLOC 1024*1024*1024
 
@@ -17,18 +20,9 @@ static size_t allocedmem;
 static int errordumped;
 #ifdef MEMORYDEBUG
 static int detailed = MEMORYDEBUG;
+#else
+static int detailed = 0;
 #endif
-
-static double seconds()
-{
-	static double base;
-	struct timeval tv;
-
-	gettimeofday(&tv, 0);
-	if(!base)
-		base = tv.tv_sec + tv.tv_usec * 1e-6;
-	return tv.tv_sec + tv.tv_usec * 1e-6 - base;
-}
 
 void debug_memorydump(FILE *fp)
 {
@@ -45,10 +39,15 @@ static void debug_print(const char *file, int line, const char *instr, const voi
 
 	if(!detailed)
 		return;
+
+#ifdef _MSC_VER 
+	fopen_s(&fp, "memdump.txt", "a+");
+#else  
 	fp = fopen("memdump.txt", "a+");
-	if(fp)
+#endif  
+	if (fp)
 	{
-		fprintf(fp, "%f %s:%d\t%s\t%d\t%p\t%lu\n", seconds(), file, line, instr, step, ptr, (unsigned long)size);
+		fprintf(fp, "%f %s:%d\t%s\t%d\t%p\t%lu\n", th_seconds(), file, line, instr, step, ptr, (unsigned long)size);
 		fclose(fp);
 	}
 }
@@ -58,9 +57,14 @@ static void debug_addpointer(const void *ptr, size_t size, const char *file, int
 	if(errordumped)
 		return;
 	pointers[npointers].ptr = ptr;
+#ifdef _MSC_VER 
+	strcpy_s(pointers[npointers].file, strlen(file), file);
+#else  
 	strcpy(pointers[npointers].file, file);
+#endif  
+	 
 	pointers[npointers].line = line;
-	pointers[npointers].t = seconds();
+	pointers[npointers].t = th_seconds();
 	pointers[npointers++].size = size;
 	allocedmem += size;
 	if(!errordumped && (allocedmem > MAXALLOC || npointers == 100000))
@@ -127,7 +131,11 @@ char *debug_strdup(const char *str, const char *file, int line)
 	int len = strlen(str);
 
 	debug_print(file, line, "strdup", str, len, 0);
+#ifdef _MSC_VER 
+	ptr = _strdup(str);
+#else  
 	ptr = strdup(str);
+#endif  
 	debug_addpointer(ptr, len, file, line);
 	debug_print(file, line, "strdup", ptr, len, 1);
 	return ptr;

@@ -1,7 +1,9 @@
+#ifndef _MSC_VER  
+#include <sys/time.h> 
+#endif
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
+#include <stdlib.h> 
 #include "thnets.h"
 
 typedef struct {
@@ -13,17 +15,6 @@ typedef struct {
 double t;
 
 int loadimage(const char *path, img_t *image);
-
-static double seconds()
-{
-	static double base;
-	struct timeval tv;
-
-	gettimeofday(&tv, 0);
-	if(!base)
-		base = tv.tv_sec + tv.tv_usec * 1e-6;
-	return tv.tv_sec + tv.tv_usec * 1e-6 - base;
-}
 
 int main(int argc, char **argv)
 {
