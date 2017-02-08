@@ -3,22 +3,25 @@
 #include <stdio.h>
 #include "../thnets.h"
 
+static void nnfree_ConcatTable(struct module *mod)
+{
+	freenetwork(mod->ConcatTable.net);
+}
+
 int nnload_ConcatTable(struct module *mod, struct nnmodule *n)
 {
 	mod->type = MT_ConcatTable;
-	struct network *net = Module2Network(n);
-	mod->ConcatTable.nelem = net->nelem;
-	mod->ConcatTable.modules = net->modules;
-	free(net);
+	mod->ConcatTable.net = Module2Network(n);
+	mod->nnfree = nnfree_ConcatTable;
 	mod->updateOutput = nn_ConcatTable_updateOutput;
 	return 0;
 }
 
 THFloatTensor *nn_ConcatTable_updateOutput(struct module *module, THFloatTensor *input)
 {
-	int nelem = module->ConcatTable.nelem;
+	int nelem = module->ConcatTable.net->nelem;
 	int i;
-	struct module *modules = module->ConcatTable.modules;
+	struct module *modules = module->ConcatTable.net->modules;
 	double t = 0;
 
 	for(i = 0; i < nelem; i++)

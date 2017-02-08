@@ -788,6 +788,7 @@ void freenetwork(struct network *net)
 		if(net->modules[i].nnfree)
 			net->modules[i].nnfree(net->modules + i);
 		THFloatTensor_free(net->modules[i].output);
+		net->modules[i].output = 0;
 	}
 	free(net->modules);
 	free(net);

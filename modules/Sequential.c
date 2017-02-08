@@ -3,22 +3,25 @@
 #include <stdio.h>
 #include "../thnets.h"
 
+static void nnfree_Sequential(struct module *mod)
+{
+	freenetwork(mod->Sequential.net);
+}
+
 int nnload_Sequential(struct module *mod, struct nnmodule *n)
 {
 	mod->type = MT_Sequential;
-	struct network *net = Module2Network(n);
-	mod->Sequential.nelem = net->nelem;
-	mod->Sequential.modules = net->modules;
-	free(net);
+	mod->Sequential.net = Module2Network(n);
+	mod->nnfree = nnfree_Sequential;
 	mod->updateOutput = nn_Sequential_updateOutput;
 	return 0;
 }
 
 THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input)
 {
-	int nelem = module->Sequential.nelem;
+	int nelem = module->Sequential.net->nelem;
 	int i;
-	struct module *modules = module->Sequential.modules;
+	struct module *modules = module->Sequential.net->modules;
 	double t = 0;
 
 	for(i = 0; i < nelem; i++)
@@ -43,6 +46,6 @@ THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *
 		if(th_debug > 1)
 			printf("  %d) %d %d %ld %ld %ld %ld\n", i+1, modules[i].type, input->nDimension, input->size[0], input->size[1], input->size[2], input->size[3]);
 	}
-	module->output = input;
-	return input;
+	THFloatTensor_set(module->output, input);
+	return module->output;
 }

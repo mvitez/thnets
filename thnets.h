@@ -189,14 +189,13 @@ struct SpatialBatchNormalization
 
 struct Concat
 {
-	struct module *modules;
-	int nelem, dimension;
+	struct network *net;
+	int dimension;
 };
 
 struct Sequential
 {
-	struct module *modules;
-	int nelem;
+	struct network *net;
 };
 
 struct PReLU

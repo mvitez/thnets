@@ -14,10 +14,10 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 {
 	THFloatTensor *output = module->output;
 	struct module *concattable_module = (struct module *)input;
-	int nelem = concattable_module->ConcatTable.nelem;
+	int nelem = concattable_module->ConcatTable.net->nelem;
 	long size[4];
 	int i, j;
-	struct module *modules = concattable_module->ConcatTable.modules;
+	struct module *modules = concattable_module->ConcatTable.net->modules;
 	// Check correctness
 	for(i = 1; i < nelem; i++)
 	{

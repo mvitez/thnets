@@ -1,10 +1,16 @@
 #include "../thnets.h"
 
+static void nnfree_PReLU(struct module *mod)
+{
+	THFloatTensor_free(mod->PReLU.weight);
+}
+
 int nnload_PReLU(struct module *mod, struct nnmodule *n)
 {
 	struct table *t = n->table;
 	mod->type = MT_PReLU;
 	mod->updateOutput = nn_PReLU_updateOutput;
+	mod->nnfree = nnfree_PReLU;
 	struct PReLU *m = &mod->PReLU;
 	m->nOutputPlane = TableGetNumber(t, "nOutputPlane");
 	m->weight = TableGetTensor(t, "weight");

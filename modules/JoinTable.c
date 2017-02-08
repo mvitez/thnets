@@ -15,11 +15,11 @@ THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *i
 {
 	THFloatTensor *output = module->output;
 	struct module *concattable_module = (struct module *)input;
-	int nelem = concattable_module->ConcatTable.nelem;
+	int nelem = concattable_module->ConcatTable.net->nelem;
 	long size[4];
 	int dimension = module->JoinTable.dimension;
 	int i, j, sizen = 0;
-	struct module *modules = concattable_module->ConcatTable.modules;
+	struct module *modules = concattable_module->ConcatTable.net->modules;
 	if(dimension == 1 && (modules[0].output->nDimension == 1 || modules[0].output->nDimension == 3))
 		dimension--;
 	for(i = 0; i < nelem; i++)

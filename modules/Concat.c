@@ -2,15 +2,18 @@
 #include <string.h>
 #include "../thnets.h"
 
+static void nnfree_Concat(struct module *mod)
+{
+	freenetwork(mod->Concat.net);
+}
+
 int nnload_Concat(struct module *mod, struct nnmodule *n)
 {
 	struct table *t = n->table;
 	mod->type = MT_Concat;
 	mod->Concat.dimension = TableGetNumber(t, "dimension") - 1;
-	struct network *net = Module2Network(n);
-	mod->Concat.nelem = net->nelem;
-	mod->Concat.modules = net->modules;
-	free(net);
+	mod->Concat.net = Module2Network(n);
+	mod->nnfree = nnfree_Concat;
 	mod->updateOutput = nn_Concat_updateOutput;
 	return 0;
 }
@@ -18,11 +21,11 @@ int nnload_Concat(struct module *mod, struct nnmodule *n)
 THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;
-	int nelem = module->Concat.nelem;
+	int nelem = module->Concat.net->nelem;
 	long size[4];
 	int dimension = module->Concat.dimension;
 	int i, j, sizen = 0;
-	struct module *modules = module->Concat.modules;
+	struct module *modules = module->Concat.net->modules;
 	if(dimension == 1 && (input->nDimension == 1 || input->nDimension == 3))
 		dimension--;
 	for(i = 0; i < nelem; i++)
