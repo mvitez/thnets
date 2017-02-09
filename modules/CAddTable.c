@@ -30,8 +30,10 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 	memcpy(size, modules[0].output->size, sizeof(size));
 	THFloatTensor_resize(output, size, modules[0].output->nDimension);
 	float *out = THFloatTensor_data(output);
-	long n[nelem];
-	float *outs[nelem];
+	long* n = malloc(nelem*sizeof(long)); 
+	if (n == NULL) THError("Out of memory."); 
+	float** outs = malloc(nelem*sizeof(float*));
+	if (outs == NULL) THError("Out of memory.");
 	for(i = 0; i < nelem; i++)
 	{
 		outs[i] = THFloatTensor_data(modules[i].output);
@@ -52,6 +54,7 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 			for(j = 0; j < n[i]; j++)
 				out[j] += outs[i][j];
 	}
-	return output;
-
+	free(n);
+	free(outs);
+	return output; 
 }

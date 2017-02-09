@@ -407,7 +407,12 @@ static int readobject(struct thfile *f, struct thobject *obj)
 
 int loadtorch(const char *path, struct thobject *obj, int longsize)
 {
+#ifdef _MSC_VER 
+	FILE *fp;
+	fopen_s(&fp, path, "rb");
+#else  
 	FILE *fp = fopen(path, "rb");
+#endif  
 	if(!fp)
 		return ERR_OPENFILE;
 	struct thfile *f = malloc(sizeof(*f));

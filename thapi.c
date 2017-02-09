@@ -207,7 +207,11 @@ THNETWORK *THLoadNetwork(const char *path)
 	int i, longsize = 8;
 	
 	THNETWORK *net = calloc(1, sizeof(*net));
+#ifdef _MSC_VER 
+	sprintf_s(tmppath, sizeof(tmppath), "%s/model.net", path);
+#else  
 	sprintf(tmppath, "%s/model.net", path);
+#endif  
 	net->netobj = malloc(sizeof(*net->netobj));
 	lasterror = loadtorch(tmppath, net->netobj, longsize);
 	if(lasterror == ERR_CORRUPTED)
@@ -237,7 +241,11 @@ THNETWORK *THLoadNetwork(const char *path)
 	}
 	net->std[0] = net->std[1] = net->std[2] = 1;
 	net->mean[0] = net->mean[1] = net->mean[2] = 0;
+#ifdef _MSC_VER 
+	sprintf_s(tmppath, sizeof(tmppath), "%s/stat.t7", path);
+#else  
 	sprintf(tmppath, "%s/stat.t7", path);
+#endif  
 	net->statobj = malloc(sizeof(*net->statobj));
 	lasterror = loadtorch(tmppath, net->statobj, longsize);
 	if(!lasterror)

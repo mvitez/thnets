@@ -1,3 +1,7 @@
+#ifdef _MSC_VER 
+#define  inline __inline
+#endif
+
 #if defined USE_SSE2 || defined USE_SSE3 || defined USE_SSSE3 \
   || defined USE_SSE4_1 || defined USE_SSE4_2
 

@@ -17,41 +17,14 @@ LOCAL_SRC_FILES :=\
 
 LOCAL_CFLAGS += -Wall -c -fopenmp -fPIC -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -O3
 include $(BUILD_STATIC_LIBRARY)
-
-include $(CLEAR_VARS)
-
-
-include $(CLEAR_VARS)
-
-LOCAL_CFLAGS :=
-
-LOCAL_MODULE    := libpng
-LOCAL_SRC_FILES :=\
-	libpng/png.c \
-	libpng/pngerror.c \
-	libpng/pngget.c \
-	libpng/pngmem.c \
-	libpng/pngpread.c \
-	libpng/pngread.c \
-	libpng/pngrio.c \
-	libpng/pngrtran.c \
-	libpng/pngrutil.c \
-	libpng/pngset.c \
-	libpng/pngtrans.c \
-	libpng/pngwio.c \
-	libpng/pngwrite.c \
-	libpng/pngwtran.c \
-	libpng/pngwutil.c
-
-LOCAL_SHARED_LIBRARIES := -lz
-include $(BUILD_STATIC_LIBRARY)
+ 
 
 
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := thnets
 
-LOCAL_CFLAGS += -fopenmp -DNOJPEG
+LOCAL_CFLAGS += -fopenmp
 
 LOCAL_SRC_FILES := thload.c thbasic.c thapi.c images.c test.c \
 	modules/CAddTable.c \
@@ -78,9 +51,9 @@ LOCAL_SRC_FILES := thload.c thbasic.c thapi.c images.c test.c \
 
 LOCAL_LDLIBS := -lz -landroid -lm -llog
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/libpng/ $(LOCAL_PATH)/libjpeg/ $(LOCAL_PATH)/OpenBLAS-stripped/
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/OpenBLAS-stripped/
 
-LOCAL_STATIC_LIBRARIES := OpenBLAS JPEG-Turbo libpng
+LOCAL_STATIC_LIBRARIES := OpenBLAS
 
 include $(BUILD_EXECUTABLE)
 
