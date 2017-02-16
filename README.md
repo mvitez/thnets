@@ -1,4 +1,4 @@
-# Stand-alone library for loading and running networks
+# Stand-alone library for loading and running deep neural networks
 
 ## Installation
 
