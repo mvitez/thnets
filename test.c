@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	net = THLoadNetwork(modelsdir);
 	if(net)
 	{
-		if(net->net->nelem > lastlayer)
+		if(net->net && net->net->nelem > lastlayer)
 			net->net->nelem = lastlayer;
 		if(side)
 			THMakeSpatial(net, side);

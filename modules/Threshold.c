@@ -12,6 +12,20 @@ int nnload_Threshold(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_Threshold(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_Threshold_updateOutput;
+	f->module.type = MT_Threshold;
+	struct Threshold *p = &f->module.Threshold;
+	struct pyelement *el;
+	if( (el = findelement(f->params, "threshold", 0)) && el->type == ELTYPE_FLOAT)
+		p->threshold = el->fvalue;
+	if( (el = findelement(f->params, "value", 0)) && el->type == ELTYPE_FLOAT)
+		p->val = el->fvalue;
+	if( (el = findelement(f->params, "inplace", 0)) && el->type == ELTYPE_INT)
+		p->inplace = el->ivalue;
+}
+
 THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float val = module->Threshold.val;

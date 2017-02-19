@@ -24,6 +24,21 @@ int nnload_SpatialBatchNormalization(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_SpatialBatchNormalization(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_SpatialBatchNormalization_updateOutput;
+	f->module.type = MT_SpatialBatchNormalization;
+	f->module.nnfree = nnfree_SpatialBatchNormalization;
+	struct SpatialBatchNormalization *p = &f->module.SpatialBatchNormalization;
+	p->weight = pygettensor(f->params, "", 0);
+	p->bias = pygettensor(f->params, "", 1);
+	p->running_mean = pygettensor(f->params, "running_mean", 0);
+	p->running_var = pygettensor(f->params, "running_var", 0);
+	struct pyelement *el;
+	if( (el = findelement(f->params, "eps", 0)) && el->type == ELTYPE_FLOAT)
+		p->eps = el->fvalue;
+}
+
 THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;
@@ -37,7 +52,9 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 	THFloatTensor_resizeAs(output, input);
 	long f;
 
+#ifndef MEMORYDEBUG
 #pragma omp parallel for
+#endif
 	for (f = 0; f < nFeature; ++f)
 	{
 		THFloatTensor *in = THFloatTensor_newSelect(input, input->nDimension == 4 ? 1 : 0, f);

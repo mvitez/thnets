@@ -201,12 +201,29 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	return in;
 }
 
+THFloatTensor *THForward(THNETWORK *net, THFloatTensor *in)
+{
+	if(net->pynet)
+		return forward_pytorch(net->pynet, in, net->allpynodes);
+	else return forward(net->net, in);
+}
+
 THNETWORK *THLoadNetwork(const char *path)
 {
 	char tmppath[255];
 	int i, longsize = 8;
+	THNETWORK *net;
 	
-	THNETWORK *net = calloc(1, sizeof(*net));
+	net = calloc(1, sizeof(*net));
+	net->std[0] = net->std[1] = net->std[2] = 1;
+	net->mean[0] = net->mean[1] = net->mean[2] = 0;
+	sprintf(tmppath, "%s/pymodel.net", path);
+	net->allpynodes = calloc(MAXPYNODES, sizeof(*net->allpynodes));
+	net->pynet = loadpytorch(tmppath, net->allpynodes);
+	if(net->pynet)
+		return net;
+	free(net->allpynodes);
+	net->allpynodes = 0;
 	sprintf(tmppath, "%s/model.net", path);
 	net->netobj = malloc(sizeof(*net->netobj));
 	lasterror = loadtorch(tmppath, net->netobj, longsize);
@@ -235,8 +252,6 @@ THNETWORK *THLoadNetwork(const char *path)
 		free(net);
 		return 0;
 	}
-	net->std[0] = net->std[1] = net->std[2] = 1;
-	net->mean[0] = net->mean[1] = net->mean[2] = 0;
 	sprintf(tmppath, "%s/stat.t7", path);
 	net->statobj = malloc(sizeof(*net->statobj));
 	lasterror = loadtorch(tmppath, net->statobj, longsize);
@@ -322,7 +337,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	if(network->net->engine == ENGINE_CUDA)
 	{
 		THFloatTensor *t2 = THCudaTensor_newFromFloatTensor(t);
-		out = forward(network->net, t2);
+		out = THForward(network, t2);
 		THFloatTensor_free(t2);
 		if(network->out)
 			THFloatTensor_free(network->out);
@@ -334,7 +349,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	if(network->net->engine == ENGINE_OPENCL || network->net->engine == ENGINE_OPENCLINIT)
 	{
 		THFloatTensor *t2 = THOpenCLTensor_newFromImageTensor(t);
-		out = forward(network->net, t2);
+		out = THForward(network, t2);
 		THFloatTensor_free(t2);
 		if(network->out)
 			THFloatTensor_free(network->out);
@@ -346,7 +361,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	if(network->net->engine == ENGINE_LOWP)
 	{
 		THFloatTensor *t2 = THLowpTensor_newFromFloatTensor(t);
-		out = forward(network->net, t2);
+		out = THForward(network, t2);
 		THFloatTensor_free(t2);
 		if(network->out)
 			THFloatTensor_free(network->out);
@@ -354,7 +369,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 		out = network->out;
 	} else
 #endif
-	out = forward(network->net, t);
+	out = THForward(network, t);
 	THFloatTensor_free(t);
 	*result = out->storage->data;
 	if(out->nDimension >= 3)
@@ -438,7 +453,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)
 	{
-		out = forward(network->net, t);
+		out = THForward(network, t);
 		if(network->out)
 			THFloatTensor_free(network->out);
 #ifdef HAVEFP16
@@ -453,7 +468,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 #ifdef OPENCL
 	if(network->net->engine == ENGINE_OPENCL || network->net->engine == ENGINE_OPENCLINIT)
 	{
-		out = forward(network->net, t);
+		out = THForward(network, t);
 		if(network->out)
 			THFloatTensor_free(network->out);
 #ifdef HAVEFP16
@@ -468,14 +483,14 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 #ifdef LOWP
 	if(network->net->engine == ENGINE_LOWP)
 	{
-		out = forward(network->net, t);
+		out = THForward(network, t);
 		if(network->out)
 			THFloatTensor_free(network->out);
 		network->out = THFloatTensor_newFromLowpTensor(out);
 		out = network->out;
 	} else
 #endif
-		out = forward(network->net, t);
+		out = THForward(network, t);
 	THFloatTensor_free(t);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
@@ -514,7 +529,7 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 	t->stride[0] = width * height;
 	t->stride[1] = width;
 	t->stride[2] = 1;
-	out = forward(network->net, t);
+	out = THForward(network, t);
 	THFloatTensor_free(t);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
@@ -527,7 +542,12 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 
 void THFreeNetwork(THNETWORK *network)
 {
-	freenetwork(network->net);
+	if(network->allpynodes)
+		free(network->allpynodes);
+	if(network->pynet)
+		freepynet(network->pynet);
+	if(network->net)
+		freenetwork(network->net);
 	if(network->netobj)
 	{
 		freeobject(network->netobj);
@@ -603,6 +623,8 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 	int i;
 	int rc = 0;
 
+	if(!network->net)
+		return rc = ERR_NOTIMPLEMENTED;
 	for(i = 0; i < network->net->nelem; i++)
 	{
 		if(mm_type && network->net->modules[i].type == MT_SpatialConvolution)

@@ -32,6 +32,32 @@ int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_SpatialConvolution(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_SpatialConvolutionMM_updateOutput;
+	f->module.type = MT_SpatialConvolutionVirtMM;
+	f->module.nnfree = nnfree_SpatialConvolution;
+	struct SpatialConvolution *p = &f->module.SpatialConvolution;
+	struct pyelement *el;
+	p->weight = pygettensor(f->params, "", 0);
+	p->bias = pygettensor(f->params, "", 1);
+	p->finput = THFloatTensor_new();
+	p->nOutputPlane = p->weight->size[0];
+	p->nInputPlane = p->weight->size[1];
+	p->kH = p->weight->size[2];
+	p->kW = p->weight->size[3];
+	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
+	{
+		p->padH = el->ivect[0];
+		p->padW = el->ivect[1];
+	}
+	if( (el = findelement(f->params, "stride", 0)) && el->type == ELTYPE_INTVECT)
+	{
+		p->dH = el->ivect[0];
+		p->dW = el->ivect[1];
+	}
+}
+
 THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int dW = module->SpatialConvolution.dW;

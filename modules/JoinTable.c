@@ -11,6 +11,16 @@ int nnload_JoinTable(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_Concat(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_JoinTable_updateOutput;
+	f->module.type = MT_JoinTable;
+	struct Concat *p = &f->module.Concat;
+	struct pyelement *el;
+	if( (el = findelement(f->params, "dim", 0)) && el->type == ELTYPE_INT)
+		p->dimension = el->ivalue;
+}
+
 THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

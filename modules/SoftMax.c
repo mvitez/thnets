@@ -7,6 +7,12 @@ int nnload_SoftMax(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_SoftMax(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_SoftMax_updateOutput;
+	f->module.type = MT_SoftMax;
+}
+
 THFloatTensor *nn_SoftMax_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

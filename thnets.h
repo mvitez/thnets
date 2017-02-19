@@ -272,6 +272,56 @@ struct module
 	};
 };
 
+// Pytorch stuff
+
+#define MAXPYNODES 10000
+
+enum eltype {
+	ELTYPE_END = 0,
+	ELTYPE_INPUT = 1,
+	ELTYPE_FUNCTION = 2,
+	ELTYPE_TENSOR = 3,
+	ELTYPE_INT = 4,
+	ELTYPE_FLOAT = 5,
+	ELTYPE_INTVECT = 6,
+	ELTYPE_OUTPUTID = 7
+};
+
+struct ellist;
+
+struct pyfunction {
+	int id;
+	int ninputs;
+	struct elemlist *inputs; // Linked list of inputs
+	struct elemlist *params; // Linked list of params
+	struct module module;
+};
+
+struct pyelement {
+	enum eltype type;
+	char *name;
+	union {
+		struct pyfunction function;
+		int ivalue;
+		float fvalue;
+		int ivect[4];
+		THFloatTensor *tensor;
+	};
+};
+
+struct elemlist {
+	struct pyelement *elem;
+	struct elemlist *next;
+};
+
+struct pyelement *findelement(struct elemlist *list, const char *name, int skip);
+THFloatTensor *pygettensor(struct elemlist *list, const char *name, int skip);
+struct pyelement *loadpytorch(const char *path, struct pyelement **allpynodes);
+void freepynet(struct pyelement *node);
+THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct pyelement **allpynodes);
+
+// End Pytorch
+
 enum {ENGINE_CPU, ENGINE_CUDA, ENGINE_OPENCL, ENGINE_OPENCLINIT, ENGINE_LOWP};
 
 struct network
@@ -395,6 +445,17 @@ int nnload_CAddTable(struct module *mod, struct nnmodule *n);
 int nnload_PReLU(struct module *mod, struct nnmodule *n);
 int nnload_Identity(struct module *mod, struct nnmodule *n);
 
+void pyload_SpatialConvolution(struct pyfunction *f);
+void pyload_Linear(struct pyfunction *f);
+void pyload_SpatialBatchNormalization(struct pyfunction *f);
+void pyload_SpatialMaxPooling(struct pyfunction *f);
+void pyload_SpatialAveragePooling(struct pyfunction *f);
+void pyload_Threshold(struct pyfunction *f);
+void pyload_Dropout(struct pyfunction *f);
+void pyload_SoftMax(struct pyfunction *f);
+void pyload_View(struct pyfunction *f);
+void pyload_Add(struct pyfunction *f);
+void pyload_Concat(struct pyfunction *f);
 
 /* High level API */
 
@@ -403,12 +464,15 @@ typedef struct thnetwork
 	struct thobject *netobj;
 	struct thobject *statobj;
 	struct network *net;
+	struct pyelement *pynet;
+	struct pyelement **allpynodes;
 	THFloatTensor *out;
 	float mean[3], std[3];
 } THNETWORK;
 
 void THInit();
 THNETWORK *THLoadNetwork(const char *path);
+THFloatTensor *THForward(THNETWORK *net, THFloatTensor *in);
 void THMakeSpatial(THNETWORK *network, int size);
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight);
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight, int bgr);

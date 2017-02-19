@@ -10,6 +10,12 @@ int nnload_CAddTable(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_Add(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_CAddTable_updateOutput;
+	f->module.type = MT_CAddTable;
+}
+
 THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

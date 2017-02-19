@@ -111,10 +111,12 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 	int padH = module->SpatialConvolution.padH;
 
 	THFloatTensor *finput = module->SpatialConvolution.finput;
-	THFloatTensor *weight = module->SpatialConvolution.weight;
 	THFloatTensor *bias   = module->SpatialConvolution.bias;
 	THFloatTensor *output = module->output;
+	THFloatTensor *weight = THFloatTensor_new();
 
+	THFloatTensor_set(weight, module->SpatialConvolution.weight);
+	THFloatTensor_resize2d(weight, weight->size[0], THFloatTensor_nElement(weight) / weight->size[0]);
 	int batch = 1;
 	if (input->nDimension == 3) {
 		batch = 0;
@@ -162,6 +164,7 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 		THFloatTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
 		THFloatTensor_resize3d(input, nInputPlane, inputHeight, inputWidth);
 	}
+	THFloatTensor_free(weight);
 
 	return output;
 }

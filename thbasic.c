@@ -591,7 +591,7 @@ void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		THError("matrix and vector expected, got %dD, %dD", mat->nDimension, vec->nDimension);
 
 	if( mat->size[1] != vec->size[0] )
-		THError("size mismatch, %s, %s", mat->size[1], vec->size[0]);
+		THError("size mismatch, %ld, %ld", mat->size[1], vec->size[0]);
 
 	if(t->nDimension != 1)
 		THError("vector expected, got t: %dD", t->nDimension);

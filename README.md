@@ -1,4 +1,4 @@
-# Stand-alone library for loading and running deep neural networks
+# Stand-alone library for loading and running Torch and PyTorch neural networks
 
 ## Installation
 
@@ -134,6 +134,28 @@ and copy the executable here: /data/data/com.icecoldapps.sshserver (the only acc
 you can set the executable flag on files). Before compiling, put the .c and .h files from
 https://github.com/julienr/libpng-android/tree/stable/jni into a libpng subdirectory of thnets. I've
 also removed every reference to JPEG from image.c. Otherwise you can try to compile libjpeg-turbo.
+
+### PyTorch
+
+In order to run networks created with PyTorch, they have to be first exported
+with thexport.py. This is an example python code that will create a pymodel.net file
+that thnets will be able to load:
+
+```
+import torch
+from torchvision import models
+import thexport
+
+net = models.alexnet().eval()
+out = net.forward(torch.autograd.Variable(torch.FloatTensor(1,3,227,227)))
+thexport.save('pymodel.net', out)
+```
+
+pymodel.net can be then loaded by thnets in the same way as Torch created model.net,
+just giving its directory. This exporter has been created, because torch.save() saves
+python code that cannot be interpreted by thnets. Not all thnets supported layers have
+been implemented, yet, but all the networks present in torchvision at the time of this
+writing are supported.
 
 ### Tegra TX1 results:
 

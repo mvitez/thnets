@@ -24,7 +24,7 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
 	SpatialAveragePooling.o Sequential.o Concat.o ConcatTable.o JoinTable.o CAddTable.o \
-	PReLU.o sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o
+	PReLU.o sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o pytorch.o
 
 ifneq ($(filter arm%,$(UNAME_P)),)
 	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -DHAVEFP16 -mfp16-format=ieee

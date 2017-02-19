@@ -20,6 +20,16 @@ int nnload_Linear(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_Linear(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_Linear_updateOutput;
+	f->module.type = MT_Linear;
+	f->module.nnfree = nnfree_Linear;
+	struct Linear *p = &f->module.Linear;
+	p->weight = pygettensor(f->params, "", 0);
+	p->bias = pygettensor(f->params, "", 1);
+}
+
 THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *weight = module->Linear.weight;

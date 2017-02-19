@@ -12,6 +12,16 @@ int nnload_Dropout(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+void pyload_Dropout(struct pyfunction *f)
+{
+	f->module.updateOutput = nn_Dropout_updateOutput;
+	f->module.type = MT_Dropout;
+	struct Dropout *p = &f->module.Dropout;
+	p->inplace = 1;
+	p->v2 = 1;
+	p->p = 0;
+}
+
 THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float p = module->Dropout.p;
