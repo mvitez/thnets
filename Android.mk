@@ -53,7 +53,7 @@ LOCAL_MODULE := thnets
 
 LOCAL_CFLAGS += -fopenmp -DNOJPEG
 
-LOCAL_SRC_FILES := thload.c thbasic.c thapi.c images.c test.c \
+LOCAL_SRC_FILES := thload.c thbasic.c thapi.c pytorch.c images.c test.c \
 	modules/CAddTable.c \
 	modules/Concat.c \
 	modules/ConcatTable.c \
@@ -61,7 +61,7 @@ LOCAL_SRC_FILES := thload.c thbasic.c thapi.c images.c test.c \
 	modules/JoinTable.c \
 	modules/Linear.c \
 	modules/Normalize.c \
-	modules/PReLu.c \
+	modules/PReLU.c \
 	modules/Reshape.c \
 	modules/Sequential.c \
 	modules/SoftMax.c \
