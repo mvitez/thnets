@@ -37,34 +37,34 @@
 /*********************************************************************/
 
 #include <stdio.h>
+#include "common.h"
 
+int sgemm_itcopy(BLASLONG m, BLASLONG n, FLOAT *a, BLASLONG lda, FLOAT *b){
 
-int sgemm_itcopy(long m, long n, float *a, long lda, float *b){
+  BLASLONG i, j;
 
-  long i, j;
+  FLOAT *aoffset;
+  FLOAT *aoffset1, *aoffset2, *aoffset3, *aoffset4;
+  FLOAT *aoffset5, *aoffset6, *aoffset7, *aoffset8;
 
-  float *aoffset;
-  float *aoffset1, *aoffset2, *aoffset3, *aoffset4;
-  float *aoffset5, *aoffset6, *aoffset7, *aoffset8;
+  FLOAT *boffset,  *boffset1, *boffset2, *boffset3, *boffset4;
 
-  float *boffset,  *boffset1, *boffset2, *boffset3, *boffset4;
-
-  float ctemp01, ctemp02, ctemp03, ctemp04;
-  float ctemp05, ctemp06, ctemp07, ctemp08;
-  float ctemp09, ctemp10, ctemp11, ctemp12;
-  float ctemp13, ctemp14, ctemp15, ctemp16;
-  float ctemp17, ctemp18, ctemp19, ctemp20;
-  float ctemp21, ctemp22, ctemp23, ctemp24;
-  float ctemp25, ctemp26, ctemp27, ctemp28;
-  float ctemp29, ctemp30, ctemp31, ctemp32;
-  float ctemp33, ctemp34, ctemp35, ctemp36;
-  float ctemp37, ctemp38, ctemp39, ctemp40;
-  float ctemp41, ctemp42, ctemp43, ctemp44;
-  float ctemp45, ctemp46, ctemp47, ctemp48;
-  float ctemp49, ctemp50, ctemp51, ctemp52;
-  float ctemp53, ctemp54, ctemp55, ctemp56;
-  float ctemp57, ctemp58, ctemp59, ctemp60;
-  float ctemp61, ctemp62, ctemp63, ctemp64;
+  FLOAT ctemp01, ctemp02, ctemp03, ctemp04;
+  FLOAT ctemp05, ctemp06, ctemp07, ctemp08;
+  FLOAT ctemp09, ctemp10, ctemp11, ctemp12;
+  FLOAT ctemp13, ctemp14, ctemp15, ctemp16;
+  FLOAT ctemp17, ctemp18, ctemp19, ctemp20;
+  FLOAT ctemp21, ctemp22, ctemp23, ctemp24;
+  FLOAT ctemp25, ctemp26, ctemp27, ctemp28;
+  FLOAT ctemp29, ctemp30, ctemp31, ctemp32;
+  FLOAT ctemp33, ctemp34, ctemp35, ctemp36;
+  FLOAT ctemp37, ctemp38, ctemp39, ctemp40;
+  FLOAT ctemp41, ctemp42, ctemp43, ctemp44;
+  FLOAT ctemp45, ctemp46, ctemp47, ctemp48;
+  FLOAT ctemp49, ctemp50, ctemp51, ctemp52;
+  FLOAT ctemp53, ctemp54, ctemp55, ctemp56;
+  FLOAT ctemp57, ctemp58, ctemp59, ctemp60;
+  FLOAT ctemp61, ctemp62, ctemp63, ctemp64;
 
   aoffset   = a;
   boffset   = b;

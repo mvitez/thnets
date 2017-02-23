@@ -37,7 +37,7 @@
 /*********************************************************************/
 
 #define ASSEMBLER
-
+#define ASMNAME saxpy_k
 #include "common.h"
 
 #ifndef WINDOWS_ABI
@@ -57,11 +57,10 @@
 #define	YY	%r11
 #define ALPHA	%xmm15
 
-	.text
-	.align 512
-	.globl saxpy_k
-	.type saxpy_k, @function
-saxpy_k:
+#include "l1param.h"
+
+	PROLOGUE
+	PROFCODE
 
 #ifndef WINDOWS_ABI
 #ifndef XDOUBLE
@@ -1585,5 +1584,4 @@ saxpy_k:
 	ALIGN_3
 
 
-	.size	 saxpy_k, .-saxpy_k
-	.section .note.GNU-stack,"",@progbits
+	EPILOGUE

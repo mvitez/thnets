@@ -67,13 +67,17 @@
 #define GEMM_P 1024
 #define GEMM_Q 512
 #define GEMM_R 15328
+#if defined SANDYBRIDGE || defined HASWELL
+#define GEMM_UNROLL_M 16
+#else
 #define GEMM_UNROLL_M 8
+#endif
 #define GEMM_UNROLL_N 4
 
 #define ICOPY_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_itcopy(M, N, (float *)(A) + ((Y) + (X) * (LDA)), LDA, BUFFER)
 #define ICOPYT_OPERATION(M, N, A, LDA, X, Y, BUFFER) sgemm_incopy(M, N, (float *)(A) + ((X) + (Y) * (LDA)), LDA, BUFFER)
 
-#endif
+#endif // #ifdef ARM
 
 #define BUFFER_SIZE (((GEMM_P + GEMM_R) * GEMM_Q * sizeof(float) + GEMM_ALIGN) & ~GEMM_ALIGN)
 #define GEMM_ALIGN 0x03fffUL
@@ -251,6 +255,195 @@ static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, i
 
 #else
 
+#if defined SANDYBRIDGE || defined HASWELL
+
+static void icopy_operation_pad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	int i, i1, j, im;
+
+	for(j = 0; j + 15 < n; j += 16)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*16 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*16 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*16 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*16 + 3] = get_a_pad(args, x+i+i1, y+j+3);
+				b[i1*16 + 4] = get_a_pad(args, x+i+i1, y+j+4);
+				b[i1*16 + 5] = get_a_pad(args, x+i+i1, y+j+5);
+				b[i1*16 + 6] = get_a_pad(args, x+i+i1, y+j+6);
+				b[i1*16 + 7] = get_a_pad(args, x+i+i1, y+j+7);
+				b[i1*16 + 8] = get_a_pad(args, x+i+i1, y+j+8);
+				b[i1*16 + 9] = get_a_pad(args, x+i+i1, y+j+9);
+				b[i1*16 + 10] = get_a_pad(args, x+i+i1, y+j+10);
+				b[i1*16 + 11] = get_a_pad(args, x+i+i1, y+j+11);
+				b[i1*16 + 12] = get_a_pad(args, x+i+i1, y+j+12);
+				b[i1*16 + 13] = get_a_pad(args, x+i+i1, y+j+13);
+				b[i1*16 + 14] = get_a_pad(args, x+i+i1, y+j+14);
+				b[i1*16 + 15] = get_a_pad(args, x+i+i1, y+j+15);
+			}
+			b += im * 16;
+		}
+	}
+	if(j + 7 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*8 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*8 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*8 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*8 + 3] = get_a_pad(args, x+i+i1, y+j+3);
+				b[i1*8 + 4] = get_a_pad(args, x+i+i1, y+j+4);
+				b[i1*8 + 5] = get_a_pad(args, x+i+i1, y+j+5);
+				b[i1*8 + 6] = get_a_pad(args, x+i+i1, y+j+6);
+				b[i1*8 + 7] = get_a_pad(args, x+i+i1, y+j+7);
+			}
+			b += im * 8;
+		}
+		j += 8;
+	}
+	if(j + 3 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*4 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_pad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_pad(args, x+i+i1, y+j+3);
+			}
+			b += im * 4;
+		}
+		j += 4;
+	}
+	if(j + 1 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*2 + 0] = get_a_pad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_pad(args, x+i+i1, y+j+1);
+			}
+			b += im * 2;
+		}
+		j += 2;
+	}
+	if(j < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+				b[i1] = get_a_pad(args, x+i+i1, y+j);
+			b += im;
+		}
+	}
+}
+
+static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
+{
+	int i, i1, j, im;
+
+	for(j = 0; j + 15 < n; j += 16)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*16 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*16 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*16 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*16 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+				b[i1*16 + 4] = get_a_nopad(args, x+i+i1, y+j+4);
+				b[i1*16 + 5] = get_a_nopad(args, x+i+i1, y+j+5);
+				b[i1*16 + 6] = get_a_nopad(args, x+i+i1, y+j+6);
+				b[i1*16 + 7] = get_a_nopad(args, x+i+i1, y+j+7);
+				b[i1*16 + 8] = get_a_nopad(args, x+i+i1, y+j+8);
+				b[i1*16 + 9] = get_a_nopad(args, x+i+i1, y+j+9);
+				b[i1*16 + 10] = get_a_nopad(args, x+i+i1, y+j+10);
+				b[i1*16 + 11] = get_a_nopad(args, x+i+i1, y+j+11);
+				b[i1*16 + 12] = get_a_nopad(args, x+i+i1, y+j+12);
+				b[i1*16 + 13] = get_a_nopad(args, x+i+i1, y+j+13);
+				b[i1*16 + 14] = get_a_nopad(args, x+i+i1, y+j+14);
+				b[i1*16 + 15] = get_a_nopad(args, x+i+i1, y+j+15);
+			}
+			b += im * 16;
+		}
+	}
+	if(j + 7 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*8 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*8 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*8 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*8 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+				b[i1*8 + 4] = get_a_nopad(args, x+i+i1, y+j+4);
+				b[i1*8 + 5] = get_a_nopad(args, x+i+i1, y+j+5);
+				b[i1*8 + 6] = get_a_nopad(args, x+i+i1, y+j+6);
+				b[i1*8 + 7] = get_a_nopad(args, x+i+i1, y+j+7);
+			}
+			b += im * 8;
+		}
+		j += 8;
+	}
+	if(j + 3 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*4 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*4 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+				b[i1*4 + 2] = get_a_nopad(args, x+i+i1, y+j+2);
+				b[i1*4 + 3] = get_a_nopad(args, x+i+i1, y+j+3);
+			}
+			b += im * 4;
+		}
+		j += 4;
+	}
+	if(j + 1 < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+			{
+				b[i1*2 + 0] = get_a_nopad(args, x+i+i1, y+j);
+				b[i1*2 + 1] = get_a_nopad(args, x+i+i1, y+j+1);
+			}
+			b += im * 2;
+		}
+		j += 2;
+	}
+	if(j < n)
+	{
+		for(i = 0; i < m; i += 16)
+		{
+			im = m - i > 16 ? 16 : m - i;
+			for(i1 = 0; i1 < im; i1++)
+				b[i1] = get_a_nopad(args, x+i+i1, y+j);
+			b += im;
+		}
+	}
+}
+
+#else
 static void icopy_operation_pad(int m, int n, struct sgemmargs *args, int x, int y, float *b)
 {
 	int i, i1, j, im;
@@ -381,6 +574,7 @@ static void icopy_operation_nopad(int m, int n, struct sgemmargs *args, int x, i
 	}
 }
 
+#endif
 #endif
 
 static void icopy_operation(int m, int n, struct sgemmargs *args, int x, int y, float *b)

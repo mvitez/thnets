@@ -39,9 +39,15 @@
 #ifndef COMMON_X86
 #define COMMON_X86
 
+#ifdef __APPLE__
+#define OS_DARWIN
+#endif
+
 #define SIZE 4
-#define PENRYN
 #define BASE_SHIFT 2
+#define BLASLONG long
+#define BLASULONG unsigned long
+#define FLOAT float
 
 #define ALIGNED_ACCESS
 #define SHUFPD_0	shufpd	$0,
@@ -49,174 +55,6 @@
 #define SHUFPD_2	shufpd	$2,
 #define SHUFPD_3	shufpd	$3,
 #define SHUFPS_39	shufps	$0x39,
-
-#ifndef ASSEMBLER
-
-#ifdef C_MSVC
-#include <intrin.h>
-#endif
-
-#ifdef C_SUN
-#define	__asm__ __asm
-#define	__volatile__
-#endif
-
-/*
-#ifdef HAVE_SSE2
-#define MB   __asm__ __volatile__ ("mfence");
-#define WMB  __asm__ __volatile__ ("sfence");
-#else
-#define MB
-#define WMB
-#endif
-*/
-
-#define MB
-#define WMB
-
-static void __inline blas_lock(volatile BLASULONG *address){
-
-#ifndef C_MSVC
-  int ret;
-#else
-  BLASULONG ret;
-#endif
-
-  do {
-    while (*address) {YIELDING;};
-
-#ifndef C_MSVC
-    __asm__ __volatile__(
-			 "xchgl %0, %1\n"
-			 : "=r"(ret), "=m"(*address)
-			 : "0"(1), "m"(*address)
-			 : "memory");
-#else
-    ret=InterlockedExchange64((volatile LONG64 *)(address), 1);
-#endif
-  } while (ret);
-
-}
-#define BLAS_LOCK_DEFINED
-
-static __inline BLASULONG rpcc(void){
-#ifdef C_MSVC
-  return __rdtsc();
-#else
-  BLASULONG a, d;
-
-  __asm__ __volatile__ ("rdtsc" : "=a" (a), "=d" (d));
-
-  return ((BLASULONG)a + ((BLASULONG)d << 32));
-#endif
-}
-#define RPCC_DEFINED
-
-#define RPCC64BIT
-
-#ifndef C_MSVC
-static __inline BLASULONG getstackaddr(void){
-  BLASULONG addr;
-
-  __asm__ __volatile__ ("movq %%rsp, %0"
-			 : "=r"(addr) : : "memory");
-
-  return addr;
-}
-#endif
-
-static __inline void cpuid(int op, int *eax, int *ebx, int *ecx, int *edx){
-
-#ifdef C_MSVC
-  int cpuinfo[4];
-  __cpuid(cpuinfo, op);
-  *eax=cpuinfo[0];
-  *ebx=cpuinfo[1];
-  *ecx=cpuinfo[2];
-  *edx=cpuinfo[3];
-#else
-        __asm__ __volatile__("cpuid"
-			     : "=a" (*eax),
-			     "=b" (*ebx),
-			     "=c" (*ecx),
-			     "=d" (*edx)
-			     : "0" (op));
-#endif
-}
-
-/*
-#define WHEREAMI
-*/
-
-static __inline int WhereAmI(void){
-  int eax, ebx, ecx, edx;
-  int apicid;
-
-  cpuid(1, &eax, &ebx, &ecx, &edx);
-  apicid  = BITMASK(ebx, 24, 0xff);
-
-  return apicid;
-}
-
-
-#ifdef CORE_BARCELONA
-#define IFLUSH		gotoblas_iflush()
-#define IFLUSH_HALF	gotoblas_iflush_half()
-#endif
-
-#ifdef ENABLE_SSE_EXCEPTION
-
-#define IDEBUG_START \
-{ \
-  unsigned int fp_sse_mode, new_fp_mode; \
-  __asm__ __volatile__ ("stmxcsr %0" : "=m" (fp_sse_mode) : ); \
-  new_fp_mode = fp_sse_mode & ~0xd00; \
-  __asm__ __volatile__ ("ldmxcsr %0" : : "m" (new_fp_mode) );
-
-#define IDEBUG_END \
-  __asm__ __volatile__ ("ldmxcsr %0" : : "m" (fp_sse_mode) ); \
-}
-
-#endif
-
-#ifdef XDOUBLE
-#define GET_IMAGE(res)  __asm__ __volatile__("fstpt %0" : "=m"(res) : : "memory")
-#elif defined(DOUBLE)
-#define GET_IMAGE(res)  __asm__ __volatile__("movsd %%xmm1, %0" : "=m"(res) : : "memory")
-#else
-#define GET_IMAGE(res)  __asm__ __volatile__("movss %%xmm1, %0" : "=m"(res) : : "memory")
-#endif
-
-#define GET_IMAGE_CANCEL
-
-#ifdef SMP
-#if defined(USE64BITINT)
-static __inline blasint blas_quickdivide(blasint x, blasint y){
-  return x / y;
-}
-#elif defined (C_MSVC)
-static __inline BLASLONG blas_quickdivide(BLASLONG x, BLASLONG y){
-  return x / y;
-}
-#else
-extern unsigned int blas_quick_divide_table[];
-
-static __inline int blas_quickdivide(unsigned int x, unsigned int y){
-
-  unsigned int result;
-
-  if (y <= 1) return x;
-
-  y = blas_quick_divide_table[y];
-
-  __asm__ __volatile__  ("mull %0" :"=d" (result) :"a"(x), "0" (y));
-
-  return result;
-}
-#endif
-#endif
-
-#endif
 
 #ifndef PAGESIZE
 #define PAGESIZE	( 4 << 10)
@@ -354,11 +192,13 @@ static __inline int blas_quickdivide(unsigned int x, unsigned int y){
 #define movhpd	movhps
 #endif
 
-#ifndef F_INTERFACE
-#define REALNAME ASMNAME
+#ifdef OS_DARWIN
+#define BUILDNAME(a) _ ## a
 #else
-#define REALNAME ASMFNAME
+#define BUILDNAME(a) a
 #endif
+
+#define REALNAME ASMNAME
 
 #ifdef OS_DARWIN
 #define PROLOGUE .text;.align 5; .globl REALNAME; REALNAME:

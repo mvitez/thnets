@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <sys/time.h>
 #include "thnets.h"
 
 static int lasterror;
@@ -121,12 +122,22 @@ static void yuyv2fRGB(const unsigned char *frame, float *dst_float, int imgstrid
 double th_seconds()
 {
 	static double s;
+#ifdef __MACH__
+	struct timeval tv;
+	struct timezone tz;
+
+	gettimeofday(&tv, &tz);
+	if(!s)
+		s = tv.tv_sec + tv.tv_usec * 1e-6;
+	return tv.tv_sec + tv.tv_usec * 1e-6 - s;
+#else
 	struct timespec ts;
 	
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	if(!s)
 		s = ts.tv_sec + ts.tv_nsec * 1e-9;
 	return ts.tv_sec + ts.tv_nsec * 1e-9 - s;
+#endif
 }
 
 void FindMinMax(THFloatTensor *t, float *min, float *max)

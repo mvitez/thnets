@@ -37,6 +37,7 @@
 /*********************************************************************/
 
 #define ASSEMBLER
+#define ASMNAME BUILDNAME(sgemm_kernel)
 #include "common.h"
 
 #define OLD_M	%rdi
@@ -95,11 +96,8 @@
 #define PREFETCHSIZE  (8 * 17 + 4)
 #define PREFETCH     prefetcht0
 
-	.text
-	.align 512
-	.globl sgemm_kernel
-	.type sgemm_kernel, @function
-sgemm_kernel:
+	PROLOGUE
+	PROFCODE
 
 	subq	$STACKSIZE, %rsp
 
@@ -2515,5 +2513,4 @@ sgemm_kernel:
 	addq	$STACKSIZE, %rsp
 	ret
 
-	.size	 sgemm_kernel, .-sgemm_kernel
-	.section .note.GNU-stack,"",@progbits
+	EPILOGUE

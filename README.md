@@ -2,8 +2,8 @@
 
 ## Installation
 
-Requirements for library: OpenBLAS (already part of the library for ARM and x86_64),
-CuDNN version 4 if compiled with the CUDNN=1 option, OpenCL if compiled with the OPENCL=1 option,
+Requirements for library: OpenBLAS (already part of the library for ARM, ARM64 and x86_64),
+CuDNN version 4 or 5 if compiled with the CUDNN option, OpenCL if compiled with the OPENCL=1 option,
 gemmlowp if compiled with the LOWP=1 option.
 Requirements for test: libpng and libjpeg  
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
@@ -12,9 +12,15 @@ Install with "(sudo) make install".
 Make options are:
    * *DEBUG* 0 is off, 1 is on
    * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
-   * *CUDNN* 0 is off, 1 uses CuDNN
+   * *CUDNN* 4 uses CuDNNv4, 5 uses CUDNNv5
    * *OPENCL* 0 is off, 1 uses OpenCL
    * *LOWP* 0 is off, 1 uses gemmlowp
+   * *SANDYBRIDGE* 0 is default (PENRYN), 1 uses SANDYBRIDGE routines
+   * *HASWELL* 0 is default (PENRYN), 1 uses HASWELL routines
+
+On Intel architectures, the default is to use Penryn routines (e.g. Core 2 E8xxx CPUs), which
+will work on most machines. By activating SANDYBRIDGE (2nd generation Core) or HASWELL (4th generation)
+it will take advantage of new instructions present on more modern CPUs.
 
 gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp directory, if used.
 

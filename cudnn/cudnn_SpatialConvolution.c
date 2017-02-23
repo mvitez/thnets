@@ -45,7 +45,11 @@ THFloatTensor *cudnn_SpatialConvolution_updateOutput(struct module *module, THFl
 		else errcheck(cudnnSetTensor4dDescriptor(dinput, CUDNN_TENSOR_NCHW, floattype, input->size[0], input->size[1], 1, 1));
 	} else errcheck(THcudnn_TensorDescriptor(&dinput, input));
 	errcheck(cudnnCreateFilterDescriptor(&dweight));
+#ifdef CUDNN5
+	errcheck(cudnnSetFilter4dDescriptor_v3(dweight, floattype, nOutputPlane, nInputPlane, kH, kW));
+#else
 	errcheck(cudnnSetFilter4dDescriptor(dweight, floattype, nOutputPlane, nInputPlane, kH, kW));
+#endif
 	errcheck(cudnnCreateTensorDescriptor(&dbias));
 	errcheck(cudnnSetTensor4dDescriptor(dbias, CUDNN_TENSOR_NCHW, floattype, 1, bias->size[0], 1, 1));
 	errcheck(cudnnCreateConvolutionDescriptor(&dconv));
@@ -66,8 +70,13 @@ THFloatTensor *cudnn_SpatialConvolution_updateOutput(struct module *module, THFl
 	errcheck(cudnnConvolutionForward(THcudnn_getHandle(), &one, dinput, THFloatTensor_data(input),
 		dweight, THFloatTensor_data(weight), dconv, alg, ws, wssize, &zero,
 		doutput, THFloatTensor_data(output)));
+#ifdef CUDNN5
+	errcheck(cudnnAddTensor(THcudnn_getHandle(), &one, dbias, THFloatTensor_data(bias),
+		&one, doutput, THFloatTensor_data(output)));
+#else
 	errcheck(cudnnAddTensor_v3(THcudnn_getHandle(), &one, dbias, THFloatTensor_data(bias),
 		&one, doutput, THFloatTensor_data(output)));
+#endif
 	cudnnDestroyTensorDescriptor(dinput);
 	cudnnDestroyFilterDescriptor(dweight);
 	cudnnDestroyTensorDescriptor(dbias);
