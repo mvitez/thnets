@@ -53,6 +53,10 @@ THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input
 		bs = input->size[0];
 		ks = input->size[2] * input->size[3];
 		break;
+	default:
+		ks = 0;
+		bs = 0;
+		break;
 	}
 	
 	if (input->size[(input_ndim + 1) % 2] != nOutputPlane)

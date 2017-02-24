@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #ifndef NOJPEG
 #include <jpeglib.h>
 #endif
