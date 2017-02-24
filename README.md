@@ -29,6 +29,8 @@ gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp 
     export LD_LIBRARY_PATH=/usr/local/lib:/opt/OpenBLAS/lib (add CUDA and CUDNN lib directories, if using CUDNN)
     ./test -m <model_dir> -i <input_file>
 
+This test reports running time in seconds for each iteration on the input file.
+
 The model directory must contain 2 files:
    * *model.net* the network file saved in .t7 format
    * *stat.t7* contains a table with a 'std' and 'mean' FloatTensor of dimension 3
