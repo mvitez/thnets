@@ -2,7 +2,7 @@
 
 // ARM assembly functions use -mfloat-abi=hard calling convention, Android does not,
 // unless armeabi-v7a-hard is specified in Application.mk, but this is not supported anymore
-#ifdef ANDROID
+#if defined ANDROID && defined __NEON__
 #define FCALL __attribute__((pcs("aapcs-vfp")))
 #else
 #define FCALL
