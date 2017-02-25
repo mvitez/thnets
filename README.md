@@ -5,7 +5,6 @@
 Requirements for library: OpenBLAS (already part of the library for ARM, ARM64 and x86_64),
 CuDNN version 4 or 5 if compiled with the CUDNN option, OpenCL if compiled with the OPENCL=1 option,
 gemmlowp if compiled with the LOWP=1 option.
-Requirements for test: libpng and libjpeg  
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 Make with "make".
 Install with "(sudo) make install".
@@ -35,7 +34,7 @@ The model directory must contain 2 files:
    * *model.net* the network file saved in .t7 format
    * *stat.t7* contains a table with a 'std' and 'mean' FloatTensor of dimension 3
 
-Input file can be a .jpg or .png file, or a .t7 file containing a FloatTensor of dimension 3
+Input file can be an image file (JPEG, PNG, TGA, BMP), or a .t7 file containing a FloatTensor of dimension 3
 
 ## High level API description
 
@@ -139,9 +138,7 @@ I don't have the time to build a complete Android example, but just to give some
 sample Android.mk and Application.mk file that will create an executable file that will run on Android
 devices. If you don't have a rooted device, you can use SSHServer from Ice Cold Apps, ssh into the device
 and copy the executable here: /data/data/com.icecoldapps.sshserver (the only accessible place where
-you can set the executable flag on files). Before compiling, put the .c and .h files from
-https://github.com/julienr/libpng-android/tree/stable/jni into a libpng subdirectory of thnets. I've
-also removed every reference to JPEG from image.c. Otherwise you can try to compile libjpeg-turbo.
+you can set the executable flag on files).
 
 ### PyTorch
 

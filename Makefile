@@ -177,7 +177,7 @@ libthnets.so: $(LIBOBJS)
 	$(CXX) -o $@ $(LIBOBJS) -shared $(LDFLAGS) $(LIBS)
 
 test: $(LIBOBJS) test.o images.o
-	$(CC) -o $@ test.o images.o libthnets.so $(LDFLAGS) $(LIBS) -lpng -ljpeg
+	$(CC) -o $@ test.o images.o libthnets.so $(LDFLAGS) $(LIBS)
 
 clean :
 	rm -f *.o libthnets.so test
