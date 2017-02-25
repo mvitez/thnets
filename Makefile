@@ -9,6 +9,7 @@ LOWP = 0
 PENRYN = 0
 SANDYBRIDGE = 0
 HASWELL = 0
+USEBLAS = 0
 #Can be no, 4 or 5 (version)
 CUDNN = no
 
@@ -17,9 +18,10 @@ CUDAPATH2=/usr/local/cuda/targets/aarch64-linux
 OPENBLASPATH=/opt/OpenBLAS/lib
 #End of variables users can change
 
-UNAME := $(shell uname -m)
-CFLAGS = -Wall -c -fopenmp -fPIC
-CPPFLAGS = -Wall -c -fopenmp -fPIC -std=c++11
+UNAME_M := $(shell uname -m)
+UNAME_S := $(shell uname -s)
+CFLAGS = -Wall -c -fPIC
+CPPFLAGS = -Wall -c -fPIC -std=c++11
 LIBS = -lm
 CC = gcc
 CXX = g++
@@ -29,17 +31,29 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
 	SpatialAveragePooling.o Sequential.o Concat.o ConcatTable.o JoinTable.o CAddTable.o \
-	PReLU.o sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o pytorch.o
+	PReLU.o pytorch.o
 
+ifeq ($(UNAME_S),Darwin)
+	CFLAGS += -DACCELERATE
+	USEBLAS = 1
+else
+	CFLAGS += -fopenmp
+	CPPFLAGS += -fopenmp
+	LDFLAGS += -fopenmp
+endif
+
+ifneq ($(USEBLAS),1)
+
+	LIBOBJS += sgemm.o sger.o sgemv.o gemm_beta.o gemv_t.o copy.o
 #ARM 32 bit
-ifneq ($(filter arm%,$(UNAME)),)
+ifneq ($(filter arm%,$(UNAME_M)),)
 	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -DHAVEFP16 -mfp16-format=ieee
 	LIBOBJS += axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
 	VPATH += OpenBLAS-stripped/arm
 endif
 
 #ARM 64 bit
-ifneq ($(filter aarc%,$(UNAME)),)
+ifneq ($(filter aarc%,$(UNAME_M)),)
 	CFLAGS += -DARM -DHAVEFP16
 	CUFLAGS += -DHAVEHALF --gpu-architecture=compute_53
 	LIBOBJS += axpy.o sgemm_kernel_4x4.o gemm_ncopy_4.o gemm_tcopy_4.o
@@ -47,7 +61,7 @@ ifneq ($(filter aarc%,$(UNAME)),)
 endif
 
 #Intel 64 bit
-ifneq ($(filter x86_64%,$(UNAME)),)
+ifneq ($(filter x86_64%,$(UNAME_M)),)
 
 ifeq ($(PENRYN)$(SANDYBRIDGE)$(HASWELL),000)
 	PENRYN=1
@@ -75,11 +89,33 @@ endif
 	VPATH += OpenBLAS-stripped/x86_64
 endif
 
-#Situations where we cannot use our stripped version of OpenBLAS
-ifeq ($(filter x86_64% arm% aarc%,$(UNAME)),)
+else #USEBLAS
+
 	CFLAGS += -DUSEBLAS
+ifeq ($(UNAME_S),Darwin)
+	LIBS += -framework Accelerate
+else
 	LIBS += -L$(OPENBLASPATH) -lopenblas
 endif
+
+#ARM 32 bit
+ifneq ($(filter arm%,$(UNAME_M)),)
+	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -DHAVEFP16 -mfp16-format=ieee
+endif
+
+#ARM 64 bit
+ifneq ($(filter aarc%,$(UNAME_M)),)
+	CFLAGS += -DARM -DHAVEFP16
+	CUFLAGS += -DHAVEHALF --gpu-architecture=compute_53
+endif
+
+#Intel 64 bit
+ifneq ($(filter x86_64%,$(UNAME_M)),)
+	CFLAGS += -DX86_64
+	CPPFLAGS += -DX86_64
+endif
+
+endif #USEBLAS
 
 #Memory leaks debugging
 ifneq ($(MEMORYDEBUG),no)
@@ -138,10 +174,10 @@ all : libthnets.so test
 	nvcc -c -Xcompiler -fPIC $(CUFLAGS) -DCUDNN $<
 
 libthnets.so: $(LIBOBJS)
-	$(CXX) -o $@ $(LIBOBJS) -shared -fopenmp $(LIBS)
+	$(CXX) -o $@ $(LIBOBJS) -shared $(LDFLAGS) $(LIBS)
 
 test: $(LIBOBJS) test.o images.o
-	$(CC) -o $@ test.o images.o libthnets.so $(LIBS) -lpng -ljpeg
+	$(CC) -o $@ test.o images.o libthnets.so $(LDFLAGS) $(LIBS) -lpng -ljpeg
 
 clean :
 	rm -f *.o libthnets.so test

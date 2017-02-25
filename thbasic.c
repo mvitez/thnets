@@ -7,6 +7,9 @@
 #ifndef USEBLAS
 #include "sgemm.h"
 #endif
+#ifdef ACCELERATE
+#include <Accelerate/Accelerate.h>
+#endif
 
 #define THAtomicIncrement(a) __sync_fetch_and_add(a, 1);
 #define THAtomicDecrement(a) __sync_fetch_and_add(a, -1);
@@ -423,7 +426,12 @@ void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, 
 		int i_lda = (int)lda;
 		int i_ldb = (int)ldb;
 		int i_ldc = (int)ldc;
+#ifdef ACCELERATE
+		cblas_sgemm(CblasColMajor, transa == 't' ? CblasTrans : CblasNoTrans, transb == 't' ? CblasTrans : CblasNoTrans,
+			i_m, i_n, i_k, alpha, a, i_lda, b, i_ldb, beta, c, i_ldc);
+#else
 		sgemm_(&transa, &transb, &i_m, &i_n, &i_k, &alpha, a, &i_lda, b, &i_ldb, &beta, c, &i_ldc);
+#endif
 #else
 		sgemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 #endif
@@ -448,7 +456,11 @@ void THBlas_gemv(char trans, long m, long n, float alpha, float *a, long lda, fl
 		int i_lda = (int)lda;
 		int i_incx = (int)incx;
 		int i_incy = (int)incy;
+#ifdef ACCELERATE
+		cblas_sgemv(CblasColMajor, trans == 't' ? CblasTrans : CblasNoTrans, i_m, i_n, alpha, a, i_lda, x, i_incx, beta, y, i_incy);
+#else
 		sgemv_(&trans, &i_m, &i_n, &alpha, a, &i_lda, x, &i_incx, &beta, y, &i_incy);
+#endif
 #else
 		sgemv(trans, m, n, alpha, a, lda, x, incx, beta, y, incy);
 #endif
@@ -467,7 +479,11 @@ void THBlas_ger(long m, long n, float alpha, float *x, long incx, float *y, long
 	int i_lda = (int)lda;
 	int i_incx = (int)incx;
 	int i_incy = (int)incy;
+#ifdef ACCELERATE
+	cblas_sger(CblasColMajor, i_m, i_n, alpha, x, i_incx, y, i_incy, a, i_lda);
+#else
 	sger_(&i_m, &i_n, &alpha, x, &i_incx, y, &i_incy, a, &i_lda);
+#endif
 #else
 	sger(m, n, alpha, x, incx, y, incy, a, lda);
 #endif

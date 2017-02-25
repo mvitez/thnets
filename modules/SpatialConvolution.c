@@ -35,7 +35,11 @@ int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n)
 void pyload_SpatialConvolution(struct pyfunction *f)
 {
 	f->module.updateOutput = nn_SpatialConvolutionMM_updateOutput;
+#ifdef USEBLAS
+	f->module.type = MT_SpatialConvolutionMM;
+#else
 	f->module.type = MT_SpatialConvolutionVirtMM;
+#endif
 	f->module.nnfree = nnfree_SpatialConvolution;
 	struct SpatialConvolution *p = &f->module.SpatialConvolution;
 	struct pyelement *el;

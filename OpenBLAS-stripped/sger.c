@@ -36,7 +36,7 @@
 /* or implied, of The University of Texas at Austin.                 */
 /*********************************************************************/
 
-/* Modified by Marko Vitez for University of Purdue                  */
+/* Modified by Marko Vitez for Purdue University                     */
 
 #include "blas.h"
 
