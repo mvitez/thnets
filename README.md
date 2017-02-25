@@ -1,5 +1,13 @@
 # Stand-alone library for loading and running Torch and PyTorch neural networks
 
+## Compatibility
+
+This library has been tested on various flavours of Linux, Android, MacOS and iOS (for iOS has been
+compiled successfully, but not tested). A Makefile is provided that should work in most of the cases.
+Android build files are also provided for a test application. For iOS just put all the files in XCode,
+but leave out OpenBLAS-stripped. You have to add -DUSEBLAS -DACCELERATE in the compiler options.
+images.c and test.c are required only for the test executable, leave them out if you only need the library.
+
 ## Installation
 
 Requirements for library: OpenBLAS (already part of the library for ARM, ARM64 and x86_64),
