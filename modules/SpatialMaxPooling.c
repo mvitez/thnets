@@ -120,8 +120,8 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 	long nslices = input->size[1];
 	long iheight = input->size[2];
 	long iwidth = input->size[3];
-	module->SpatialMaxPooling.iwidth = iwidth;
-	module->SpatialMaxPooling.iheight = iheight;
+	module->SpatialMaxPooling.iwidth = (int)iwidth;
+	module->SpatialMaxPooling.iheight = (int)iheight;
 
 	long oheight;
 	long owidth;

@@ -73,15 +73,15 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 		THError("Invalid input size w.r.t current indices size");
 	if (input->nDimension == 4) 
 	{
-		nbatch = input->size[0];
+		nbatch = (int)input->size[0];
 		dimw++;
 		dimh++;
 	}
 
 	/* sizes */
-	nslices = input->size[dimh-1];
-	iheight = input->size[dimh];
-	iwidth = input->size[dimw];
+	nslices = (int)input->size[dimh-1];
+	iheight = (int)input->size[dimh];
+	iwidth = (int)input->size[dimw];
 
 	/* resize output */
 	if (input->nDimension == 3)

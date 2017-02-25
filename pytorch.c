@@ -74,11 +74,11 @@ THFloatTensor *readtensor(FILE *fp)
 		th->size[i] = size[i];
 	for(i = ndim - 1; i >= 0; i--)
 	{
-		th->stride[i] = stride;
+		th->stride[i] = (long)stride;
 		stride *= th->size[i];
 	}
-	th->storage = THFloatStorage_new(storagesize);
-	if(fread(th->storage->data, sizeof(*th->storage->data), storagesize, fp) != storagesize)
+	th->storage = THFloatStorage_new((long)storagesize);
+	if(fread(th->storage->data, sizeof(*th->storage->data), (size_t)storagesize, fp) != storagesize)
 	{
 		THFloatTensor_free(th);
 		return 0;

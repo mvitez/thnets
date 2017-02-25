@@ -80,8 +80,8 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 	THFloatTensor *columns = module->SpatialFullConvolution.columns;
 	THFloatTensor *ones = module->SpatialFullConvolution.ones;
 
-	int nInputPlane = weight->size[0];
-	int nOutputPlane = weight->size[1];
+	int nInputPlane = (int)weight->size[0];
+	int nOutputPlane = (int)weight->size[1];
 
 	if(input->nDimension != 3 && input->nDimension != 4)
 		THError("3D or 4D (batch mode) tensor is expected");
@@ -151,7 +151,7 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 		// Unpack columns back into input:
 		col2im(
 			THFloatTensor_data(columns),
-			nOutputPlane, outputHeight, outputWidth, kH, kW, padH, padW, dH, dW,
+			nOutputPlane, (int)outputHeight, (int)outputWidth, kH, kW, padH, padW, dH, dW,
 			THFloatTensor_data(output_n)
 		);
 

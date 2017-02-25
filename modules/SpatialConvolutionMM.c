@@ -77,7 +77,7 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	if(finput)
 	{
 		nn_unfolded_copy(finput, input, kW, kH, dW, dH, padW, padH,
-			nInputPlane, inputWidth, inputHeight, outputWidth, outputHeight);
+			(int)nInputPlane, (int)inputWidth, (int)inputHeight, (int)outputWidth, (int)outputHeight);
 		output2d = THFloatTensor_newWithStorage2d(output->storage, output->storageOffset,
 			nOutputPlane, -1, outputHeight*outputWidth, -1);
 	}

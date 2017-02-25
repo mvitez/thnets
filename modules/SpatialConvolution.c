@@ -46,10 +46,10 @@ void pyload_SpatialConvolution(struct pyfunction *f)
 	p->weight = pygettensor(f->params, "", 0);
 	p->bias = pygettensor(f->params, "", 1);
 	p->finput = THFloatTensor_new();
-	p->nOutputPlane = p->weight->size[0];
-	p->nInputPlane = p->weight->size[1];
-	p->kH = p->weight->size[2];
-	p->kW = p->weight->size[3];
+	p->nOutputPlane = (int)p->weight->size[0];
+	p->nInputPlane = (int)p->weight->size[1];
+	p->kH = (int)p->weight->size[2];
+	p->kW = (int)p->weight->size[3];
 	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
 	{
 		p->padH = el->ivect[0];

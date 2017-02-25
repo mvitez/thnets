@@ -146,7 +146,7 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 					long wstart = xx * dW - padW;
 					long hend = fminf(hstart + kH, inputHeight + padH);
 					long wend = fminf(wstart + kW, inputWidth + padW);
-					int pool_size = (hend - hstart) * (wend - wstart);
+					long pool_size = (hend - hstart) * (wend - wstart);
 					hstart = fmaxf(hstart, 0);
 					wstart = fmaxf(wstart, 0);
 					hend = fminf(hend, inputHeight);
@@ -154,7 +154,7 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 
 					float sum = 0;
 
-					int divide_factor;
+					long divide_factor;
 					if(count_include_pad)
 						divide_factor = pool_size;
 					else

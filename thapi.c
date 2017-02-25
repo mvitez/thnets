@@ -385,10 +385,10 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	*result = out->storage->data;
 	if(out->nDimension >= 3)
 	{
-		*outwidth = out->size[out->nDimension - 1];
-		*outheight = out->size[out->nDimension - 2];
+		*outwidth = (int)out->size[out->nDimension - 1];
+		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return THFloatTensor_nElement(out);
+	return (int)THFloatTensor_nElement(out);
 }
 
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight, int bgr)
@@ -506,10 +506,10 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
 	{
-		*outwidth = out->size[out->nDimension - 1];
-		*outheight = out->size[out->nDimension - 2];
+		*outwidth = (int)out->size[out->nDimension - 1];
+		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return THFloatTensor_nElement(out);
+	return (int)THFloatTensor_nElement(out);
 }
 
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight)
@@ -545,10 +545,10 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
 	{
-		*outwidth = out->size[out->nDimension - 1];
-		*outheight = out->size[out->nDimension - 2];
+		*outwidth = (int)out->size[out->nDimension - 1];
+		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return THFloatTensor_nElement(out);
+	return (int)THFloatTensor_nElement(out);
 }
 
 void THFreeNetwork(THNETWORK *network)
@@ -606,7 +606,7 @@ void THMakeSpatial(THNETWORK *network, int size)
 			c->dW = c->dH = 1;
 			c->kW = c->kH = size;
 			c->nInputPlane = nInputPlane;
-			nInputPlane = c->nOutputPlane = c->weight->size[0];
+			nInputPlane = c->nOutputPlane = (int)c->weight->size[0];
 			size = (size + 2*c->padW - c->kW) / c->dW + 1;
 		} else if(network->net->modules[i].type == MT_SpatialConvolution ||
 			network->net->modules[i].type == MT_SpatialConvolutionMM ||
@@ -619,8 +619,8 @@ void THMakeSpatial(THNETWORK *network, int size)
 		{
 			struct SpatialMaxPooling *c = &network->net->modules[i].SpatialMaxPooling;
 			if(c->ceil_mode)
-				size = (long)(ceil((float)(size - c->kH + 2*c->padH) / c->dH)) + 1;
-			else size = (long)(floor((float)(size - c->kH + 2*c->padH) / c->dH)) + 1;
+				size = (ceil((float)(size - c->kH + 2*c->padH) / c->dH)) + 1;
+			else size = (floor((float)(size - c->kH + 2*c->padH) / c->dH)) + 1;
 		} else if(network->net->modules[i].type == MT_SpatialZeroPadding)
 		{
 			struct SpatialZeroPadding *c = &network->net->modules[i].SpatialZeroPadding;

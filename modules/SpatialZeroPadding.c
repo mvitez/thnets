@@ -23,8 +23,8 @@ THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloat
 	int pad_r = module->SpatialZeroPadding.pad_r;
 	int pad_t = module->SpatialZeroPadding.pad_t;
 	int pad_b = module->SpatialZeroPadding.pad_b;
-	int iw = input->size[idim-1];
-	int ih = input->size[idim-2];
+	int iw = (int)input->size[idim-1];
+	int ih = (int)input->size[idim-2];
 	int ow = iw + pad_l + pad_r;
 	int oh = ih + pad_t + pad_b;
 	int ix1 = pad_l < 0 ? -pad_l : 0;
@@ -34,9 +34,9 @@ THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloat
 	if(idim == 3)
 		THFloatTensor_resize3d(module->output, input->size[0], oh, ow);
 	else THFloatTensor_resize4d(module->output, input->size[0], input->size[1], oh, ow);
-	int batchsize = idim == 4 ? input->size[0] : 1;
+	int batchsize = idim == 4 ? (int)input->size[0] : 1;
 	int batch, plane, y;
-	int istride = input->size[idim-2];
+	int istride = (int)input->size[idim-2];
 #pragma omp parallel for private(batch)
 	for(batch = 0; batch < batchsize; batch++)
 		for(plane = 0; plane < input->size[idim - 3]; plane++)

@@ -681,7 +681,7 @@ void *TableGetStorage(struct table *t, const char *name, int *nelem)
 			t->records[i].value.type == TYPE_STORAGE)
 		{
 			struct storage *tt = t->records[i].value.storage;
-			*nelem = tt->nelem;
+			*nelem =(int) tt->nelem;
 			return tt->data;
 		}
 	return 0;

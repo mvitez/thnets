@@ -26,10 +26,10 @@ THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input
 	float *in = THFloatTensor_data(input);
 	float *out = THFloatTensor_data(output);
 	float *w = THFloatTensor_data(weight);
-	int bs, ks, nOutputPlane = module->PReLU.nOutputPlane;
+	long bs, ks, nOutputPlane = module->PReLU.nOutputPlane;
 	if(nOutputPlane == 0)
 	{
-		int i, n = THFloatTensor_nElement(input);
+		long i, n = THFloatTensor_nElement(input);
 		for(i = 0; i < n; i++)
 			out[i] = in[i] > 0 ? in[i] : *w*in[i];
 		return output;
