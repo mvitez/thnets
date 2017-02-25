@@ -4,9 +4,7 @@
 
 This library has been tested on various flavours of Linux, Android, MacOS and iOS (for iOS has been
 compiled successfully, but not tested). A Makefile is provided that should work in most of the cases.
-Android build files are also provided for a test application. For iOS just put all the files in XCode,
-but leave out OpenBLAS-stripped. You have to add -DUSEBLAS -DACCELERATE in the compiler options.
-images.c and test.c are required only for the test executable, leave them out if you only need the library.
+Android build files are also provided for a test application. For Androi / iOS see section below.
 
 ## Installation
 
@@ -147,6 +145,15 @@ sample Android.mk and Application.mk file that will create an executable file th
 devices. If you don't have a rooted device, you can use SSHServer from Ice Cold Apps, ssh into the device
 and copy the executable here: /data/data/com.icecoldapps.sshserver (the only accessible place where
 you can set the executable flag on files).
+images.c and test.c are required only for the test executable, leave them out if you only need the library.
+
+
+
+### iOs instructions (for experts only)
+
+Add source C file in XCode, including all the ones in modules (leave out OpenBLAS-stripped and other files). 
+In the project -> Build Phases -> You have to add -DUSEBLAS -DACCELERATE in the compiler options for files: SpatialConvolution.c, SpatialConvolutionMM.c thbasic.c, thapi.c
+images.c and test.c are required only for the test executable, leave them out if you only need the library.
 
 ### PyTorch
 
