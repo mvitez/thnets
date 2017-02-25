@@ -152,8 +152,11 @@ images.c and test.c are required only for the test executable, leave them out if
 ### iOs instructions (for experts only)
 
 Add source C file in XCode, including all the ones in modules (leave out OpenBLAS-stripped and other files). 
-In the project -> Build Phases -> You have to add -DUSEBLAS -DACCELERATE in the compiler options for files: SpatialConvolution.c, SpatialConvolutionMM.c thbasic.c, thapi.c
 images.c and test.c are required only for the test executable, leave them out if you only need the library.
+
+In the project -> Build Phases -> You have to add -DUSEBLAS -DACCELERATE in the compiler options for files: SpatialConvolution.c, SpatialConvolutionMM.c thbasic.c, thapi.c
+
+Add Accelerate Framework to Project -> Build Phases -> Link Binary with Libraries
 
 ### PyTorch
 
