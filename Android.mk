@@ -47,7 +47,7 @@ LOCAL_SRC_FILES += \
 	OpenBLAS-stripped/arm/sgemm_kernel_4x4_vfpv3.S \
 	OpenBLAS-stripped/arm/sgemm_ncopy_4_vfp.S \
 	OpenBLAS-stripped/arm/sgemm_tcopy_4_vfp.S
-LOCAL_C_FLAGS += -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
+LOCAL_CFLAGS += -D__NEON__ -mcpu=cortex-a9 -mfpu=neon
 endif
 
 LOCAL_LDLIBS := -landroid -lm -llog
