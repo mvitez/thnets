@@ -64,13 +64,16 @@
 #else
 
 #define SWITCH_RATIO 4
+#if defined SANDYBRIDGE || defined HASWELL
+#define GEMM_UNROLL_M 16
+#define GEMM_P 768
+#define GEMM_Q 384
+#define GEMM_R 21056
+#else
+#define GEMM_UNROLL_M 8
 #define GEMM_P 1024
 #define GEMM_Q 512
 #define GEMM_R 15328
-#if defined SANDYBRIDGE || defined HASWELL
-#define GEMM_UNROLL_M 16
-#else
-#define GEMM_UNROLL_M 8
 #endif
 #define GEMM_UNROLL_N 4
 
