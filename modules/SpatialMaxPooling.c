@@ -98,6 +98,53 @@ static void nn_SpatialMaxPooling_updateOutput_frame(float *input_p, float *outpu
 	}
 }
 
+static void nn_SpatialMaxPooling_updateOutput_frame_planeminor(float *input_p, float *output_p, float *ind_p,
+	long nslices,
+	long iwidth, long iheight,
+	long owidth, long oheight,
+	int kW, int kH, int dW, int dH,
+	int padW, int padH)
+{
+	long i;
+#pragma omp parallel for private(i)
+	for (i = 0; i < oheight; i++) {
+		long j;
+		for (j = 0; j < owidth; j++) {
+			long k;
+			for (k = 0; k < nslices; k++) {
+				float *ip = input_p + k;
+				float *op = output_p + k;
+				float *indp = ind_p + k;
+
+				long hstart = i * dH - padH;
+				long wstart = j * dW - padW;
+				long hend = thfminf(hstart + kH, iheight);
+				long wend = thfminf(wstart + kW, iwidth);
+				hstart = thfmaxf(hstart, 0);
+				wstart = thfmaxf(wstart, 0);
+
+				long maxindex = -1;
+				float maxval = -THInf;
+
+				long x, y;
+				for (y = hstart; y < hend; y++) {
+					for (x = wstart; x < wend; x++) {
+						float val = *(ip + (y*iwidth + x) * nslices);
+
+						if (val > maxval)
+						{
+							maxval = val;
+							maxindex = y*iwidth + x;
+						}
+					}
+				}
+				*(op + (i*owidth + j) * nslices) = maxval;
+				*(indp + (i*owidth + j) * nslices) = maxindex + 1;
+			}
+		}
+	}
+}
+
 THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int kW = module->SpatialMaxPooling.kW;
@@ -120,6 +167,7 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 	long nslices = input->size[1];
 	long iheight = input->size[2];
 	long iwidth = input->size[3];
+	int planeminor = input->stride[1] == 1;
 	module->SpatialMaxPooling.iwidth = (int)iwidth;
 	module->SpatialMaxPooling.iheight = (int)iheight;
 
@@ -149,12 +197,24 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 	float *indices_data = THFloatTensor_data(indices);
 
 	long p;
+	if(planeminor)
+	{
+
 #pragma omp parallel for private(p)
-	for (p = 0; p < batchSize; p++) {
-		nn_SpatialMaxPooling_updateOutput_frame(input_data+p*nslices*iwidth*iheight,
-			output_data+p*nslices*owidth*oheight, indices_data+p*nslices*owidth*oheight,
-			nslices, iwidth, iheight, owidth, oheight,
-			kW, kH, dW, dH, padW, padH);
+		for (p = 0; p < batchSize; p++) {
+			nn_SpatialMaxPooling_updateOutput_frame_planeminor(input_data+p*nslices*iwidth*iheight,
+				output_data+p*nslices*owidth*oheight, indices_data+p*nslices*owidth*oheight,
+				nslices, iwidth, iheight, owidth, oheight,
+				kW, kH, dW, dH, padW, padH);
+		}
+	} else {
+#pragma omp parallel for private(p)
+		for (p = 0; p < batchSize; p++) {
+			nn_SpatialMaxPooling_updateOutput_frame(input_data+p*nslices*iwidth*iheight,
+				output_data+p*nslices*owidth*oheight, indices_data+p*nslices*owidth*oheight,
+				nslices, iwidth, iheight, owidth, oheight,
+				kW, kH, dW, dH, padW, padH);
+		}
 	}
 
 	if (batch == 0) {

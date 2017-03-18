@@ -107,7 +107,7 @@ typedef struct THFloatTensor
 {
     long size[4];
     long stride[4];
-    int nDimension;    
+    int nDimension;
 	THFloatStorage *storage;
 	long storageOffset;
 #ifdef LOWP
@@ -498,4 +498,10 @@ extern double th_convtot, th_convflops;
 
 #ifdef LOWP
 #include "lowp/lowp.h"
+#endif
+
+#ifdef USEQSML
+void init_thnets4qsml_conv(THNETWORK *network);
+void transform_mem(struct module newmod, int col, int row, int plane, int outp);
+float* transform_mem_input(float* in1, int col, int row, int plane);
 #endif

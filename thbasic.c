@@ -80,14 +80,22 @@ void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2
 {
 	long nElement = THFloatTensor_nElement(t);
 	t->nDimension = 4;
-	t->size[0] = size0;
-	t->size[1] = size1;
-	t->size[2] = size2;
-	t->size[3] = size3;
-	t->stride[3] = 1;
-	t->stride[2] = size3;
-	t->stride[1] = size2 * size3;
-	t->stride[0] = size1 * size2 * size3;
+	t->size[0] = size0;//batch
+	t->size[1] = size1;//plane
+	t->size[2] = size2;//row
+	t->size[3] = size3;//col
+
+	#ifdef USEQSML
+        t->stride[3] = size1;//col
+        t->stride[2] = size1 * size3;//row
+        t->stride[1] = 1;//plane
+        t->stride[0] = size1 * size2 * size3;//batch
+	#else
+        t->stride[3] = 1;//col
+        t->stride[2] = size3;//row
+        t->stride[1] = size2 * size3;//plane
+        t->stride[0] = size1 * size2 * size3;//batch
+    #endif
 	if(nElement != size0 * size1 * size2 * size3)
 	{
 		if(t->storage)
@@ -100,12 +108,19 @@ void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2
 {
 	long nElement = THFloatTensor_nElement(t);
 	t->nDimension = 3;
-	t->size[0] = size0;
-	t->size[1] = size1;
-	t->size[2] = size2;
-	t->stride[2] = 1;
-	t->stride[1] = size2;
-	t->stride[0] = size1 * size2;
+	t->size[0] = size0;//col
+	t->size[1] = size1;//row
+	t->size[2] = size2;//plane
+
+	#ifdef USEQSML
+        t->stride[2] = size2;//col
+        t->stride[1] = size1 * size2;//row
+        t->stride[0] = 1;//plane
+	#else
+        t->stride[2] = 1;//col
+        t->stride[1] = size2;//row
+        t->stride[0] = size1 * size2;//plane
+    #endif
 	if(nElement != size0 * size1 * size2)
 	{
 		if(t->storage)
@@ -1012,4 +1027,66 @@ void fromfp16(float *dst, const __fp16 *src, size_t len)
 		dst[i] = src[i];
 }
 
+#endif
+
+#ifdef USEQSML
+void init_thnets4qsml_conv(THNETWORK *network)
+{
+    int m, kW, kH, inP, outP;
+    struct module newmod;
+    for(m = 0; m < network->net->nelem; m++){
+        newmod = network->net->modules[m];
+        if(newmod.type==MT_SpatialConvolutionMM ||
+        newmod.type==MT_SpatialConvolutionVirtMM ||
+        newmod.type==MT_SpatialConvolution){
+            kW = newmod.SpatialConvolution.kW;
+            kH = newmod.SpatialConvolution.kH;
+            inP = newmod.SpatialConvolution.nInputPlane;
+            outP = newmod.SpatialConvolution.nOutputPlane;
+            transform_mem(newmod,kW,kH,inP,outP);
+        }
+    }
+}
+
+//weight thnets[col,row,plane,outplane] -> weight qsml[outplane,plane,col,row]
+void transform_mem(struct module newmod, int col, int row, int plane, int outp)
+{
+    int i, j, k, m, isx, idx;
+    int wsize = col*row*plane*outp;
+    float* weightout = THFloatTensor_data(newmod.SpatialConvolution.weight);
+    float* weightin = (float*)malloc(wsize*sizeof(float));
+    memcpy(weightin, weightout, wsize*sizeof(float));
+
+    //LOGD("%d,%d,%d,%d, %d\n",col,row,plane,outp,wsize);
+	for(m = 0; m < outp; m++) {
+	    for(k = 0; k < plane; k++) {
+            for(j = 0;j < row; j++) {
+                for(i = 0; i < col; i++) {
+                    isx = i + j*col + k*col*row + m*col*row*plane;
+                    idx = m + k*outp + i*outp*plane + j*outp*col*plane;
+                    weightout[idx] = weightin[isx];
+                }
+            }
+		}
+	}
+}
+
+//input thnets[col,row,plane] -> input qsml[plane,col,row]
+float* transform_mem_input(float* in1, int col, int row, int plane)
+{
+    int i, j, k, m, isx, idx;
+    int wsize = col*row*plane;
+    float* out = (float*)malloc(wsize*sizeof(float));
+
+    for(k = 0; k < plane; k++) {
+        for(j = 0;j < row; j++) {
+            for(i = 0; i < col; i++) {
+                isx = i + j*col + k*col*row;
+                idx = k + i*plane + j*col*plane;
+                out[idx] = in1[isx];
+            }
+        }
+    }
+    return out;
+}
 #endif

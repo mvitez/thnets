@@ -132,7 +132,7 @@ double th_seconds()
 	return tv.tv_sec + tv.tv_usec * 1e-6 - s;
 #else
 	struct timespec ts;
-	
+
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	if(!s)
 		s = ts.tv_sec + ts.tv_nsec * 1e-9;
@@ -161,7 +161,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 {
 	int i;
 	double t = 0;
-	
+
 	th_convtot = 0;
 	th_convflops = 0;
 #ifdef OPENCL
@@ -224,7 +224,7 @@ THNETWORK *THLoadNetwork(const char *path)
 	char tmppath[255];
 	int i, longsize = 8;
 	THNETWORK *net;
-	
+
 	net = calloc(1, sizeof(*net));
 	net->std[0] = net->std[1] = net->std[2] = 1;
 	net->mean[0] = net->mean[1] = net->mean[2] = 0;
@@ -333,17 +333,38 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	t->size[1] = 3;
 	t->size[2] = height;
 	t->size[3] = width;
-	t->stride[0] = 3 * width * height;
-	t->stride[1] = width * height;
-	t->stride[2] = width;
-	t->stride[3] = 1;
+
+    #ifdef USEQSML
+    	t->stride[0] = 3 * width * height;//batch
+    	t->stride[1] = 1;//plane
+    	t->stride[2] = 3 * width;//row
+    	t->stride[3] = 3;//col
+    #else
+        t->stride[0] = 3 * width * height;//batch
+        t->stride[1] = width * height;//plane
+        t->stride[2] = width;//row
+        t->stride[3] = 1;//col
+    #endif
+
+
 	t->storage = THFloatStorage_newwithbuffer((float *)data);
-#pragma omp parallel for private(b, c, i)
+	if(t->stride[1] == 1){//row major-plane minor
+#pragma omp parallel for private(b, i, c)
 	for(b = 0; b < batchsize; b++)
-		for(c = 0; c < 3; c++)
-			for(i = 0; i < width*height; i++)
-				data[b * t->stride[0] + c * t->stride[1] + i] =
-					(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];
+		for(i = 0; i < width*height; i++)
+		    for(c = 0; c < 3; c++)
+				data[b * t->stride[0] + c  + i * t->stride[3]] =
+					(data[b * t->stride[0] + c + i * t->stride[3]] - network->mean[c]) / network->std[c];
+	}
+	else{//plane major
+#pragma omp parallel for private(b, c, i)
+    	for(b = 0; b < batchsize; b++)
+    		for(c = 0; c < 3; c++)
+    			for(i = 0; i < width*height; i++)
+    				data[b * t->stride[0] + c * t->stride[1] + i] =
+    					(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];
+    }
+
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)
 	{
@@ -396,7 +417,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	int i;
 	THFloatTensor *out, *t = 0;
 	THFloatStorage *st;
-	
+
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)
 	{
@@ -582,7 +603,7 @@ int THLastError()
 void THMakeSpatial(THNETWORK *network, int size)
 {
 	int i, nInputPlane = 3;
-	
+
 	for(i = 0; i < network->net->nelem; i++)
 	{
 		if(network->net->modules[i].type == MT_View || network->net->modules[i].type == MT_Reshape)
