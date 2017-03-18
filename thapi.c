@@ -57,7 +57,7 @@ static void init_yuv2rgb()
 		TB_YUB[i]  =  541 * (i-128) / 256;
 		TB_YUGU[i] = -137 * (i-128) / 256;
 		TB_YUGV[i] = - 55 * (i-128) / 256;
-		TB_Y[i]    = (i-16) * 298 / 256;
+		TB_Y[i]	= (i-16) * 298 / 256;
 	}
 	for (i = 0; i < 1024; i++) {
 		TB_SAT[i] = 0;
@@ -334,17 +334,17 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	t->size[2] = height;
 	t->size[3] = width;
 
-    #ifdef USEQSML
-    	t->stride[0] = 3 * width * height;//batch
-    	t->stride[1] = 1;//plane
-    	t->stride[2] = 3 * width;//row
-    	t->stride[3] = 3;//col
-    #else
-        t->stride[0] = 3 * width * height;//batch
-        t->stride[1] = width * height;//plane
-        t->stride[2] = width;//row
-        t->stride[3] = 1;//col
-    #endif
+	#ifdef USEQSML
+		t->stride[0] = 3 * width * height;//batch
+		t->stride[1] = 1;//plane
+		t->stride[2] = 3 * width;//row
+		t->stride[3] = 3;//col
+	#else
+		t->stride[0] = 3 * width * height;//batch
+		t->stride[1] = width * height;//plane
+		t->stride[2] = width;//row
+		t->stride[3] = 1;//col
+	#endif
 
 
 	t->storage = THFloatStorage_newwithbuffer((float *)data);
@@ -352,18 +352,18 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 #pragma omp parallel for private(b, i, c)
 	for(b = 0; b < batchsize; b++)
 		for(i = 0; i < width*height; i++)
-		    for(c = 0; c < 3; c++)
+			for(c = 0; c < 3; c++)
 				data[b * t->stride[0] + c  + i * t->stride[3]] =
 					(data[b * t->stride[0] + c + i * t->stride[3]] - network->mean[c]) / network->std[c];
 	}
 	else{//plane major
 #pragma omp parallel for private(b, c, i)
-    	for(b = 0; b < batchsize; b++)
-    		for(c = 0; c < 3; c++)
-    			for(i = 0; i < width*height; i++)
-    				data[b * t->stride[0] + c * t->stride[1] + i] =
-    					(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];
-    }
+		for(b = 0; b < batchsize; b++)
+			for(c = 0; c < 3; c++)
+				for(i = 0; i < width*height; i++)
+					data[b * t->stride[0] + c * t->stride[1] + i] =
+						(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];
+	}
 
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)

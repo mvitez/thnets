@@ -18,21 +18,21 @@ enum therror {
 };
 
 enum thtype {
-   TYPE_NIL      = 0,
+   TYPE_NIL	  = 0,
    TYPE_NUMBER   = 1,
    TYPE_STRING   = 2,
-   TYPE_TABLE    = 3,
-   TYPE_TORCH    = 4,
+   TYPE_TABLE	= 3,
+   TYPE_TORCH	= 4,
    TYPE_BOOLEAN  = 5,
    TYPE_FUNCTION = 6,
    LEGACY_TYPE_RECUR_FUNCTION = 7,
    TYPE_RECUR_FUNCTION = 8,
-   TYPE_BYTE     = 100,
-   TYPE_CHAR     = 101,
-   TYPE_SHORT    = 102,
-   TYPE_INT      = 103,
-   TYPE_LONG     = 104,
-   TYPE_FLOAT    = 105,
+   TYPE_BYTE	 = 100,
+   TYPE_CHAR	 = 101,
+   TYPE_SHORT	= 102,
+   TYPE_INT	  = 103,
+   TYPE_LONG	 = 104,
+   TYPE_FLOAT	= 105,
    TYPE_DOUBLE   = 106,
    TYPE_STORAGE  = 200,
    TYPE_TENSOR   = 201,
@@ -99,15 +99,15 @@ struct threcord {
 
 typedef struct THFloatStorage
 {
-    float *data;
+	float *data;
 	int nref, mustfree;	// mustfree = 0 (allocated somewhere else), 1 (free), 2 (cuda free)
 } THFloatStorage;
 
 typedef struct THFloatTensor
 {
-    long size[4];
-    long stride[4];
-    int nDimension;
+	long size[4];
+	long stride[4];
+	int nDimension;
 	THFloatStorage *storage;
 	long storageOffset;
 #ifdef LOWP

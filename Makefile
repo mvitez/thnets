@@ -12,6 +12,9 @@ HASWELL = 0
 USEBLAS = 0
 #Can be no, 4 or 5 (version)
 CUDNN = no
+QSML = no
+#Or write its path like here:
+#QSML=/opt/Qualcomm/QSML-0.15.2/linux/arm32/lp64/gcc-4.8/
 
 CUDAPATH=/usr/local/cuda
 CUDAPATH2=/usr/local/cuda/targets/aarch64-linux
@@ -48,6 +51,10 @@ ifneq ($(USEBLAS),1)
 #ARM 32 bit
 ifneq ($(filter arm%,$(UNAME_M)),)
 	CFLAGS += -DARM -D__NEON__ -mcpu=cortex-a9 -mfpu=neon -DHAVEFP16 -mfp16-format=ieee
+ifneq ($(QSML),no)
+	CFLAGS += -DUSEQSML -I$(QSML)/include
+	LDFLAGS += -L$(QSML)/libs -lQSML
+endif
 	LIBOBJS += axpy_vfp.o sgemm_kernel_4x4_vfpv3.o sgemm_ncopy_4_vfp.o sgemm_tcopy_4_vfp.o
 	VPATH += OpenBLAS-stripped/arm
 endif
@@ -55,6 +62,10 @@ endif
 #ARM 64 bit
 ifneq ($(filter aarc%,$(UNAME_M)),)
 	CFLAGS += -DARM -DHAVEFP16
+ifneq ($(QSML),no)
+	CFLAGS += -DUSEQSML -I$(QSML)/include
+	LDFLAGS += -L$(QSML)/libs -lQSML
+endif
 	CUFLAGS += -DHAVEHALF --gpu-architecture=compute_53
 	LIBOBJS += axpy.o sgemm_kernel_4x4.o gemm_ncopy_4.o gemm_tcopy_4.o
 	VPATH += OpenBLAS-stripped/arm64

@@ -1,12 +1,13 @@
 #include <string.h>
 #ifdef USEQSML
 #include <stdbool.h>
+typedef struct qsml_info qsml_info;
 #include <qsml.h>
 #endif
 
 #include "../thnets.h"
 
-
+#ifndef USEQSML
 static void nn_unfolded_copy(THFloatTensor *finput, THFloatTensor *input,
 	int kW, int kH, int dW, int dH, int padW, int padH,
 	int nInputPlane, int inputWidth, int inputHeight,
@@ -106,18 +107,19 @@ static void nn_SpatialConvolutionMM_updateOutput_frame(THFloatTensor *input, THF
 	else THFloatTensor_convmm(output, 1, 1, weight, input, kH, kW, dH, dW, padH, padW);
 #endif
 }
+#endif
+
 #ifdef USEQSML
 void applybias(struct module *newmod, int outP, int outW, int outH)
 {
-    int i, wsize;
-    wsize = outW*outH;
-    float* biasdata = THFloatTensor_data(newmod->SpatialConvolution.bias);
-    float* outdata = THFloatTensor_data(newmod->output);
-    //float* biasdata = (float*) calloc(wsize*outP, sizeof(float));//one memcpy is better?
-    //memcpy(outdata, biasdata, wsize*outP*sizeof(float));//only saves 1ms
-    for(i=0; i<wsize; i++) {
-        memcpy(outdata+i*outP, biasdata, outP*sizeof(float));
-    }
+	int i, wsize;
+	wsize = outW*outH;
+	float* biasdata = THFloatTensor_data(newmod->SpatialConvolution.bias);
+	float* outdata = THFloatTensor_data(newmod->output);
+	//float* biasdata = (float*) calloc(wsize*outP, sizeof(float));//one memcpy is better?
+	//memcpy(outdata, biasdata, wsize*outP*sizeof(float));//only saves 1ms
+	for(i=0; i<wsize; i++)
+		memcpy(outdata+i*outP, biasdata, outP*sizeof(float));
 }
 #endif
 
@@ -131,16 +133,21 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 	int padH = module->SpatialConvolution.padH;
 
 	THFloatTensor *finput = module->SpatialConvolution.finput;//thnets [col,row,plane,batch]
+#ifndef USEQSML
+	int batch = 1;
 	THFloatTensor *bias   = module->SpatialConvolution.bias;
+#endif
 	THFloatTensor *output = module->output;//[3col,2row,1plane,0batch]
 	THFloatTensor *weight = THFloatTensor_new();
 
 	THFloatTensor_set(weight, module->SpatialConvolution.weight);
 	THFloatTensor_resize2d(weight, weight->size[0], THFloatTensor_nElement(weight) / weight->size[0]);
 
-    int batch = 1;
-	if (input->nDimension == 3) {
+	if (input->nDimension == 3)
+	{
+#ifndef USEQSML
 		batch = 0;
+#endif
 		THFloatTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
 	}
 
@@ -163,56 +170,56 @@ THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFlo
 		THFloatTensor_resize3d(finput, batchSize, kW*kH*nInputPlane, outputHeight*outputWidth);
 	THFloatTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);
 
-    #ifdef USEQSML
+#ifdef USEQSML
 
-        qsml_int channel = nInputPlane;
-        qsml_int inH = inputHeight;
-        qsml_int inW = inputWidth;
-        qsml_int qkW = kW;
-    	qsml_int qkH = kH;
-    	qsml_int qdW = dW;
-    	qsml_int qdH = dH;
-    	qsml_int qpadW = padW;
-    	qsml_int qpadH = padH;
-        qsml_int outP = nOutputPlane;
-        qsml_int outH = outputHeight;
-        qsml_int outW = outputWidth;
+		qsml_int channel = nInputPlane;
+		qsml_int inH = inputHeight;
+		qsml_int inW = inputWidth;
+		qsml_int qkW = kW;
+		qsml_int qkH = kH;
+		qsml_int qdW = dW;
+		qsml_int qdH = dH;
+		qsml_int qpadW = padW;
+		qsml_int qpadH = padH;
+		qsml_int outP = nOutputPlane;
+		qsml_int outH = outputHeight;
+		qsml_int outW = outputWidth;
 
-        applybias(module,(int)outP,(int)outW,(int)outH);//doesn't add much overhead on average
+		applybias(module,(int)outP,(int)outW,(int)outH);//doesn't add much overhead on average
 
-        float *image = THFloatTensor_data(input);//[plane, col, row]
-        float *filtro = THFloatTensor_data(weight);//[outplane, plane, col, row]
-        float *outf = THFloatTensor_data(output);//[plane, col, row]
+		float *image = THFloatTensor_data(input);//[plane, col, row]
+		float *filtro = THFloatTensor_data(weight);//[outplane, plane, col, row]
+		float *outf = THFloatTensor_data(output);//[plane, col, row]
 
-        sconv_mm(true, image, inW, inH, channel,
-                 filtro, outP, qkW, qkH, qpadW, qpadH,
-                 qdW, qdH, outf, outW, outH);
+		sconv_mm(true, image, inW, inH, channel,
+				 filtro, outP, qkW, qkH, qpadW, qpadH,
+				 qdW, qdH, outf, outW, outH);
 
-    #else
+#else
 
-      long t;
+	  long t;
 #pragma omp parallel for if(batchSize >= 4) private(t)
-      for (t = 0; t < batchSize; t++) {
-          THFloatTensor *input_t = THFloatTensor_newSelect(input, 0, t);
-          THFloatTensor *output_t = THFloatTensor_newSelect(output, 0, t);
-          THFloatTensor *finput_t = module->type == MT_SpatialConvolutionMM ? THFloatTensor_newSelect(finput, 0, t) : 0;
+	  for (t = 0; t < batchSize; t++) {
+		  THFloatTensor *input_t = THFloatTensor_newSelect(input, 0, t);
+		  THFloatTensor *output_t = THFloatTensor_newSelect(output, 0, t);
+		  THFloatTensor *finput_t = module->type == MT_SpatialConvolutionMM ? THFloatTensor_newSelect(finput, 0, t) : 0;
 
-          nn_SpatialConvolutionMM_updateOutput_frame(input_t, output_t, weight, bias, finput_t,
-              kW, kH, dW, dH, padW, padH,
-              nInputPlane, inputWidth, inputHeight,
-              nOutputPlane, outputWidth, outputHeight);
+		  nn_SpatialConvolutionMM_updateOutput_frame(input_t, output_t, weight, bias, finput_t,
+			  kW, kH, dW, dH, padW, padH,
+			  nInputPlane, inputWidth, inputHeight,
+			  nOutputPlane, outputWidth, outputHeight);
 
-          THFloatTensor_free(input_t);
-          THFloatTensor_free(output_t);
-          THFloatTensor_free(finput_t);
-      }
+		  THFloatTensor_free(input_t);
+		  THFloatTensor_free(output_t);
+		  THFloatTensor_free(finput_t);
+	  }
 
-      if (batch == 0) {
-          THFloatTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
-          THFloatTensor_resize3d(input, nInputPlane, inputHeight, inputWidth);
-      }
+	  if (batch == 0) {
+		  THFloatTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
+		  THFloatTensor_resize3d(input, nInputPlane, inputHeight, inputWidth);
+	  }
 	  THFloatTensor_free(weight);
-    #endif
+#endif
 
 	return output;
 }
