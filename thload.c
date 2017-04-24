@@ -737,6 +737,7 @@ struct object2module object2module[] =
 	{"nn.JoinTable", nnload_JoinTable},
 	{"nn.CAddTable", nnload_CAddTable},
 	{"nn.PReLU", nnload_PReLU},
+	{"nn.LogSoftMax", nnload_LogSoftMax},
 	{0,0}
 };
 

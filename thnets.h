@@ -234,7 +234,8 @@ enum moduletype {
 	MT_CAddTable,
 	MT_PReLU,
 	MT_Identity,
-	MT_Padding
+	MT_Padding,
+	MT_LogSoftMax
 };
 
 struct network;
@@ -422,6 +423,7 @@ THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *i
 THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Identity_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -444,6 +446,7 @@ int nnload_JoinTable(struct module *mod, struct nnmodule *n);
 int nnload_CAddTable(struct module *mod, struct nnmodule *n);
 int nnload_PReLU(struct module *mod, struct nnmodule *n);
 int nnload_Identity(struct module *mod, struct nnmodule *n);
+int nnload_LogSoftMax(struct module *mod, struct nnmodule *n);
 
 void pyload_SpatialConvolution(struct pyfunction *f);
 void pyload_Linear(struct pyfunction *f);
