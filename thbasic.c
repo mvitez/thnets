@@ -256,7 +256,8 @@ void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc)
 	if(tdst->storage)
 		THFloatStorage_free(tdst->storage);
 	*tdst = *tsrc;
-	THAtomicIncrement(&tsrc->storage->nref);
+	if(tdst->storage)
+		THAtomicIncrement(&tsrc->storage->nref);
 }
 
 float *THFloatTensor_data(THFloatTensor *tensor)
