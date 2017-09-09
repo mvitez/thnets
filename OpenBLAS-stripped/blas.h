@@ -1,4 +1,4 @@
-#define MAX_CPU_NUMBER 8
+#define MAX_CPU_NUMBER 32
 
 // ARM assembly functions use -mfloat-abi=hard calling convention, Android does not,
 // unless armeabi-v7a-hard is specified in Application.mk, but this is not supported anymore

@@ -45,7 +45,6 @@
 #include "blas.h"
 #include "../sgemm.h"
 
-#define MAX_CPU_NUMBER 8
 #define CACHE_LINE_SIZE 8
 #define DIVIDE_RATE 2
 
@@ -1063,6 +1062,8 @@ void blas_init()
 
 	if(!threads_num)
 		threads_num = omp_get_max_threads();
+	if(threads_num > MAX_CPU_NUMBER)
+		threads_num = MAX_CPU_NUMBER;
 	for(i = 0; i < threads_num; i++)
 	{
 		saa[i] = malloc(BUFFER_SIZE);
