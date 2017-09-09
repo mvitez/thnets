@@ -24,7 +24,7 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 {
 	long nElements = THFloatTensor_nElement(input);
 	long numElements = module->View.numElements;
-	long batchSize = input->size[0];
+	long batchSize = input->nDimension == 4 ? input->size[0] : 1;
 	if(numElements == -1)
 		numElements = nElements / batchSize;
 	else batchSize = nElements / numElements;

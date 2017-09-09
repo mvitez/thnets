@@ -28,6 +28,7 @@ void pyload_Linear(struct pyfunction *f)
 	struct Linear *p = &f->module.Linear;
 	p->weight = pygettensor(f->params, "", 0);
 	p->bias = pygettensor(f->params, "", 1);
+	p->addBuffer = THFloatTensor_new();
 }
 
 THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input)
