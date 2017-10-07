@@ -209,6 +209,11 @@ struct Padding
 	float dim, pad, nInputDim, index, value;
 };
 
+struct Slice
+{
+	int from, to;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -235,7 +240,9 @@ enum moduletype {
 	MT_PReLU,
 	MT_Identity,
 	MT_Padding,
-	MT_LogSoftMax
+	MT_LogSoftMax,
+	MT_Slice,
+	MT_Cmax
 };
 
 struct network;
@@ -270,6 +277,7 @@ struct module
 		struct Sequential ConcatTable;
 		struct Concat JoinTable;
 		struct PReLU PReLU;
+		struct Slice Slice;
 	};
 };
 
@@ -367,9 +375,9 @@ void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc);
 void THFloatTensor_zero(THFloatTensor *t);
 void THFloatTensor_fill(THFloatTensor *t, float value);
 void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc);
+void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to);
 void THFloatTensor_free(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
-float *THFloatTensor_data(THFloatTensor *tensor);
 double THExpMinusApprox(double x);
 void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
@@ -424,6 +432,8 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Identity_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -459,6 +469,8 @@ void pyload_SoftMax(struct pyfunction *f);
 void pyload_View(struct pyfunction *f);
 void pyload_Add(struct pyfunction *f);
 void pyload_Concat(struct pyfunction *f);
+void pyload_Slice(struct pyfunction *f);
+void pyload_Cmax(struct pyfunction *f);
 
 /* High level API */
 

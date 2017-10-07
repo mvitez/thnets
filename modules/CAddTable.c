@@ -59,5 +59,4 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 				out[j] += outs[i][j];
 	}
 	return output;
-
 }

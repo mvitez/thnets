@@ -179,6 +179,25 @@ void THFloatTensor_free(THFloatTensor *t)
 	free(t);
 }
 
+void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to)
+{
+	int i;
+
+	if(dst->storage)
+		THFloatStorage_free(dst->storage);
+	dst->nDimension = src->nDimension;
+	dst->storageOffset = from * src->stride[dimension];
+	dst->size[dimension] = to - from;
+	for(i = 0; i < src->nDimension; i++)
+	{
+		if(i != dimension)
+			dst->size[i] = src->size[i];
+		dst->stride[i] = src->stride[i];
+	}
+	dst->storage = src->storage;
+	THAtomicIncrement(&dst->storage->nref);
+}
+
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex)
 {
 	int i;

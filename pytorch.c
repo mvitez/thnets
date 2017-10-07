@@ -125,16 +125,18 @@ struct {
 	{"Softmax", pyload_SoftMax},
 	{"View", pyload_View},
 	{"Add", pyload_Add},
-	{"Concat", pyload_Concat}
+	{"Concat", pyload_Concat},
+	{"Slice", pyload_Slice},
+	{"Cmax", pyload_Cmax}
 };
 
 static void buildmodule(const char *fname, struct pyfunction *f)
 {
 	int i;
-	char *name = strrchr(fname, '.');
+	const char *name = strrchr(fname, '.');
 	if(!name)
-		THError("Unsupported layer type %s\n", fname);
-	name++;
+		name = fname;
+	else name++;
 	for(i = 0; i < sizeof(name2loadf)/sizeof(*name2loadf); i++)
 		if(!strcmp(name, name2loadf[i].name))
 		{
@@ -299,7 +301,8 @@ THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct
 {
 	if(node->type == ELTYPE_FUNCTION)
 	{
-		if(node->function.module.type == MT_CAddTable || node->function.module.type == MT_JoinTable)
+		if(node->function.module.type == MT_CAddTable || node->function.module.type == MT_JoinTable ||
+				node->function.module.type == MT_Cmax)
 		{
 			// Instead of writing a new function, we just create the right parameters for it
 			// It expects a module, but only takes ConcatTable.net.nelem and ConcatTable.net.modules

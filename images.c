@@ -40,15 +40,20 @@ int loadimage(const char *path, img_t *image)
 		fn++;
 	else fn = path;
 	strcpy(image->filename, fn);
-	image->bitmap = stbi_load(path, &image->width, &image->height, &image->cp, 3);
+	image->bitmap = stbi_load(path, &image->width, &image->height, &image->cp, 0);
+	if(image->cp == 4)
+	{
+		free(image->bitmap);
+		image->bitmap = stbi_load(path, &image->width, &image->height, &image->cp, 3);
+	}
 	if(!image->bitmap)
 		return -1;
 #ifdef USECUDAHOSTALLOC
 	unsigned char *data = image->bitmap;
-	image->bitmap = cmalloc(3 * image->width * image->height);
+	image->bitmap = cmalloc(image->cp * image->width * image->height);
 	if(image->bitmap)
 	{
-		memcppy(image->bitmap, data, 3 * image->width * image->height);
+		memcppy(image->bitmap, data, image->cp * image->width * image->height);
 		free(data);
 		return 0;
 	} else {

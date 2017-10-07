@@ -61,6 +61,10 @@ def check_layer_class(obj):
         return (True,'torch.nn._functions.batchnorm.BatchNorm')
     elif (str(obj.__class__)=="<class 'torch.autograd.function.ConcatBackward'>"):
         return (True,'torch.autograd._functions.tensor.Concat')
+    elif (str(obj.__class__)=="<class 'torch.autograd.function.CmaxBackward'>"):
+        return (True,'Cmax')
+    elif (str(obj.__class__)=="<class 'torch.autograd.function.IndexBackward'>"):
+        return (True,'Slice')
     return (False,'')
 
 def check_parameter_class(obj):
@@ -116,6 +120,8 @@ class Exporter:
             writetensor(self.f, 'running_var', obj.running_var)
         if hasattr(obj, 'dim'):
             writeint(self.f, 'dim', obj.dim)
+        if hasattr(obj, 'index'):
+            writeintvect(self.f, 'index', [obj.index[1].start, obj.index[1].stop])
     def tensor(self, t):
         writetensor(self.f, '', t.data)
     def write(self, obj):
