@@ -80,7 +80,7 @@ endif
 
 	CFLAGS += -DX86_64
 	CPPFLAGS += -DX86_64
-	LIBOBJS += axpy_sse2.o
+	LIBOBJS += axpy_sse.o
 ifeq ($(PENRYN),1)
 	CFLAGS += -DPENRYN
 	CPPFLAGS += -DPENRYN
