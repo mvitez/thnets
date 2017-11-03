@@ -16,6 +16,8 @@ void pyload_Slice(struct pyfunction *f)
 THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input)
 {
 	struct Slice *p = &module->Slice;
-	THFloatTensor_slice(module->output, input, 0, p->from, p->to);
+	if(input->nDimension == 2 || input->nDimension == 4)
+		THFloatTensor_slice(module->output, input, 1, p->from, p->to);
+	else THFloatTensor_slice(module->output, input, 0, p->from, p->to);
 	return module->output;
 }
