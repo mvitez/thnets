@@ -15,7 +15,7 @@ THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input)
 	struct module *concattable_module = (struct module *)input;
 	int nelem = concattable_module->ConcatTable.net->nelem;
 	long size[4];
-	int i, j;
+	int i, j, batch;
 	struct module *modules = concattable_module->ConcatTable.net->modules;
 	// Check correctness
 	for(i = 1; i < nelem; i++)
@@ -30,7 +30,7 @@ THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input)
 	THFloatTensor_resize(output, size, modules[0].output->nDimension);
 	float *out = THFloatTensor_data(output);
 	int batchsize = modules[0].output->nDimension % 2 == 0 ? size[0] : 1;
-	for(int batch = 0; batch < batchsize; batch++)
+	for(batch = 0; batch < batchsize; batch++)
 	{
 		long n[nelem];
 		float *outs[nelem];
