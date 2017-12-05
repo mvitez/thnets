@@ -66,8 +66,8 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 		invstd = 1 / sqrt(running_var->storage->data[running_var->storageOffset + running_var->stride[0] * f] + eps);
 
 		// compute output
-		float w = weight ? weight->storage->data[weight->storageOffset + weight->stride[0] * f] : 1;
-		float b = bias ? bias->storage->data[bias->storageOffset + bias->stride[0] * f] : 0;
+		float w = weight && weight->storage ? weight->storage->data[weight->storageOffset + weight->stride[0] * f] : 1;
+		float b = bias && bias->storage ? bias->storage->data[bias->storageOffset + bias->stride[0] * f] : 0;
 
 		float *ind = in->storage->data + in->storageOffset;
 		float *outd = out->storage->data + out->storageOffset;

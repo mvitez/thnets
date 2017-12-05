@@ -116,6 +116,7 @@ struct {
 } name2loadf[] =
 {
 	{"ConvNd", pyload_SpatialConvolution},
+	{"ConvTransposedNd", pyload_SpatialConvolutionTransposed},
 	{"Linear", pyload_Linear},
 	{"BatchNorm", pyload_SpatialBatchNormalization},
 	{"MaxPool2d", pyload_SpatialMaxPooling},

@@ -459,6 +459,7 @@ int nnload_Identity(struct module *mod, struct nnmodule *n);
 int nnload_LogSoftMax(struct module *mod, struct nnmodule *n);
 
 void pyload_SpatialConvolution(struct pyfunction *f);
+void pyload_SpatialConvolutionTransposed(struct pyfunction *f);
 void pyload_Linear(struct pyfunction *f);
 void pyload_SpatialBatchNormalization(struct pyfunction *f);
 void pyload_SpatialMaxPooling(struct pyfunction *f);
