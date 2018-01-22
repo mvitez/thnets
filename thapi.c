@@ -170,6 +170,26 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	{
 		if(th_profile)
 			t = th_seconds();
+#ifdef ONNX
+		// In case of ONNX the network is not sequential, but each module has the list of inputs,
+		// which are guaranteed to have been already calculated
+		if(net->modules[i].ninputs == 1)
+			in = net->modules[i].updateOutput(&net->modules[i], net->modules[net->modules[i].inputs[0]].output);
+		else if(net->modules[i].ninputs > 1)
+		{
+			// Nodes with multiple inputs expect a module of type ConcatTable instead of THFloatTensor as their input
+			struct module modules[net->modules[i].ninputs];
+			struct network subnet;
+			struct module m;
+			for(int j = 0; j < net->modules[i].ninputs; j++)
+				modules[j].output = net->modules[net->modules[i].inputs[j]].output;
+			subnet.nelem = net->modules[i].ninputs;
+			subnet.modules = modules;
+			subnet.engine = net->engine;
+			m.ConcatTable.net = &subnet;
+			in = net->modules[i].updateOutput(&net->modules[i], (THFloatTensor *)&m);
+		} else
+#endif
 		in = net->modules[i].updateOutput(&net->modules[i], in);
 		// You can remove these lines if you don't have problems with memory
 		// These lines free intermediate results
@@ -179,11 +199,14 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			FindMinMax(in, &min, &max);
 			printf("Layer %d output: min=%f, max=%f\n", i+1, min, max);
 		}
+#ifndef ONNX
+		// In case of ONNX we cannot free an output, as we can still need it
 		if(i > 0)
 		{
 			THFloatTensor_free(net->modules[i-1].output);
 			net->modules[i-1].output = THFloatTensor_new();
 		}
+#endif
 		if(th_profile)
 		{
 #ifdef OPENCL
@@ -226,13 +249,28 @@ THNETWORK *THLoadNetwork(const char *path)
 	net = calloc(1, sizeof(*net));
 	net->std[0] = net->std[1] = net->std[2] = 1;
 	net->mean[0] = net->mean[1] = net->mean[2] = 0;
-	sprintf(tmppath, "%s/pymodel.net", path);
+	// Try ONNX
+#ifdef ONNX
+	if(!strcasecmp(path + strlen(path) - 3, ".pb") || !strcasecmp(path + strlen(path) - 6, ".proto") ||
+		!strcasecmp(path + strlen(path) - 5, ".onnx"))
+	{
+		net->net = loadonnx(path);
+		if(net->net)
+			return net;
+	}
+#endif
+	// Try pytorch
 	net->allpynodes = calloc(MAXPYNODES, sizeof(*net->allpynodes));
+	net->pynet = loadpytorch(path, net->allpynodes);
+	if(net->pynet)
+		return net;
+	sprintf(tmppath, "%s/pymodel.net", path);
 	net->pynet = loadpytorch(tmppath, net->allpynodes);
 	if(net->pynet)
 		return net;
 	free(net->allpynodes);
 	net->allpynodes = 0;
+	// Try torch
 	sprintf(tmppath, "%s/model.net", path);
 	net->netobj = malloc(sizeof(*net->netobj));
 	lasterror = loadtorch(tmppath, net->netobj, longsize);

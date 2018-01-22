@@ -20,6 +20,16 @@ void pyload_View(struct pyfunction *f)
 		p->numElements = el->ivect[1];
 }
 
+#ifdef ONNX
+void onnxload_View(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_View_updateOutput;
+	m->type = MT_View;
+	struct View *p = &m->View;
+	p->numElements = onnx_getint(graph, nodeidx, "shape", 1);
+}
+#endif
+
 THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 {
 	long nElements = THFloatTensor_nElement(input);

@@ -39,6 +39,21 @@ void pyload_SpatialBatchNormalization(struct pyfunction *f)
 		p->eps = el->fvalue;
 }
 
+#ifdef ONNX
+void onnxload_SpatialBatchNormalization(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SpatialBatchNormalization_updateOutput;
+	m->nnfree = nnfree_SpatialBatchNormalization;
+	m->type = MT_SpatialBatchNormalization;
+	struct SpatialBatchNormalization *p = &m->SpatialBatchNormalization;
+	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	p->bias = onnx_gettensor(graph, nodeidx, 2);
+	p->running_mean = onnx_gettensor(graph, nodeidx, 3);
+	p->running_var = onnx_gettensor(graph, nodeidx, 4);
+	p->eps = onnx_getfloat(graph, nodeidx, "epsilon", -1);
+}
+#endif
+
 THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

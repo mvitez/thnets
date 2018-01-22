@@ -16,6 +16,14 @@ void pyload_Add(struct pyfunction *f)
 	f->module.type = MT_CAddTable;
 }
 
+#ifdef ONNX
+void onnxload_Add(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_CAddTable_updateOutput;
+	m->type = MT_CAddTable;
+}
+#endif
+
 THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

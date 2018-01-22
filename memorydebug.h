@@ -1,11 +1,19 @@
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void *debug_malloc(size_t size, const char *file, int line);
 void *debug_calloc(size_t nmemb, size_t size, const char *file, int line);
 void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 char *debug_strdup(const char *str, const char *file, int line);
 void debug_free(void *ptr, const char *file, int line);
 void debug_memorydump(FILE *fp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #define malloc(a) debug_malloc(a,__FILE__,__LINE__)
 #define calloc(a,b) debug_calloc(a,b,__FILE__,__LINE__)

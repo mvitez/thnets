@@ -13,6 +13,14 @@ void pyload_SoftMax(struct pyfunction *f)
 	f->module.type = MT_SoftMax;
 }
 
+#ifdef ONNX
+void onnxload_SoftMax(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SoftMax_updateOutput;
+	m->type = MT_SoftMax;
+}
+#endif
+
 THFloatTensor *nn_SoftMax_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

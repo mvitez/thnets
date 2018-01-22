@@ -43,6 +43,22 @@ void pyload_SpatialAveragePooling(struct pyfunction *f)
 		p->ceil_mode = el->ivalue;
 }
 
+#ifdef ONNX
+void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SpatialAveragePooling_updateOutput;
+	m->type = MT_SpatialAveragePooling;
+	struct SpatialAveragePooling *p = &m->SpatialAveragePooling;
+	p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
+	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
+	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	p->ceil_mode = 0;
+}
+#endif
+
 THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int kW = module->SpatialAveragePooling.kW;

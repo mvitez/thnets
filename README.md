@@ -1,4 +1,4 @@
-# Stand-alone library for loading and running Torch and PyTorch neural networks
+# Stand-alone library for loading and running neural networks (torch, pytorch, ONNX)
 
 ## Compatibility
 
@@ -8,13 +8,14 @@ Android build files are also provided for a test application. For Androi / iOS s
 
 ## Installation
 
-Requirements for library: OpenBLAS (already part of the library for ARM, ARM64 and x86_64),
+Requirements: OpenBLAS (not required if compiled for ARM, ARM64 and x86_64),
 CuDNN version 4 or 5 if compiled with the CUDNN option, OpenCL if compiled with the OPENCL=1 option,
-gemmlowp if compiled with the LOWP=1 option.
+gemmlowp if compiled with the LOWP=1 option, google protobuf is compiled with the ONNX=1 option.
 Check the CUDA and CUDNN directories in the Makefile if using CUDNN.
 Make with "make".
 Install with "(sudo) make install".
 Make options are:
+   * *ONNX* 0 is off, 1 is enable support of ONNX networks
    * *DEBUG* 0 is off, 1 is on
    * *MEMORYDEBUG* 0 checks memory leaks, 1 generates full dump of allocations in memdump.txt
    * *CUDNN* 4 uses CuDNNv4, 5 uses CUDNNv5
@@ -160,6 +161,11 @@ Add Accelerate Framework to Project -> Build Phases -> Link Binary with Librarie
 
 ### PyTorch
 
+*WARNING: due to continuous changes in pytorch, this mode does not work anymore.
+While files exported with the previous version can be still imported by thnets,
+the thexport.py utility does not work anymore with the latest pytorch. The ONNX
+exported cna be used instead.*
+
 In order to run networks created with PyTorch, they have to be first exported
 with thexport.py. This is an example python code that will create a pymodel.net file
 that thnets will be able to load:
@@ -175,10 +181,19 @@ thexport.save('pymodel.net', out)
 ```
 
 pymodel.net can be then loaded by thnets in the same way as Torch created model.net,
-just giving its directory. This exporter has been created, because torch.save() saves
-python code that cannot be interpreted by thnets. Not all thnets supported layers have
-been implemented, yet, but all the networks present in torchvision at the time of this
-writing are supported.
+just giving its directory, or also direct path to the file in this case.
+This exporter has been created, because torch.save() saves python code that cannot
+be interpreted by thnets. Not all thnets supported layers have been implemented,
+yet, but all the networks present in torchvision at the time of this writing are supported.
+
+### ONNX
+
+ONNX support has been tested with the networks in torchvision (pytorch) and the models in the
+ONNX repository. While all torchvision networks work (besides squeezenet, which is not exportable
+to ONNX), only resnet50 from the ONNX repository works, but this is only due to unimplemented
+layers like LRN. Other frameworks are still under test. If the passed path is a path to a file
+with the .pb, .proto or .onnx extension, the ONNX parser will be triggered. thnets has to be built
+with the ONNX=1 option.
 
 ### Tegra TX1 results:
 

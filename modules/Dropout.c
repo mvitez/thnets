@@ -22,6 +22,18 @@ void pyload_Dropout(struct pyfunction *f)
 	p->p = 0;
 }
 
+#ifdef ONNX
+void onnxload_Dropout(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_Dropout_updateOutput;
+	m->type = MT_Dropout;
+	struct Dropout *p = &m->Dropout;
+	p->inplace = 1;
+	p->v2 = 1;
+	p->p = 0;
+}
+#endif
+
 THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float p = module->Dropout.p;

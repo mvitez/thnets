@@ -31,6 +31,19 @@ void pyload_Linear(struct pyfunction *f)
 	p->addBuffer = THFloatTensor_new();
 }
 
+#ifdef ONNX
+void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_Linear_updateOutput;
+	m->type = MT_Linear;
+	m->nnfree = nnfree_Linear;
+	struct Linear *p = &m->Linear;
+	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	p->bias = onnx_gettensor(graph, nodeidx, 2);
+	p->addBuffer = THFloatTensor_new();
+}
+#endif
+
 THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *weight = module->Linear.weight;
@@ -38,14 +51,15 @@ THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *inpu
 	THFloatTensor *output = module->output;
 	THFloatTensor *addBuffer = module->Linear.addBuffer;
 
-	if (input->nDimension == 1) {
+	THFloatTensor *in = THFloatTensor_squeeze(input);
+	if (in->nDimension == 1) {
 		THFloatTensor_resize1d(output, bias->size[0]);
 		THFloatTensor_copy(output, bias);
-		THFloatTensor_addmv(output, 1, output, 1, weight, input);
+		THFloatTensor_addmv(output, 1, output, 1, weight, in);
 
-	} else if (input->nDimension == 2) {
-		long nframe = input->size[0];
-		long nElement = THFloatTensor_nElement(input);
+	} else if (in->nDimension == 2) {
+		long nframe = in->size[0];
+		long nElement = THFloatTensor_nElement(in);
 		THFloatTensor_resize2d(output, nframe, bias->size[0]);
 		if (THFloatTensor_nElement(output) != nElement)
 			THFloatTensor_zero(output);
@@ -55,12 +69,12 @@ THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *inpu
 			THFloatTensor_fill(addBuffer, 1.0);
 		}
 		THFloatTensor *t2 = THFloatTensor_newTranspose(weight, 0, 1);
-		THFloatTensor_addmm(output, 0, output, 1, input, t2);
+		THFloatTensor_addmm(output, 0, output, 1, in, t2);
 		THFloatTensor_free(t2);
 		THFloatTensor_addr(output, 1, output, 1, addBuffer, bias);
 
 	} else
 		THError("input must be vector or matrix");
-
+	THFloatTensor_free(in);
 	return output;
 }

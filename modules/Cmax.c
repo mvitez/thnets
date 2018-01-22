@@ -1,5 +1,5 @@
-#include "../thnets.h"
 #include <string.h>
+#include "../thnets.h"
 
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
@@ -8,6 +8,15 @@ void pyload_Cmax(struct pyfunction *f)
 	f->module.updateOutput = nn_Cmax_updateOutput;
 	f->module.type = MT_Cmax;
 }
+
+#ifdef ONNX
+void onnxload_Cmax(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_Cmax_updateOutput;
+	m->type = MT_Cmax;
+}
+#endif
+
 
 THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input)
 {

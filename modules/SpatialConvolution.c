@@ -62,6 +62,38 @@ void pyload_SpatialConvolution(struct pyfunction *f)
 	}
 }
 
+#ifdef ONNX
+void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SpatialConvolutionMM_updateOutput;
+#ifdef USEBLAS
+	m->type = MT_SpatialConvolutionMM;
+#else
+	m->type = MT_SpatialConvolutionVirtMM;
+#endif
+	m->nnfree = nnfree_SpatialConvolution;
+	struct SpatialConvolution *p = &m->SpatialConvolution;
+	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	p->bias = onnx_gettensor(graph, nodeidx, 2);
+	p->finput = THFloatTensor_new();
+	p->nOutputPlane = (int)p->weight->size[0];
+	p->nInputPlane = (int)p->weight->size[1];
+	p->kH = (int)p->weight->size[2];
+	p->kW = (int)p->weight->size[3];
+	if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+			p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
+		THError("Conflicting kernel sizes in proto file\n");
+	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1)
+		THError("Dilation not supported\n");
+	if(onnx_getint(graph, nodeidx, "group", -1) > 1)
+		THError("Group convolution not supported\n");
+}
+#endif
+
 THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input)
 {
 	int dW = module->SpatialConvolution.dW;

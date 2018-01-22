@@ -13,6 +13,17 @@ void pyload_Slice(struct pyfunction *f)
 	}
 }
 
+#ifdef ONNX
+void onnxload_Slice(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_Slice_updateOutput;
+	m->type = MT_Slice;
+	struct Slice *p = &m->Slice;
+	p->from = onnx_getint(graph, nodeidx, "starts", 0);
+	p->to = onnx_getint(graph, nodeidx, "ends", 0);
+}
+#endif
+
 THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input)
 {
 	struct Slice *p = &module->Slice;

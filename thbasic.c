@@ -384,6 +384,23 @@ THFloatTensor *THFloatTensor_newTranspose(THFloatTensor *tensor, int dimension1_
   return self;
 }
 
+THFloatTensor *THFloatTensor_squeeze(THFloatTensor *t)
+{
+	int ndim = 0;
+	THFloatTensor *t2 = THFloatTensor_newWithTensor(t);
+	for(int i = 0; i < t->nDimension; i++)
+		if(t->size[i] != 1)
+		{
+			if(i != ndim)
+			{
+				t2->size[ndim] = t->size[i];
+				t2->stride[ndim] = t->stride[i];
+			}
+			ndim++;
+		}
+	t2->nDimension = ndim;
+	return t2;
+}
 
 double THExpMinusApprox(double x)
 {

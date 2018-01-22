@@ -9,6 +9,10 @@
 #include "CL/opencl.h"
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum therror {
 	ERR_OPENFILE = -1,
 	ERR_READFILE = -2,
@@ -259,6 +263,14 @@ struct module
 	cl_kernel kernel;
 	int clstatus;
 #endif
+	// These are currently used only by ONNX
+	// They are always present in order not to require to define ONNX
+	// when including this header
+	char *outputname;
+	int ninputs;
+#define MAXMODULEINPUTS 16
+	int inputs[MAXMODULEINPUTS];
+	// End ONNX
 	union {
 		struct SpatialConvolution SpatialConvolution;
 		struct SpatialMaxPooling SpatialMaxPooling;
@@ -331,6 +343,15 @@ THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct
 
 // End Pytorch
 
+// ONNX stuff
+#ifdef ONNX
+struct network *loadonnx(const char *path);
+THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
+int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);
+float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx);
+#endif
+// End ONNX
+
 enum {ENGINE_CPU, ENGINE_CUDA, ENGINE_OPENCL, ENGINE_OPENCLINIT, ENGINE_LOWP};
 
 struct network
@@ -378,6 +399,7 @@ void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc);
 void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to);
 void THFloatTensor_free(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
+THFloatTensor *THFloatTensor_squeeze(THFloatTensor *t);
 double THExpMinusApprox(double x);
 void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc);
 void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
@@ -473,6 +495,21 @@ void pyload_Concat(struct pyfunction *f);
 void pyload_Slice(struct pyfunction *f);
 void pyload_Cmax(struct pyfunction *f);
 
+void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeidx);
+void onnxload_SpatialConvolutionTransposed(const void *graph, struct module *m, int nodeidx);
+void onnxload_Linear(const void *graph, struct module *m, int nodeidx);
+void onnxload_SpatialBatchNormalization(const void *graph, struct module *m, int nodeidx);
+void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx);
+void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nodeidx);
+void onnxload_Threshold(const void *graph, struct module *m, int nodeidx);
+void onnxload_Dropout(const void *graph, struct module *m, int nodeidx);
+void onnxload_SoftMax(const void *graph, struct module *m, int nodeidx);
+void onnxload_View(const void *graph, struct module *m, int nodeidx);
+void onnxload_Add(const void *graph, struct module *m, int nodeidx);
+void onnxload_Concat(const void *graph, struct module *m, int nodeidx);
+void onnxload_Slice(const void *graph, struct module *m, int nodeidx);
+void onnxload_Cmax(const void *graph, struct module *m, int nodeidx);
+
 /* High level API */
 
 typedef struct thnetwork
@@ -520,4 +557,8 @@ extern double th_convtot, th_convflops;
 void init_thnets4qsml_conv(THNETWORK *network);
 void transform_mem(struct module newmod, int col, int row, int plane, int outp);
 float* transform_mem_input(float* in1, int col, int row, int plane);
+#endif
+
+#ifdef __cplusplus
+}
 #endif

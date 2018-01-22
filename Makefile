@@ -10,6 +10,7 @@ PENRYN = 0
 SANDYBRIDGE = 0
 HASWELL = 0
 USEBLAS = 0
+ONNX = 0
 #Can be no, 4 or 5 (version)
 CUDNN = no
 QSML = no
@@ -132,13 +133,14 @@ endif #USEBLAS
 ifneq ($(MEMORYDEBUG),no)
 	LIBOBJS += memorydebug.o
 	CFLAGS += -DMEMORYDEBUG=$(MEMORYDEBUG)
+	CPPFLAGS += -DMEMORYDEBUG=$(MEMORYDEBUG)
 endif
 
 #Debug or release compilation
 ifeq ($(DEBUG),1)
 	CFLAGS += -g
 	CUFLAGS += -g
-	CFLAGS += -g
+	CPPFLAGS += -g
 	ASFLAGS += -g
 else
 	CFLAGS += -O3
@@ -174,7 +176,17 @@ ifeq ($(LOWP),1)
 	CFLAGS += -DLOWP
 endif
 
+ifeq ($(ONNX),1)
+	LIBOBJS += onnx.o onnx.pb.o
+	CFLAGS += -DONNX
+	CPPFLAGS += -DONNX
+	LIBS += -lprotobuf
+endif
+
 all : libthnets.so test
+
+onnx.pb.cc: onnx.proto
+	protoc onnx.proto --cpp_out=.
 
 *.o: thnets.h
 

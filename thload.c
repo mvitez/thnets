@@ -790,6 +790,13 @@ void freenetwork(struct network *net)
 			net->modules[i].nnfree(net->modules + i);
 		THFloatTensor_free(net->modules[i].output);
 		net->modules[i].output = 0;
+#ifdef ONNX
+		if(net->modules[i].outputname)
+		{
+			free(net->modules[i].outputname);
+			net->modules[i].outputname = 0;
+		}
+#endif
 	}
 	free(net->modules);
 	free(net);

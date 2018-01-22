@@ -26,6 +26,14 @@ void pyload_Threshold(struct pyfunction *f)
 		p->inplace = el->ivalue;
 }
 
+#ifdef ONNX
+void onnxload_Threshold(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_Threshold_updateOutput;
+	m->type = MT_Threshold;
+}
+#endif
+
 THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float val = module->Threshold.val;

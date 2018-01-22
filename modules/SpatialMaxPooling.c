@@ -51,6 +51,24 @@ void pyload_SpatialMaxPooling(struct pyfunction *f)
 		p->ceil_mode = el->ivalue;
 }
 
+#ifdef ONNX
+void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SpatialMaxPooling_updateOutput;
+	m->type = MT_SpatialMaxPooling;
+	m->nnfree = nnfree_SpatialMaxPooling;
+	struct SpatialMaxPooling *p = &m->SpatialMaxPooling;
+	p->indices = THFloatTensor_new();
+	p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
+	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
+	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	p->ceil_mode = 0;
+}
+#endif
+
 static void nn_SpatialMaxPooling_updateOutput_frame(float *input_p, float *output_p, float *ind_p,
 	long nslices,
 	long iwidth, long iheight,

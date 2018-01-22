@@ -21,6 +21,16 @@ void pyload_Concat(struct pyfunction *f)
 		p->dimension = el->ivalue;
 }
 
+#ifdef ONNX
+void onnxload_Concat(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_JoinTable_updateOutput;
+	m->type = MT_JoinTable;
+	struct Concat *p = &m->Concat;
+	p->dimension = onnx_getint(graph, nodeidx, "axis", -1);
+}
+#endif
+
 THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;
