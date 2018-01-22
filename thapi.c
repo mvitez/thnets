@@ -181,7 +181,8 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			struct module modules[net->modules[i].ninputs];
 			struct network subnet;
 			struct module m;
-			for(int j = 0; j < net->modules[i].ninputs; j++)
+			int j;
+			for(j = 0; j < net->modules[i].ninputs; j++)
 				modules[j].output = net->modules[net->modules[i].inputs[j]].output;
 			subnet.nelem = net->modules[i].ninputs;
 			subnet.modules = modules;

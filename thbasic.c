@@ -386,9 +386,9 @@ THFloatTensor *THFloatTensor_newTranspose(THFloatTensor *tensor, int dimension1_
 
 THFloatTensor *THFloatTensor_squeeze(THFloatTensor *t)
 {
-	int ndim = 0;
+	int ndim = 0, i;
 	THFloatTensor *t2 = THFloatTensor_newWithTensor(t);
-	for(int i = 0; i < t->nDimension; i++)
+	for(i = 0; i < t->nDimension; i++)
 		if(t->size[i] != 1)
 		{
 			if(i != ndim)

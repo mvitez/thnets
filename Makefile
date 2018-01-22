@@ -177,7 +177,7 @@ ifeq ($(LOWP),1)
 endif
 
 ifeq ($(ONNX),1)
-	LIBOBJS += onnx.o onnx.pb.o
+	LIBOBJS += onnx.pb.o onnx.o
 	CFLAGS += -DONNX
 	CPPFLAGS += -DONNX
 	LIBS += -lprotobuf
