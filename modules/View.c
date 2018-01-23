@@ -27,6 +27,8 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 	m->type = MT_View;
 	struct View *p = &m->View;
 	p->numElements = onnx_getint(graph, nodeidx, "shape", 1);
+	if(!p->numElements)
+		p->numElements = -1;
 }
 #endif
 

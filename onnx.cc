@@ -90,6 +90,7 @@ static struct {
 	{"Dropout", onnxload_Dropout},
 	{"Softmax", onnxload_SoftMax},
 	{"Reshape", onnxload_View},
+	{"Flatten", onnxload_View},
 	{"Sum", onnxload_Add},
 	{"Add", onnxload_Add},
 	{"AveragePool", onnxload_SpatialAveragePooling},
