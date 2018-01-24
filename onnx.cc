@@ -28,7 +28,7 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 		return THFloatTensor_new();
 	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
 	if(t->data_type() != 1)
-		THError("Only float tensors are supported\n");
+		THError("Only float tensors are supported, got data_type %d for %s\n", t->data_type(), t->name().c_str());
 	THFloatTensor *t1 = THFloatTensor_new();
 	long sizes[4], total = 1;
 	for(int i = 0; i < t->dims_size(); i++)
@@ -94,6 +94,7 @@ static struct {
 	{"Sum", onnxload_Add},
 	{"Add", onnxload_Add},
 	{"AveragePool", onnxload_SpatialAveragePooling},
+	{"GlobalAveragePool", onnxload_SpatialAveragePooling},
 	{"Concat", onnxload_Concat},
 	{"Max", onnxload_Cmax},
 	{"Slice", onnxload_Slice}
@@ -128,10 +129,10 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	cinput.SetTotalBytesLimit(1024*1024*1024, -1);
 	onnx::ModelProto model;
 	if(!model.ParseFromCodedStream(&cinput))
-    {
-        close(f);
-        return 0;
-    }
+	{
+		close(f);
+		return 0;
+	}
 	close(f);
 
 	const onnx::GraphProto& graph=model.graph();

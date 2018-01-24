@@ -55,6 +55,10 @@ void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nod
 	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
 	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
 	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	if(p->dH == 0)
+		p->dH = 1;
+	if(p->dW == 0)
+		p->dW = 1;
 	p->ceil_mode = 0;
 }
 #endif
@@ -104,6 +108,10 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 	inputHeight = input->size[dimh];
 	nInputPlane = input->size[dimc];
 
+	if(kW == 0)
+		kW = inputWidth;
+	if(kH == 0)
+		kH = inputHeight;
 	if(ceil_mode)
 	{
 		outputWidth  = (long)(ceil((float)(inputWidth  - kW + 2*padW) / dW)) + 1;
