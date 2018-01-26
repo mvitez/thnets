@@ -8,6 +8,14 @@ int nnload_LogSoftMax(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+#ifdef ONNX
+void onnxload_LogSoftMax(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_LogSoftMax_updateOutput;
+	m->type = MT_LogSoftMax;
+}
+#endif
+
 THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;

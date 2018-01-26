@@ -83,12 +83,14 @@ static struct {
 } name2loadf[] =
 {
 	{"Conv", onnxload_SpatialConvolution},
+	{"ConvTranspose", onnxload_SpatialConvolutionTransposed},
 	{"Gemm", onnxload_Linear},
 	{"BatchNormalization", onnxload_SpatialBatchNormalization},
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
 	{"Dropout", onnxload_Dropout},
 	{"Softmax", onnxload_SoftMax},
+	{"LogSoftmax", onnxload_LogSoftMax},
 	{"Reshape", onnxload_View},
 	{"Flatten", onnxload_View},
 	{"Sum", onnxload_Add},
@@ -119,6 +121,7 @@ static int getoutput(struct network *net, const char *name)
 extern "C" struct network *loadonnx(const char* modelpath)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
+	int j;
 
 	// Read the model protobuf
 	int f = open(modelpath, O_RDONLY);
@@ -140,8 +143,8 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	// Build thnets::network object from onnx::Graph
 	network *net = (network *)malloc(sizeof(*net));
 	net->engine = ENGINE_CPU;
-	// graph.node_size() should be enough, we will never need more than this
-	net->modules = (module *)calloc(graph.node_size(), sizeof(*net->modules));
+	// Overallocate modules by a factor of 2, because of split
+	net->modules = (module *)calloc(graph.node_size() * 2, sizeof(*net->modules));
 	net->nelem = 0;
 	int n = 0;
 	for (int i = 0; i < graph.node_size(); i++)
@@ -176,7 +179,27 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			net->modules[n-1].outputname = strdup(node.output(0).c_str());
 			continue;
 		}
-		int j = getfunction(node.op_type().c_str());
+		if(!strcmp(node.op_type().c_str(), "Split"))
+		{
+			int from = 0;
+			for(j = 0; j < node.output_size(); j++)
+			{
+				net->modules[n].output = THFloatTensor_new();
+				net->modules[n].net = net;
+				net->modules[n].updateOutput = nn_Slice_updateOutput;
+				net->modules[n].type = MT_Slice;
+				net->modules[n].outputname = strdup(node.output(j).c_str());
+				net->modules[n].inputs[0] = getoutput(net, node.input(0).c_str());
+				net->modules[n].ninputs = 1;
+				struct Slice *p = &net->modules[n].Slice;
+				p->from = from;
+				p->to = p->from + onnx_getint(&graph, i, "split", j);
+				from = p->to;
+				net->nelem = ++n;
+			}
+			continue;
+		}
+		j = getfunction(node.op_type().c_str());
 		if(j == -1)
 			THError("Unsupported node type %s\n", node.op_type().c_str());
 		net->modules[n].output = THFloatTensor_new();
@@ -195,7 +218,6 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		}
 		net->nelem = ++n;
 	}
-	net->nelem = n;
 
 	google::protobuf::ShutdownProtobufLibrary();
 

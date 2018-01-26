@@ -504,6 +504,7 @@ void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nod
 void onnxload_Threshold(const void *graph, struct module *m, int nodeidx);
 void onnxload_Dropout(const void *graph, struct module *m, int nodeidx);
 void onnxload_SoftMax(const void *graph, struct module *m, int nodeidx);
+void onnxload_LogSoftMax(const void *graph, struct module *m, int nodeidx);
 void onnxload_View(const void *graph, struct module *m, int nodeidx);
 void onnxload_Add(const void *graph, struct module *m, int nodeidx);
 void onnxload_Concat(const void *graph, struct module *m, int nodeidx);

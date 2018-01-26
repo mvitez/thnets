@@ -65,6 +65,37 @@ void pyload_SpatialConvolutionTransposed(struct pyfunction *f)
 	p->ones = THFloatTensor_new();
 }
 
+#ifdef ONNX
+void onnxload_SpatialConvolutionTransposed(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_SpatialFullConvolution_updateOutput;
+	m->type = MT_SpatialFullConvolution;
+	m->nnfree = nnfree_SpatialFullConvolution;
+	struct SpatialFullConvolution *p = &m->SpatialFullConvolution;
+	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	p->bias = onnx_gettensor(graph, nodeidx, 2);
+	p->columns = THFloatTensor_new();
+	p->ones = THFloatTensor_new();
+	p->nOutputPlane = (int)p->weight->size[1];
+	p->nInputPlane = (int)p->weight->size[0];
+	p->kH = (int)p->weight->size[2];
+	p->kW = (int)p->weight->size[3];
+	if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+			p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
+		THError("Conflicting kernel sizes in proto file\n");
+	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+	p->adjH = onnx_getint(graph, nodeidx, "output_padding", 0);
+	p->adjW = onnx_getint(graph, nodeidx, "output_padding", 1);
+	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1)
+		THError("Dilation not supported\n");
+	if(onnx_getint(graph, nodeidx, "group", -1) > 1)
+		THError("Group convolution not supported\n");
+}
+#endif
+
 static void col2im(const float *data_col, const int channels,
 	const int height, const int width, const int patch_h, const int patch_w,
 	const int pad_h, const int pad_w,
@@ -195,15 +226,16 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 		long k_ = 1;
 
 		// Do GEMM (note: this is a bit confusing because gemm assumes column-major matrices)
-		THBlas_gemm(
-			't', 'n',
-			n_, m_, k_,
-			1,
-			THFloatTensor_data(ones), k_,
-			THFloatTensor_data(bias), k_,
-			1,
-			THFloatTensor_data(output_n), n_
-		);
+		if(bias && bias->storage)
+			THBlas_gemm(
+				't', 'n',
+				n_, m_, k_,
+				1,
+				THFloatTensor_data(ones), k_,
+				THFloatTensor_data(bias), k_,
+				11,
+				THFloatTensor_data(output_n), n_
+			);
 
 		THFloatTensor_free(input_n);
 		THFloatTensor_free(output_n);
