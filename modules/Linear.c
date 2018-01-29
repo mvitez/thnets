@@ -38,7 +38,9 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 	m->type = MT_Linear;
 	m->nnfree = nnfree_Linear;
 	struct Linear *p = &m->Linear;
-	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	THFloatTensor *weight = onnx_gettensor(graph, nodeidx, 1);
+	p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
+	THFloatTensor_free(weight);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
 	p->addBuffer = THFloatTensor_new();
 }

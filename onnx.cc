@@ -18,6 +18,10 @@ static const onnx::TensorProto *getinitializer(const onnx::GraphProto *graph, co
 	for(int i = 0; i < graph->initializer_size(); i++)
 		if(name == graph->initializer(i).name())
 			return &graph->initializer(i);
+	// Not found in initializers, see if it's calculated
+	for (int i = 0; i < graph->node_size(); i++)
+		if(graph->node(i).output(0) == name && graph->node(i).input_size() == 1)
+			return getinitializer(graph, graph->node(i).input(0));
 	return 0;
 }
 
@@ -199,13 +203,9 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			}
 			continue;
 		}
-		j = getfunction(node.op_type().c_str());
-		if(j == -1)
+		f = getfunction(node.op_type().c_str());
+		if(f == -1)
 			THError("Unsupported node type %s\n", node.op_type().c_str());
-		net->modules[n].output = THFloatTensor_new();
-		net->modules[n].net = net;
-		name2loadf[j].onnxload(&graph, net->modules + n, i);
-		net->modules[n].outputname = strdup(node.output(0).c_str());
 		for(j = 0; j < node.input_size(); j++)
 		{
 			int k = getoutput(net, node.input(j).c_str());
@@ -216,7 +216,14 @@ extern "C" struct network *loadonnx(const char* modelpath)
 					THError("Maximum number of node inputs exceeded\n");
 			}
 		}
-		net->nelem = ++n;
+		if(i == 0 || net->modules[n].ninputs)
+		{
+			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].net = net;
+			name2loadf[f].onnxload(&graph, net->modules + n, i);
+			net->modules[n].outputname = strdup(node.output(0).c_str());
+			net->nelem = ++n;
+		}
 	}
 
 	google::protobuf::ShutdownProtobufLibrary();
