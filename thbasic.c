@@ -208,7 +208,7 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 	t->sub = tensor->sub;
 #endif
 	t->nDimension = tensor->nDimension - 1;
-	t->storageOffset = sliceIndex * tensor->stride[dimension];
+	t->storageOffset = tensor->storageOffset + sliceIndex * tensor->stride[dimension];
 	for(i = 0; i < dimension; i++)
 	{
 		t->size[i] = tensor->size[i];
