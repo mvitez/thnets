@@ -173,9 +173,9 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 #ifdef ONNX
 		// In case of ONNX the network is not sequential, but each module has the list of inputs,
 		// which are guaranteed to have been already calculated
-		if(net->modules[i].ninputs == 1)
+		if(net->modules[i].ninputs == 1 && net->modules[i].type != MT_JoinTable)
 			in = net->modules[i].updateOutput(&net->modules[i], net->modules[net->modules[i].inputs[0]].output);
-		else if(net->modules[i].ninputs > 1)
+		else if(net->modules[i].ninputs >= 1)
 		{
 			// Nodes with multiple inputs expect a module of type ConcatTable instead of THFloatTensor as their input
 			struct module modules[net->modules[i].ninputs];
