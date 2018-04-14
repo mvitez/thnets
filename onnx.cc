@@ -93,6 +93,7 @@ static struct {
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
 	{"Dropout", onnxload_Dropout},
+	{"Constant", onnxload_Dropout},
 	{"Softmax", onnxload_SoftMax},
 	{"LogSoftmax", onnxload_LogSoftMax},
 	{"Reshape", onnxload_View},
