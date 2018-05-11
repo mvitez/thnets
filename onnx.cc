@@ -81,6 +81,33 @@ extern "C" float onnx_getfloat(const void *graph, int nodeidx, const char *attrn
 	return 0;
 }
 
+extern "C" const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
+	{
+		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
+		if(!strcmp(attr.name().c_str(), attrname))
+		{
+			if(idx == -1)
+				return attr.s().c_str();
+			if(idx < attr.strings_size())
+				return attr.strings(idx).c_str();
+			return 0;
+		}
+	}
+	return 0;
+}
+
+void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = 0; // Not implemented
+	m->type = MT_Upsample;
+	struct Upsample *p = &m->Upsample;
+	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", 0);
+	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", 0);
+}
+
 static struct {
 	const char *name;
 	void (*onnxload)(const void *, module *m, int nodeidx);
@@ -104,7 +131,8 @@ static struct {
 	{"GlobalAveragePool", onnxload_SpatialAveragePooling},
 	{"Concat", onnxload_Concat},
 	{"Max", onnxload_Cmax},
-	{"Slice", onnxload_Slice}
+	{"Slice", onnxload_Slice},
+	{"Upsample", onnxload_Upsample},
 };
 
 static int getfunction(const char *name)
@@ -121,6 +149,21 @@ static int getoutput(struct network *net, const char *name)
 		if(!strcmp(net->modules[i].outputname, name))
 			return i;
 	return -1;
+}
+
+static void printop(const onnx::GraphProto *graph, const onnx::NodeProto *node)
+{
+	if(th_debug > 1)
+	{
+		printf("%s (%s): ", node->op_type().c_str(), node->name().c_str());
+		for(int j = 0; j < node->input_size(); j++)
+			if(!getinitializer(graph, node->input(j)))
+				printf("%s ", node->input(j).c_str());
+		printf("-> ");
+		for(int j = 0; j < node->output_size(); j++)
+			printf("%s ", node->output(j).c_str());
+		printf("\n");
+	}
 }
 
 extern "C" struct network *loadonnx(const char* modelpath)
@@ -155,17 +198,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	for (int i = 0; i < graph.node_size(); i++)
 	{
 		const onnx::NodeProto& node = graph.node(i);
-		if(th_debug > 1)
-		{
-			printf("%s (%s): ", node.op_type().c_str(), node.name().c_str());
-			for(int j = 0; j < node.input_size(); j++)
-				if(!getinitializer(&graph, node.input(j)))
-					printf("%s ", node.input(j).c_str());
-			printf("-> ");
-			for(int j = 0; j < node.output_size(); j++)
-				printf("%s ", node.output(j).c_str());
-			printf("\n");
-		}
+		printop(&graph, &node);
 		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 &&
 				i > 0 && node.input(0) == graph.node(i-1).output(0) && n > 0 &&
 				((!strcmp(graph.node(i-1).op_type().c_str(), "Conv") && !net->modules[n-1].SpatialConvolution.bias->storage) ||
@@ -182,6 +215,39 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			}
 			free(net->modules[n-1].outputname);
 			net->modules[n-1].outputname = strdup(node.output(0).c_str());
+			continue;
+		}
+		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
+			!strcmp(graph.node(i+1).op_type().c_str(), "Conv") &&
+			node.output(0) == graph.node(i+1).input(0))
+		{
+			// Special case, padding followed by convolution
+			printop(&graph, &graph.node(i+1));
+			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].net = net;
+			onnxload_SpatialConvolution(&graph, net->modules + n, i+1);
+			net->modules[n].outputname = strdup(node.output(0).c_str());
+			const char *mode = onnx_getstring(&graph, i, "mode", -1);
+			if(mode)
+			{
+				if(!strcmp(mode, "reflect"))
+					net->modules[n].SpatialConvolution.refl_pad = 1;
+				else if(*mode && strcmp(mode, "constant"))
+					THError("Unsupported padding type %s\n", mode);
+				if(net->modules[n].SpatialConvolution.padH || net->modules[n].SpatialConvolution.padW)
+					THError("Double padding not supported\n");
+				net->modules[n].SpatialConvolution.padH = onnx_getint(&graph, i, "pads", 2);
+				net->modules[n].SpatialConvolution.padW = onnx_getint(&graph, i, "pads", 6);
+			}
+			free(net->modules[n].outputname);
+			net->modules[n].outputname = strdup(graph.node(i+1).output(0).c_str());
+
+			int k = getoutput(net, node.input(0).c_str());
+			if(k >= 0)
+				net->modules[n].inputs[net->modules[n].ninputs++] = k;
+
+			net->nelem = ++n;
+			i++;
 			continue;
 		}
 		if(!strcmp(node.op_type().c_str(), "Split"))

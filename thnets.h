@@ -123,6 +123,7 @@ struct SpatialConvolution
 {
 	THFloatTensor *bias, *weight, *finput;
 	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
+	int refl_pad;
 };
 
 struct SpatialFullConvolution
@@ -218,6 +219,11 @@ struct Slice
 	int from, to;
 };
 
+struct Upsample
+{
+	float width_scale, height_scale;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -246,7 +252,8 @@ enum moduletype {
 	MT_Padding,
 	MT_LogSoftMax,
 	MT_Slice,
-	MT_Cmax
+	MT_Cmax,
+	MT_Upsample
 };
 
 struct network;
@@ -290,6 +297,7 @@ struct module
 		struct Concat JoinTable;
 		struct PReLU PReLU;
 		struct Slice Slice;
+		struct Upsample Upsample;
 	};
 };
 

@@ -73,6 +73,7 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 #endif
 	m->nnfree = nnfree_SpatialConvolution;
 	struct SpatialConvolution *p = &m->SpatialConvolution;
+	p->refl_pad = 0;
 	p->weight = onnx_gettensor(graph, nodeidx, 1);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
 	p->finput = THFloatTensor_new();
