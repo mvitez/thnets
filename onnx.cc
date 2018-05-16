@@ -104,8 +104,8 @@ void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
 	m->updateOutput = 0; // Not implemented
 	m->type = MT_Upsample;
 	struct Upsample *p = &m->Upsample;
-	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", 0);
-	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", 0);
+	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
+	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
 }
 
 static struct {
