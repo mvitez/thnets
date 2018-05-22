@@ -100,6 +100,6 @@ void sgemv(char trans, int m, int n, float alpha, float *a, int lda, float *x, i
 		i -= width;
 	}
 #pragma omp parallel for
-	for(i = 0; i < nthreads; i++)
+	for(i = 0; i < num_cpu; i++)
 		sgemv_t(m, range[i+1] - range[i], 0, alpha, a + range[i] * lda, lda, x, incx, y + range[i] * incy, incy, 0);
 }
