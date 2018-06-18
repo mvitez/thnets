@@ -404,6 +404,7 @@ void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc);
 void THFloatTensor_zero(THFloatTensor *t);
 void THFloatTensor_fill(THFloatTensor *t, float value);
 void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc);
+void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc);
 void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to);
 void THFloatTensor_free(THFloatTensor *t);
 THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
