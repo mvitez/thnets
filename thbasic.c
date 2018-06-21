@@ -372,6 +372,8 @@ void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc)
 	}
 	if(tsrc->nDimension == 2)
 	{
+		tdst->stride[0] = tdst->size[1];
+		tdst->stride[1] = 1;
 		for(i0 = 0; i0 < tsrc->size[0]; i0++)
 			for(i1 = 0; i1 < tsrc->size[1]; i1++)
 				dst[tdst->stride[0] * i0 + tdst->stride[1] * i1] = src[tsrc->stride[0] * i0 + tsrc->stride[1] * i1];
@@ -379,12 +381,19 @@ void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc)
 	}
 	if(tsrc->nDimension == 3)
 	{
+		tdst->stride[0] = tdst->size[1] * tdst->size[2];
+		tdst->stride[1] = tdst->size[2];
+		tdst->stride[2] = 1;
 		for(i0 = 0; i0 < tsrc->size[0]; i0++)
 			for(i1 = 0; i1 < tsrc->size[1]; i1++)
 				for(i2 = 0; i2 < tsrc->size[2]; i2++)
 					dst[tdst->stride[0] * i0 + tdst->stride[1] * i1 + tdst->stride[2] * i2] = src[tsrc->stride[0] * i0 + tsrc->stride[1] * i1 + tsrc->stride[2] * i2];
 		return;
 	}
+	tdst->stride[0] = tdst->size[1] * tdst->size[2] * tdst->size[3];
+	tdst->stride[1] = tdst->size[2] * tdst->size[3];
+	tdst->stride[2] = tdst->size[3];
+	tdst->stride[3] = 1;
 	for(i0 = 0; i0 < tsrc->size[0]; i0++)
 		for(i1 = 0; i1 < tsrc->size[1]; i1++)
 			for(i2 = 0; i2 < tsrc->size[2]; i2++)
