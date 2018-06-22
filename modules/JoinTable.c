@@ -51,7 +51,7 @@ THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *i
 			THError("Concatenation of tensors of different dimensionality");
 		for(j = 0; j < modules[0].output->nDimension; j++)
 			if(j != dimension && modules[0].output->size[j] != modules[i].output->size[j])
-				THError("Concatenation of tensors of different sizes");
+				THError("Concatenation of tensors of different sizes (dim %d, %ld != %ld)", j, modules[0].output->size[j], modules[i].output->size[j]);
 	}
 	memcpy(size, modules[0].output->size, sizeof(size));
 	size[dimension] = sizen;

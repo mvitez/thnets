@@ -216,12 +216,17 @@ struct Padding
 
 struct Slice
 {
-	int from, to;
+	int axis, from, to;
 };
 
 struct Upsample
 {
 	float width_scale, height_scale;
+};
+
+struct LSTM
+{
+	THFloatTensor *W, *R, *B;
 };
 
 enum moduletype {
@@ -253,7 +258,8 @@ enum moduletype {
 	MT_LogSoftMax,
 	MT_Slice,
 	MT_Cmax,
-	MT_Upsample
+	MT_Upsample,
+	MT_LSTM
 };
 
 struct network;
@@ -298,6 +304,7 @@ struct module
 		struct PReLU PReLU;
 		struct Slice Slice;
 		struct Upsample Upsample;
+		struct LSTM LSTM;
 	};
 };
 
@@ -357,6 +364,7 @@ struct network *loadonnx(const char *path);
 THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
 int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);
 float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx);
+void onnx_printintslist(const void *graph, int nodeidx, const char *name);
 #endif
 // End ONNX
 

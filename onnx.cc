@@ -13,100 +13,8 @@
 using namespace std;
 using namespace google::protobuf::io;
 
-static const onnx::TensorProto *getinitializer(const onnx::GraphProto *graph, const string &name)
-{
-	for(int i = 0; i < graph->initializer_size(); i++)
-		if(name == graph->initializer(i).name())
-			return &graph->initializer(i);
-	// Not found in initializers, see if it's calculated
-	for (int i = 0; i < graph->node_size(); i++)
-		if(graph->node(i).output(0) == name && graph->node(i).input_size() == 1)
-			return getinitializer(graph, graph->node(i).input(0));
-	return 0;
-}
-
-extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx)
-{
-	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
-	if(inputidx >= g->node(nodeidx).input_size())
-		return THFloatTensor_new();
-	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
-	if(t->data_type() != 1)
-		THError("Only float tensors are supported, got data_type %d for %s\n", t->data_type(), t->name().c_str());
-	THFloatTensor *t1 = THFloatTensor_new();
-	long sizes[4], total = 1;
-	for(int i = 0; i < t->dims_size(); i++)
-	{
-		sizes[i] = t->dims(i);
-		total *= sizes[i];
-	}
-	THFloatTensor_resize(t1, sizes, t->dims_size());
-	memcpy(t1->storage->data, t->raw_data().c_str(), total * sizeof(float));
-	return t1;
-}
-
-extern "C" int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx)
-{
-	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
-	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
-	{
-		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
-		if(!strcmp(attr.name().c_str(), attrname))
-		{
-			if(idx == -1)
-				return attr.i();
-			if(idx < attr.ints_size())
-				return attr.ints(idx);
-			return 0;
-		}
-	}
-	return 0;
-}
-
-extern "C" float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx)
-{
-	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
-	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
-	{
-		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
-		if(!strcmp(attr.name().c_str(), attrname))
-		{
-			if(idx == -1)
-				return attr.f();
-			if(idx < attr.floats_size())
-				return attr.floats(idx);
-			return 0;
-		}
-	}
-	return 0;
-}
-
-extern "C" const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx)
-{
-	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
-	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
-	{
-		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
-		if(!strcmp(attr.name().c_str(), attrname))
-		{
-			if(idx == -1)
-				return attr.s().c_str();
-			if(idx < attr.strings_size())
-				return attr.strings(idx).c_str();
-			return 0;
-		}
-	}
-	return 0;
-}
-
-void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
-{
-	m->updateOutput = 0; // Not implemented
-	m->type = MT_Upsample;
-	struct Upsample *p = &m->Upsample;
-	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
-	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
-}
+void onnxload_Upsample(const void *graph, struct module *m, int nodeidx);
+void onnxload_LSTM(const void *graph, struct module *m, int nodeidx);
 
 static struct {
 	const char *name;
@@ -133,6 +41,7 @@ static struct {
 	{"Max", onnxload_Cmax},
 	{"Slice", onnxload_Slice},
 	{"Upsample", onnxload_Upsample},
+	{"LSTM", onnxload_LSTM},
 };
 
 static int getfunction(const char *name)
@@ -141,6 +50,201 @@ static int getfunction(const char *name)
 		if(!strcmp(name, name2loadf[j].name))
 			return j;
 	return -1;
+}
+
+static void printtensor(const onnx::TensorProto *t)
+{
+	printf("%s_Init(", t->DataType_Name(t->data_type()).c_str());
+	for(int i = 0; i < t->dims_size(); i++)
+	{
+		printf("%ld", t->dims(i));
+		if(i < t->dims_size() - 1)
+			printf(",");
+	}
+	printf(")");
+}
+
+static int isinitializer(const onnx::GraphProto *graph, const string &name)
+{
+	for(int i = 0; i < graph->initializer_size(); i++)
+		if(name == graph->initializer(i).name())
+		{
+			if(th_debug > 2)
+				printtensor(&graph->initializer(i));
+			return 1;
+		}
+	// Not found in initializers, see if it's calculated from other initializers or if it's a shape of an input
+	for (int i = 0; i < graph->node_size(); i++)
+		if(graph->node(i).output(0) == name)
+		{
+			if(graph->node(i).op_type() == "Shape")
+				return 1;
+			for(int j = 0; j < graph->node(i).input_size(); j++)
+				if(!isinitializer(graph, graph->node(i).input(j)))
+					return 0;
+			return 1;
+		}
+	return 0;
+}
+
+static const onnx::TensorProto *getinitializer(const onnx::GraphProto *graph, const string &name)
+{
+	for(int i = 0; i < graph->initializer_size(); i++)
+		if(name == graph->initializer(i).name())
+		{
+			if(th_debug > 2)
+				printtensor(&graph->initializer(i));
+			return &graph->initializer(i);
+		}
+	return 0;
+}
+
+extern "C" void onnx_printintslist(const void *graph, int nodeidx, const char *name)
+{
+	int n = onnx_getint(graph, nodeidx, name, -2);
+	printf(" %s=[%d", name, onnx_getint(graph, nodeidx, name, 0));
+	for(int i = 1; i < n; i++)
+		printf(",%d", onnx_getint(graph, nodeidx, name, i));
+	printf("]\n");
+}
+
+extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	if(inputidx >= g->node(nodeidx).input_size())
+		return THFloatTensor_new();
+	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
+	if(t)
+	{
+		if(t->data_type() != 1)
+			THError("Only float tensors are supported, got data_type %d for %s\n", t->data_type(), t->name().c_str());
+		THFloatTensor *t1 = THFloatTensor_new();
+		long sizes[4], total = 1;
+		for(int i = 0; i < t->dims_size(); i++)
+		{
+			sizes[i] = t->dims(i);
+			total *= sizes[i];
+		}
+		THFloatTensor_resize(t1, sizes, t->dims_size());
+		memcpy(t1->storage->data, t->raw_data().c_str(), total * sizeof(float));
+		return t1;
+	}
+	// Not found in initializers, see if it's calculated
+	for (int i = 0; i < g->node_size(); i++)
+		if(g->node(i).output(0) == g->node(nodeidx).input(inputidx))
+		{
+			if(g->node(i).op_type() == "ConstantFill")
+			{
+				float fill = onnx_getfloat(graph, i, "value", -1);
+				if(fill != 0)
+					THError("Only zero initial_h and initial_c supported\n");
+				return 0;
+			}
+			struct module m;
+			memset(&m, 0, sizeof(m));
+			int f = getfunction(g->node(i).op_type().c_str());
+			m.output = THFloatTensor_new();
+			name2loadf[f].onnxload(graph, &m, i);
+			if(f == -1)
+				THError("Unsupported node type %s\n", g->node(i).op_type().c_str());
+			if(g->node(i).op_type() == "Concat")
+			{
+				struct network net;
+				net.nelem = g->node(i).input_size();
+				struct module modules[net.nelem];
+				net.modules = modules;
+				for(int j = 0; j < net.nelem; j++)
+					modules[j].output = onnx_gettensor(graph, i, j);
+				m.ConcatTable.net = &net;
+				return m.updateOutput(&m, (THFloatTensor *)&m);
+			} else return m.updateOutput(&m, onnx_gettensor(graph, i, 0));
+		}
+	return 0;
+}
+
+extern "C" int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
+	{
+		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
+		if(!strcmp(attr.name().c_str(), attrname))
+		{
+			if(idx == -1)
+				return attr.i();
+			if(idx == -2)
+				return attr.ints_size();
+			if(idx < attr.ints_size())
+				return attr.ints(idx);
+			return 0;
+		}
+	}
+	return 0;
+}
+
+extern "C" float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
+	{
+		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
+		if(!strcmp(attr.name().c_str(), attrname))
+		{
+			if(idx == -1)
+				return attr.f();
+			if(idx == -2)
+				return attr.floats_size();
+			if(idx < attr.floats_size())
+				return attr.floats(idx);
+			return 0;
+		}
+	}
+	return 0;
+}
+
+extern "C" const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
+	{
+		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
+		if(!strcmp(attr.name().c_str(), attrname))
+		{
+			if(idx == -1)
+				return attr.s().c_str();
+			if(idx == -2)
+				return (const char *)(size_t)attr.strings_size();
+			if(idx < attr.strings_size())
+				return attr.strings(idx).c_str();
+			return 0;
+		}
+	}
+	return 0;
+}
+
+void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = 0; // Not implemented
+	m->type = MT_Upsample;
+	struct Upsample *p = &m->Upsample;
+	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
+	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
+}
+
+THFloatTensor *notimplemented(struct module *m, THFloatTensor *t)
+{
+	printf("Not implemented\n");
+	return t;
+}
+
+void onnxload_LSTM(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = notimplemented;
+	m->type = MT_LSTM;
+	struct LSTM *p = &m->LSTM;
+	p->W = onnx_gettensor(graph, nodeidx, 1);
+	p->R = onnx_gettensor(graph, nodeidx, 2);
+	p->B = onnx_gettensor(graph, nodeidx, 3);
 }
 
 static int getoutput(struct network *net, const char *name)
@@ -157,13 +261,25 @@ static void printop(const onnx::GraphProto *graph, const onnx::NodeProto *node)
 	{
 		printf("%s (%s): ", node->op_type().c_str(), node->name().c_str());
 		for(int j = 0; j < node->input_size(); j++)
-			if(!getinitializer(graph, node->input(j)))
+			if(!isinitializer(graph, node->input(j)))
 				printf("%s ", node->input(j).c_str());
+			else printf("'%s' ", node->input(j).c_str());
 		printf("-> ");
 		for(int j = 0; j < node->output_size(); j++)
 			printf("%s ", node->output(j).c_str());
 		printf("\n");
 	}
+}
+
+static int isconstant(const onnx::GraphProto *graph, const onnx::NodeProto *node)
+{
+	if(node->op_type() == "Shape")
+		return 1;
+	for(int j = 0; j < node->input_size(); j++)
+		if(!isinitializer(graph, node->input(j)))
+			return 0;
+		else return 1;
+	return 1;
 }
 
 extern "C" struct network *loadonnx(const char* modelpath)
@@ -272,7 +388,11 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		}
 		f = getfunction(node.op_type().c_str());
 		if(f == -1)
-			THError("Unsupported node type %s\n", node.op_type().c_str());
+		{
+			fprintf(stderr, "WARNING: Unsupported node type %s, substituting with dropout\n", node.op_type().c_str());
+			f = getfunction("Dropout");
+			//THError("Unsupported node type %s\n", node.op_type().c_str());
+		}
 		for(j = 0; j < node.input_size(); j++)
 		{
 			int k = getoutput(net, node.input(j).c_str());
@@ -283,7 +403,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 					THError("Maximum number of node inputs exceeded\n");
 			}
 		}
-		if(i == 0 || net->modules[n].ninputs)
+		if(!isconstant(&graph, &node))
 		{
 			net->modules[n].output = THFloatTensor_new();
 			net->modules[n].net = net;
