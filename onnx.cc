@@ -350,11 +350,11 @@ extern "C" struct network *loadonnx(const char* modelpath)
 					net->modules[n].SpatialConvolution.refl_pad = 1;
 				else if(*mode && strcmp(mode, "constant"))
 					THError("Unsupported padding type %s\n", mode);
-				if(net->modules[n].SpatialConvolution.padH || net->modules[n].SpatialConvolution.padW)
-					THError("Double padding not supported\n");
-				net->modules[n].SpatialConvolution.padH = onnx_getint(&graph, i, "pads", 2);
-				net->modules[n].SpatialConvolution.padW = onnx_getint(&graph, i, "pads", 6);
 			}
+			if(net->modules[n].SpatialConvolution.padH || net->modules[n].SpatialConvolution.padW)
+				THError("Double padding not supported\n");
+			net->modules[n].SpatialConvolution.padH = onnx_getint(&graph, i, "pads", 2);
+			net->modules[n].SpatialConvolution.padW = onnx_getint(&graph, i, "pads", 3);
 			free(net->modules[n].outputname);
 			net->modules[n].outputname = strdup(graph.node(i+1).output(0).c_str());
 
