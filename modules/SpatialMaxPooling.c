@@ -63,6 +63,8 @@ void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx
 	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
 	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
 	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+	p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
+	p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
 	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
 	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
 	p->ceil_mode = 0;

@@ -124,6 +124,7 @@ struct SpatialConvolution
 	THFloatTensor *bias, *weight, *finput;
 	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
 	int refl_pad;
+	int padW2, padH2; // right and bottom, if different
 };
 
 struct SpatialFullConvolution
@@ -139,12 +140,14 @@ struct SpatialMaxPooling
 	int padW, padH, dW, dH, kW, kH, ceil_mode;
 	int iwidth, iheight;
 	THFloatTensor *indices;
+	int padW2, padH2; // right and bottom, if different
 };
 
 struct SpatialAveragePooling
 {
 	int padW, padH, dW, dH, kW, kH, ceil_mode;
 	int iwidth, iheight, count_include_pad;
+	int padW2, padH2; // right and bottom, if different
 };
 
 struct Linear
