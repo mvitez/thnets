@@ -232,6 +232,11 @@ struct LSTM
 	THFloatTensor *W, *R, *B;
 };
 
+struct GRU
+{
+	THFloatTensor *W, *R, *B;
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -262,7 +267,8 @@ enum moduletype {
 	MT_Slice,
 	MT_Cmax,
 	MT_Upsample,
-	MT_LSTM
+	MT_LSTM,
+	MT_GRU
 };
 
 struct network;
@@ -308,6 +314,7 @@ struct module
 		struct Slice Slice;
 		struct Upsample Upsample;
 		struct LSTM LSTM;
+		struct GRU GRU;
 	};
 };
 

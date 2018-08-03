@@ -15,6 +15,7 @@ using namespace google::protobuf::io;
 
 void onnxload_Upsample(const void *graph, struct module *m, int nodeidx);
 void onnxload_LSTM(const void *graph, struct module *m, int nodeidx);
+void onnxload_GRU(const void *graph, struct module *m, int nodeidx);
 
 static struct {
 	const char *name;
@@ -42,6 +43,7 @@ static struct {
 	{"Slice", onnxload_Slice},
 	{"Upsample", onnxload_Upsample},
 	{"LSTM", onnxload_LSTM},
+	{"GRU", onnxload_GRU}
 };
 
 static int getfunction(const char *name)
@@ -242,6 +244,16 @@ void onnxload_LSTM(const void *graph, struct module *m, int nodeidx)
 	m->updateOutput = notimplemented;
 	m->type = MT_LSTM;
 	struct LSTM *p = &m->LSTM;
+	p->W = onnx_gettensor(graph, nodeidx, 1);
+	p->R = onnx_gettensor(graph, nodeidx, 2);
+	p->B = onnx_gettensor(graph, nodeidx, 3);
+}
+
+void onnxload_GRU(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = notimplemented;
+	m->type = MT_GRU;
+	struct GRU *p = &m->GRU;
 	p->W = onnx_gettensor(graph, nodeidx, 1);
 	p->R = onnx_gettensor(graph, nodeidx, 2);
 	p->B = onnx_gettensor(graph, nodeidx, 3);
