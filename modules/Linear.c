@@ -46,7 +46,7 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 	{
 		THFloatTensor *weight = THFloatTensor_newTranspose(p->weight, 0, 1);
 		THFloatTensor *cweight = THFloatTensor_new();
-		THFloatTensor_set(cweight, weight);
+		THFloatTensor_resize2d(cweight, weight->size[0], weight->size[1]);
 		THFloatTensor_safecopy(cweight, weight);
 		THFloatTensor_free(weight);
 		THFloatTensor_free(p->weight);
