@@ -435,6 +435,9 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			}
 			continue;
 		}
+		if(!strcmp(node.op_type().c_str(), "Shape") || !strcmp(node.op_type().c_str(), "Squeeze") ||
+			!strcmp(node.op_type().c_str(), "Unsqueeze"))
+			continue;
 		f = getfunction(node.op_type().c_str());
 		if(f == -1)
 		{
