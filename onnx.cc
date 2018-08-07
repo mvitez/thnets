@@ -380,6 +380,41 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			i++;
 			continue;
 		}
+		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
+			!strcmp(graph.node(i+1).op_type().c_str(), "AveragePool") &&
+			node.output(0) == graph.node(i+1).input(0))
+		{
+			// Special case, padding followed by average pooling
+			printop(&graph, &graph.node(i+1));
+			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].net = net;
+			onnxload_SpatialAveragePooling(&graph, net->modules + n, i+1);
+			net->modules[n].outputname = strdup(node.output(0).c_str());
+			const char *mode = onnx_getstring(&graph, i, "mode", -1);
+			if(mode)
+			{
+				if(!strcmp(mode, "reflect"))
+					THError("Unsupported padding type %s followed by average pooling\n", mode);
+				else if(*mode && strcmp(mode, "constant"))
+					THError("Unsupported padding type %s\n", mode);
+			}
+			if(net->modules[n].SpatialAveragePooling.padH || net->modules[n].SpatialAveragePooling.padW)
+				THError("Double padding not supported\n");
+			net->modules[n].SpatialAveragePooling.padH = onnx_getint(&graph, i, "pads", 2);
+			net->modules[n].SpatialAveragePooling.padW = onnx_getint(&graph, i, "pads", 3);
+			net->modules[n].SpatialAveragePooling.padH2 = onnx_getint(&graph, i, "pads", 6);
+			net->modules[n].SpatialAveragePooling.padW2 = onnx_getint(&graph, i, "pads", 7);
+			free(net->modules[n].outputname);
+			net->modules[n].outputname = strdup(graph.node(i+1).output(0).c_str());
+
+			int k = getoutput(net, node.input(0).c_str());
+			if(k >= 0)
+				net->modules[n].inputs[net->modules[n].ninputs++] = k;
+
+			net->nelem = ++n;
+			i++;
+			continue;
+		}
 		if(!strcmp(node.op_type().c_str(), "Split"))
 		{
 			int from = 0;
