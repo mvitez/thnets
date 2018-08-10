@@ -25,6 +25,7 @@ static struct {
 	{"Conv", onnxload_SpatialConvolution},
 	{"ConvTranspose", onnxload_SpatialConvolutionTransposed},
 	{"Gemm", onnxload_Linear},
+	{"MatMul", onnxload_Linear},
 	{"BatchNormalization", onnxload_SpatialBatchNormalization},
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
@@ -110,6 +111,37 @@ extern "C" void onnx_printintslist(const void *graph, int nodeidx, const char *n
 	printf("]\n");
 }
 
+static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attrname, int idx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
+	{
+		const onnx::AttributeProto &attr = g->node(nodeidx).attribute(i);
+		if(!strcmp(attr.name().c_str(), attrname))
+		{
+			const onnx::TensorProto *t;
+			if(idx == -1)
+				t = &attr.t();
+			else if(idx == -2)
+				return (THFloatTensor *)(size_t)attr.tensors_size();
+			else if(idx < attr.tensors_size())
+				t = &attr.tensors(idx);
+			else return 0;
+			THFloatTensor *t1 = THFloatTensor_new();
+			long sizes[4], total = 1;
+			for(int i = 0; i < t->dims_size(); i++)
+			{
+				sizes[i] = t->dims(i);
+				total *= sizes[i];
+			}
+			THFloatTensor_resize(t1, sizes, t->dims_size());
+			memcpy(t1->storage->data, t->raw_data().c_str(), total * sizeof(float));
+			return t1;
+		}
+	}
+	return 0;
+}
+
 extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
@@ -142,6 +174,8 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 					THError("Only zero initial_h and initial_c supported\n");
 				return 0;
 			}
+			if(g->node(i).op_type() == "Constant")
+				return gettensor(graph, i, "value", -1);
 			struct module m;
 			memset(&m, 0, sizeof(m));
 			int f = getfunction(g->node(i).op_type().c_str());
@@ -327,23 +361,31 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	{
 		const onnx::NodeProto& node = graph.node(i);
 		printop(&graph, &node);
-		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 &&
-				i > 0 && node.input(0) == graph.node(i-1).output(0) && n > 0 &&
-				((!strcmp(graph.node(i-1).op_type().c_str(), "Conv") && !net->modules[n-1].SpatialConvolution.bias->storage) ||
-				(!strcmp(graph.node(i-1).op_type().c_str(), "Gemm") && !net->modules[n-1].Linear.bias->storage)))
+		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2)
 		{
-			// Special case: we are adding bias to convolution or linear
-			if(!strcmp(graph.node(i-1).op_type().c_str(), "Conv"))
-			{
-				THFloatTensor_free(net->modules[n-1].SpatialConvolution.bias);
-				net->modules[n-1].SpatialConvolution.bias = onnx_gettensor(&graph, i, 1);
-			} else {
-				THFloatTensor_free(net->modules[n-1].Linear.bias);
-				net->modules[n-1].Linear.bias = onnx_gettensor(&graph, i, 1);
-			}
-			free(net->modules[n-1].outputname);
-			net->modules[n-1].outputname = strdup(node.output(0).c_str());
-			continue;
+			int j;
+			for(j = 0; j < n; j++)
+				if(!strcmp(node.input(0).c_str(), net->modules[j].outputname))
+				{
+					// Special case: we are adding bias to convolution or linear
+					if(net->modules[j].type == MT_SpatialConvolutionVirtMM && !net->modules[j].SpatialConvolution.bias->storage)
+					{
+						THFloatTensor_free(net->modules[j].SpatialConvolution.bias);
+						net->modules[j].SpatialConvolution.bias = onnx_gettensor(&graph, i, 1);
+						free(net->modules[j].outputname);
+						net->modules[j].outputname = strdup(node.output(0).c_str());
+						break;
+					} else if(net->modules[j].type == MT_Linear && !net->modules[j].Linear.bias->storage)
+					{
+						THFloatTensor_free(net->modules[j].Linear.bias);
+						net->modules[j].Linear.bias = onnx_gettensor(&graph, i, 1);
+						free(net->modules[j].outputname);
+						net->modules[j].outputname = strdup(node.output(0).c_str());
+						break;
+					}
+				}
+			if(j < n)
+				continue;
 		}
 		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
 			!strcmp(graph.node(i+1).op_type().c_str(), "Conv") &&

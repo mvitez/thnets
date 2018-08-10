@@ -125,6 +125,7 @@ struct SpatialConvolution
 	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
 	int refl_pad;
 	int padW2, padH2; // right and bottom, if different
+	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
 
 struct SpatialFullConvolution
@@ -374,6 +375,7 @@ struct network *loadonnx(const char *path);
 THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
 int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);
 float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx);
+const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx);
 void onnx_printintslist(const void *graph, int nodeidx, const char *name);
 #endif
 // End ONNX

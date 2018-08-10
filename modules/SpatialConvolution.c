@@ -1,4 +1,5 @@
 #include "../thnets.h"
+#include <string.h>
 
 static void nnfree_SpatialConvolution(struct module *mod)
 {
@@ -84,6 +85,12 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 	if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
 			p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
 		THError("Conflicting kernel sizes in proto file\n");
+	const char *autopad = onnx_getstring(graph, nodeidx, "auto_pad", -1);
+	if(autopad && !strcmp(autopad, "SAME_UPPER"))
+		p->autopad = 1;
+	else if(autopad && !strcmp(autopad, "SAME_LOWER"))
+		p->autopad = 2;
+	else p->autopad = 0;
 	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
 	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
 	p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
