@@ -111,6 +111,18 @@ extern "C" void onnx_printintslist(const void *graph, int nodeidx, const char *n
 	printf("]\n");
 }
 
+void gettensordata(THFloatTensor *tdst, const onnx::TensorProto *tsrc)
+{
+	float *ddata = tdst->storage->data;
+	if(tsrc->has_raw_data())
+		memcpy(ddata, tsrc->raw_data().c_str(), tsrc->raw_data().length());
+	else {
+		int i, n = tsrc->float_data_size();
+		for(i = 0; i < n; i++)
+			ddata[i] = tsrc->float_data(i);
+	}
+}
+
 static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attrname, int idx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
@@ -135,7 +147,7 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 				total *= sizes[i];
 			}
 			THFloatTensor_resize(t1, sizes, t->dims_size());
-			memcpy(t1->storage->data, t->raw_data().c_str(), total * sizeof(float));
+			gettensordata(t1, t);
 			return t1;
 		}
 	}
@@ -160,7 +172,7 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 			total *= sizes[i];
 		}
 		THFloatTensor_resize(t1, sizes, t->dims_size());
-		memcpy(t1->storage->data, t->raw_data().c_str(), total * sizeof(float));
+		gettensordata(t1, t);
 		return t1;
 	}
 	// Not found in initializers, see if it's calculated
