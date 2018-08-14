@@ -389,8 +389,10 @@ extern "C" struct network *loadonnx(const char* modelpath)
 						break;
 					} else if(net->modules[j].type == MT_Linear && !net->modules[j].Linear.bias->storage)
 					{
+						THFloatTensor *bias = onnx_gettensor(&graph, i, 1);
 						THFloatTensor_free(net->modules[j].Linear.bias);
-						net->modules[j].Linear.bias = onnx_gettensor(&graph, i, 1);
+						net->modules[j].Linear.bias = THFloatTensor_squeeze(bias);
+						THFloatTensor_free(bias);
 						free(net->modules[j].outputname);
 						net->modules[j].outputname = strdup(node.output(0).c_str());
 						break;
