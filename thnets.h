@@ -373,6 +373,7 @@ THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct
 #ifdef ONNX
 struct network *loadonnx(const char *path);
 THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
+THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx);
 int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);
 float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx);
 const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx);

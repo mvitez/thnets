@@ -28,7 +28,14 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 	struct View *p = &m->View;
 	p->numElements = onnx_getint(graph, nodeidx, "shape", 1);
 	if(!p->numElements)
-		p->numElements = -1;
+	{
+		THFloatTensor *t = onnx_getshapetensor(graph, nodeidx, 1);
+		if(t)
+		{
+			p->numElements = t->size[1];
+			THFloatTensor_free(t);
+		} else p->numElements = -1;
+	}
 }
 #endif
 

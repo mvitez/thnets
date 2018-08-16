@@ -210,6 +210,31 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 	return 0;
 }
 
+extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx)
+{
+	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
+	if(inputidx >= g->node(nodeidx).input_size())
+		return THFloatTensor_new();
+	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
+	if(t)
+	{
+		if(t->data_type() != 7)
+			THError("Only int64 tensors are supported for shapes, got data_type %d for %s\n", t->data_type(), t->name().c_str());
+		if(t->dims_size() != 1)
+			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
+		THFloatTensor *t1 = THFloatTensor_new();
+		long sizes[4], total = 1;
+		for(int i = 0; i < t->dims(0); i++)
+		{
+			sizes[i] = t->int64_data(i);
+			total *= sizes[i];
+		}
+		THFloatTensor_resize(t1, sizes, t->dims(0));
+		return t1;
+	}
+	return 0;
+}
+
 extern "C" int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
