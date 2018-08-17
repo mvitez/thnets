@@ -33,6 +33,8 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 		if(t)
 		{
 			p->numElements = t->size[1];
+			if(!p->numElements)
+				p->numElements = -1;
 			THFloatTensor_free(t);
 		} else p->numElements = -1;
 	}
