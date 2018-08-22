@@ -238,6 +238,12 @@ struct GRU
 	THFloatTensor *W, *R, *B;
 };
 
+struct Squeeze
+{
+	int naxes;
+	int axes[4];
+};
+
 enum moduletype {
 	MT_Nil,
 	MT_SpatialConvolutionMM,
@@ -269,7 +275,9 @@ enum moduletype {
 	MT_Cmax,
 	MT_Upsample,
 	MT_LSTM,
-	MT_GRU
+	MT_GRU,
+	MT_Squeeze,
+	MT_Unsqueeze
 };
 
 struct network;
@@ -316,6 +324,7 @@ struct module
 		struct Upsample Upsample;
 		struct LSTM LSTM;
 		struct GRU GRU;
+		struct Squeeze Squeeze;
 	};
 };
 

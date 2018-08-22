@@ -281,7 +281,9 @@ void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc)
 
 float *THFloatTensor_data(THFloatTensor *tensor)
 {
-	return tensor->storage->data + tensor->storageOffset;
+	if(tensor && tensor->storage && tensor->storage->data)
+		return tensor->storage->data + tensor->storageOffset;
+	return 0;
 }
 
 THFloatTensor *THFloatTensor_new()
