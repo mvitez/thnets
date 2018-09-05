@@ -97,12 +97,16 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 	p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
 	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
 	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	p->dlH = onnx_getint(graph, nodeidx, "dilations", 0);
+	p->dlW = onnx_getint(graph, nodeidx, "dilations", 1);
 	if(p->dW == 0)
 		p->dW = 1;
-	if(p->kW == 0)
-		p->kW = 1;
-	if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1)
-		THError("Dilation not supported\n");
+	if(p->dH == 0)
+		p->dH = 1;
+	if(p->dlW == 0)
+		p->dlW = 1;
+	if(p->dlH == 0)
+		p->dlH = 1;
 	if(onnx_getint(graph, nodeidx, "group", -1) > 1)
 		THError("Group convolution not supported\n");
 }

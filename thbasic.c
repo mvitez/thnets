@@ -19,7 +19,7 @@ THFloatStorage *THFloatStorage_new(long size)
 	THFloatStorage *s = malloc(sizeof(*s));
 	s->data = malloc(sizeof(*s->data) * size);
 	if(!s->data)
-		THError("Out of memory");
+		THError("Out of memory tryting to allocate %u bytes", sizeof(*s->data) * size);
 	s->nref = 1;
 	s->mustfree = 1;
 	return s;
@@ -59,6 +59,7 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 {
 	int i;
 	long stride = 1;
+	char nostorage = 0;
 
 	long nelem = THFloatTensor_nElement(t);
 	t->nDimension = nDimension;
@@ -67,10 +68,19 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 	{
 		t->stride[i] = stride;
 		stride *= t->size[i];
+		if(t->size[i] == -1)
+			nostorage = 1;
 	}
 	if(nelem != THFloatTensor_nElement(t))
 	{
-		if(t->storage)
+		if(nostorage)
+		{
+			if(t->storage)
+			{
+				THFloatStorage_free(t->storage);
+				t->storage = 0;
+			}
+		} else if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * stride);
 		else t->storage = THFloatStorage_new(stride);
 	}
