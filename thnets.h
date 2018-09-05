@@ -278,7 +278,9 @@ enum moduletype {
 	MT_LSTM,
 	MT_GRU,
 	MT_Squeeze,
-	MT_Unsqueeze
+	MT_Unsqueeze,
+	MT_Sigmoid,
+	MT_Tanh
 };
 
 struct network;
@@ -496,6 +498,8 @@ THFloatTensor *nn_Identity_updateOutput(struct module *module, THFloatTensor *in
 THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Sigmoid_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Tanh_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -550,6 +554,8 @@ void onnxload_Add(const void *graph, struct module *m, int nodeidx);
 void onnxload_Concat(const void *graph, struct module *m, int nodeidx);
 void onnxload_Slice(const void *graph, struct module *m, int nodeidx);
 void onnxload_Cmax(const void *graph, struct module *m, int nodeidx);
+void onnxload_Sigmoid(const void *graph, struct module *m, int nodeidx);
+void onnxload_Tanh(const void *graph, struct module *m, int nodeidx);
 
 /* High level API */
 

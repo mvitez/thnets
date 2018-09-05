@@ -13,7 +13,7 @@ USEBLAS = 0
 ONNX = 0
 #Can be no, 4 or 5 (version)
 CUDNN = no
-QSML = no
+QSML = noma
 #Or write its path like here:
 #QSML=/opt/Qualcomm/QSML-0.15.2/linux/arm32/lp64/gcc-4.8/
 
@@ -35,7 +35,7 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
 	SpatialAveragePooling.o Sequential.o Concat.o ConcatTable.o JoinTable.o CAddTable.o \
-	PReLU.o pytorch.o LogSoftMax.o Slice.o Cmax.o
+	PReLU.o pytorch.o LogSoftMax.o Slice.o Cmax.o Sigmoid.o Tanh.o
 
 ifeq ($(UNAME_S),Darwin)
 	CFLAGS += -DACCELERATE

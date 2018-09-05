@@ -50,7 +50,9 @@ static struct {
 	{"LSTM", onnxload_LSTM},
 	{"GRU", onnxload_GRU},
 	{"Unsqueeze", onnxload_Unsqueeze},
-	{"Squeeze", onnxload_Squeeze}
+	{"Squeeze", onnxload_Squeeze},
+	{"Sigmoid", onnxload_Sigmoid},
+	{"Tanh", onnxload_Tanh}
 };
 
 static int getfunction(const char *name)
@@ -302,19 +304,19 @@ extern "C" const char *onnx_getstring(const void *graph, int nodeidx, const char
 	return 0;
 }
 
-void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
-{
-	m->updateOutput = 0; // Not implemented
-	m->type = MT_Upsample;
-	struct Upsample *p = &m->Upsample;
-	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
-	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
-}
-
 THFloatTensor *notimplemented(struct module *m, THFloatTensor *t)
 {
 	printf("Not implemented\n");
 	return t;
+}
+
+void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = notimplemented;
+	m->type = MT_Upsample;
+	struct Upsample *p = &m->Upsample;
+	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
+	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
 }
 
 void onnxload_LSTM(const void *graph, struct module *m, int nodeidx)
