@@ -280,7 +280,8 @@ enum moduletype {
 	MT_Squeeze,
 	MT_Unsqueeze,
 	MT_Sigmoid,
-	MT_Tanh
+	MT_Tanh,
+	MT_Transpose
 };
 
 struct network;

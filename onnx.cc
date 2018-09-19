@@ -19,6 +19,7 @@ void onnxload_LSTM(const void *graph, struct module *m, int nodeidx);
 void onnxload_GRU(const void *graph, struct module *m, int nodeidx);
 void onnxload_Unsqueeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx);
+void onnxload_Transpose(const void *graph, struct module *m, int nodeidx);
 
 static struct {
 	const char *name;
@@ -52,7 +53,8 @@ static struct {
 	{"Unsqueeze", onnxload_Unsqueeze},
 	{"Squeeze", onnxload_Squeeze},
 	{"Sigmoid", onnxload_Sigmoid},
-	{"Tanh", onnxload_Tanh}
+	{"Tanh", onnxload_Tanh},
+	{"Transpose", onnxload_Transpose}
 };
 
 static int getfunction(const char *name)
@@ -395,6 +397,18 @@ void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx)
 	p->naxes = onnx_getint(graph, nodeidx, "axes", -2);
 	for(int i = 0; i < p->naxes && i < 4; i++)
 		p->axes[i] = onnx_getint(graph, nodeidx, "axes", i);
+}
+
+THFloatTensor *updateOutput_Transpose(struct module *m, THFloatTensor *t)
+{
+	THFloatTensor_transpose(m->output, t, 0, 1);
+	return m->output;
+}
+
+void onnxload_Transpose(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = updateOutput_Transpose;
+	m->type = MT_Transpose;
 }
 
 static int getoutput(struct network *net, const char *name)
