@@ -42,6 +42,11 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 	p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
 	THFloatTensor_free(weight);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
+	if (onnx_getfloat(graph, nodeidx, "beta", -1) == 0.0)
+	{
+		THFloatTensor_free(p->bias);
+		p->bias = THFloatTensor_new();
+	}
 	if(!onnx_getint(graph, nodeidx, "transB", -1))
 	{
 		THFloatTensor *weight = THFloatTensor_newTranspose(p->weight, 0, 1);

@@ -580,57 +580,67 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	{
 		const onnx::NodeProto& node = graph.node(i);
 		printop(&graph, &node);
-		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 && isinitializer(&graph, node.input(1)))
+		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 &&
+			(isinitializer(&graph, node.input(0)) || isinitializer(&graph, node.input(1))))
 		{
+			int init;
+			if(isinitializer(&graph, node.input(0)) && !isinitializer(&graph, node.input(1)))
+				init = 0;
+			else if(!isinitializer(&graph, node.input(0)) && isinitializer(&graph, node.input(1)))
+				init = 1;
+			else init = -1;
 			int j;
-			for(j = 0; j < n; j++)
-				if(!strcmp(node.input(0).c_str(), net->modules[j].outputname))
-				{
-					// Special case: we are adding bias to convolution or linear
-					if(net->modules[j].type == MT_SpatialConvolutionVirtMM)
+			if(init >= 0)
+			{
+				for(j = 0; j < n; j++)
+					if(!strcmp(node.input(!init).c_str(), net->modules[j].outputname))
 					{
-						if(net->modules[j].SpatialConvolution.bias->storage)
+						// Special case: we are adding bias to convolution or linear
+						if(net->modules[j].type == MT_SpatialConvolutionVirtMM)
 						{
-							THFloatTensor *t = onnx_gettensor(&graph, i, 1);
-							float *d = THFloatTensor_data(net->modules[j].SpatialConvolution.bias);
-							float *s = THFloatTensor_data(t);
-							int n = THFloatTensor_nElement(net->modules[j].SpatialConvolution.bias);
-							if (THFloatTensor_nElement(t) != n)
-								THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
-							for(int i = 0; i < n; i++)
-								d[i] += s[i];
-						} else {
-							THFloatTensor_free(net->modules[j].SpatialConvolution.bias);
-							net->modules[j].SpatialConvolution.bias = onnx_gettensor(&graph, i, 1);
-						}
-						free(net->modules[j].outputname);
-						net->modules[j].outputname = strdup(node.output(0).c_str());
-						break;
-					} else if(net->modules[j].type == MT_Linear)
-					{
-						if(net->modules[j].Linear.bias->storage)
+							if(net->modules[j].SpatialConvolution.bias->storage)
+							{
+								THFloatTensor *t = onnx_gettensor(&graph, i, init);
+								float *d = THFloatTensor_data(net->modules[j].SpatialConvolution.bias);
+								float *s = THFloatTensor_data(t);
+								int n = THFloatTensor_nElement(net->modules[j].SpatialConvolution.bias);
+								if (THFloatTensor_nElement(t) != n)
+									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
+								for(int i = 0; i < n; i++)
+									d[i] += s[i];
+							} else {
+								THFloatTensor_free(net->modules[j].SpatialConvolution.bias);
+								net->modules[j].SpatialConvolution.bias = onnx_gettensor(&graph, i, init);
+							}
+							free(net->modules[j].outputname);
+							net->modules[j].outputname = strdup(node.output(0).c_str());
+							break;
+						} else if(net->modules[j].type == MT_Linear)
 						{
-							THFloatTensor *t = onnx_gettensor(&graph, i, 1);
-							float *d = THFloatTensor_data(net->modules[j].Linear.bias);
-							float *s = THFloatTensor_data(t);
-							int n = THFloatTensor_nElement(net->modules[j].Linear.bias);
-							if (THFloatTensor_nElement(t) != n)
-								THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
-							for(int i = 0; i < n; i++)
-								d[i] += s[i];
-						} else {
-							THFloatTensor *bias = onnx_gettensor(&graph, i, 1);
-							THFloatTensor_free(net->modules[j].Linear.bias);
-							net->modules[j].Linear.bias = THFloatTensor_squeeze(bias);
-							THFloatTensor_free(bias);
+							if(net->modules[j].Linear.bias->storage)
+							{
+								THFloatTensor *t = onnx_gettensor(&graph, i, init);
+								float *d = THFloatTensor_data(net->modules[j].Linear.bias);
+								float *s = THFloatTensor_data(t);
+								int n = THFloatTensor_nElement(net->modules[j].Linear.bias);
+								if (THFloatTensor_nElement(t) != n)
+									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
+								for(int i = 0; i < n; i++)
+									d[i] += s[i];
+							} else {
+								THFloatTensor *bias = onnx_gettensor(&graph, i, init);
+								THFloatTensor_free(net->modules[j].Linear.bias);
+								net->modules[j].Linear.bias = THFloatTensor_squeeze(bias);
+								THFloatTensor_free(bias);
+							}
+							free(net->modules[j].outputname);
+							net->modules[j].outputname = strdup(node.output(0).c_str());
+							break;
 						}
-						free(net->modules[j].outputname);
-						net->modules[j].outputname = strdup(node.output(0).c_str());
-						break;
 					}
-				}
-			if(j < n)
-				continue;
+				if(j < n)
+					continue;
+			}
 		}
 		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
 			!strcmp(graph.node(i+1).op_type().c_str(), "Conv") &&
