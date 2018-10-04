@@ -319,6 +319,11 @@ void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
 	struct Upsample *p = &m->Upsample;
 	p->width_scale = onnx_getfloat(graph, nodeidx, "width_scale", -1);
 	p->height_scale = onnx_getfloat(graph, nodeidx, "height_scale", -1);
+	if(p->width_scale == 0 && p->height_scale == 0)
+	{
+		p->height_scale = onnx_getfloat(graph, nodeidx, "scales", 2);
+		p->width_scale = onnx_getfloat(graph, nodeidx, "scales", 3);
+	}
 }
 
 void onnxload_LSTM(const void *graph, struct module *m, int nodeidx)
