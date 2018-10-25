@@ -227,6 +227,27 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 	if(inputidx >= g->node(nodeidx).input_size())
 		return THFloatTensor_new();
 	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
+	// Not found in initializers, see if it's a constant
+	if(!t)
+	{
+		for (int i = 0; i < g->node_size(); i++)
+			if(g->node(i).output(0) == g->node(nodeidx).input(inputidx))
+			{
+				if(g->node(i).op_type() == "Constant")
+				{
+					for(int j = 0; j < g->node(i).attribute_size(); j++)
+					{
+						const onnx::AttributeProto &attr = g->node(i).attribute(j);
+						if(!strcmp(attr.name().c_str(), "value"))
+						{
+							t = &attr.t();
+							break;
+						}
+					}
+				}
+				break;
+			}
+	}
 	if(t)
 	{
 		if(t->data_type() != 7)
@@ -454,7 +475,7 @@ static int isconstant(const onnx::GraphProto *graph, const onnx::NodeProto *node
 	return 1;
 }
 
-static void absorb_bn(struct network *net, int cidx)
+static void absorb_bn(struct network *net, int bnidx, int cidx)
 {
 	struct module *convm = net->modules + cidx;
 	struct module *m = net->modules + cidx + 1;
@@ -546,6 +567,7 @@ static void absorb_bn(struct network *net, int cidx)
 	THFloatTensor_free(m->SpatialBatchNormalization.running_var);
 	THFloatTensor_free(m->SpatialBatchNormalization.weight);
 	THFloatTensor_free(m->SpatialBatchNormalization.bias);
+	THFloatTensor_free(m->output);
 	free(convm->outputname);
 	convm->outputname = m->outputname;
 	memmove(net->modules + cidx + 1, net->modules + cidx + 2, (net->nelem - (cidx + 2)) * sizeof(net->modules[0]));
@@ -803,11 +825,12 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			net->modules[n].outputname = strdup(node.output(0).c_str());
 			net->nelem = ++n;
 		}
-		if(net->nelem >= 2 && (net->modules[net->nelem-2].type == MT_SpatialConvolutionVirtMM ||
-			net->modules[net->nelem-2].type == MT_SpatialFullConvolution) &&
-			net->modules[net->nelem-1].type == MT_SpatialBatchNormalization)
+		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization &&
+			net->modules[net->nelem-1].inputs[0] >= 0 &&
+			(net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialConvolutionVirtMM ||
+			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialFullConvolution))
 		{
-			absorb_bn(net, net->nelem-2);
+			absorb_bn(net, net->nelem-1, net->modules[net->nelem-1].inputs[0]);
 			n--;
 		}
 	}

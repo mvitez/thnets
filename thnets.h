@@ -165,7 +165,8 @@ struct Threshold
 
 struct View
 {
-	int size, numElements;
+	int numElements, nDimension;
+	long size[4];
 };
 
 struct Dropout
