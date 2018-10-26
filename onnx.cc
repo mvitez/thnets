@@ -44,6 +44,7 @@ static struct {
 	{"Mul", onnxload_SpatialBatchNormalization},
 	{"AveragePool", onnxload_SpatialAveragePooling},
 	{"GlobalAveragePool", onnxload_SpatialAveragePooling},
+	{"ReduceMean", onnxload_SpatialAveragePooling},
 	{"Concat", onnxload_Concat},
 	{"Max", onnxload_Cmax},
 	{"Slice", onnxload_Slice},
@@ -680,6 +681,44 @@ extern "C" struct network *loadonnx(const char* modelpath)
 
 			net->nelem = ++n;
 			i++;
+			continue;
+		}
+		else if(i+2 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
+			!strcmp(graph.node(i+1).op_type().c_str(), "Transpose") && //initial transpose in tensorflow models
+			!strcmp(graph.node(i+2).op_type().c_str(), "Conv") &&
+			node.output(0) == graph.node(i+1).input(0) && //these 3 layes are in a sequence
+			graph.node(i+1).output(0) == graph.node(i+2).input(0))
+		{
+			// Special case, padding followed by transpose and convolution
+			printop(&graph, &graph.node(i+1));
+			printop(&graph, &graph.node(i+2));
+			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].net = net;
+			onnxload_SpatialConvolution(&graph, net->modules + n, i+2);
+			net->modules[n].outputname = strdup(node.output(0).c_str());
+			const char *mode = onnx_getstring(&graph, i, "mode", -1);
+			if(mode)
+			{
+				if(!strcmp(mode, "reflect"))
+					net->modules[n].SpatialConvolution.refl_pad = 1;
+				else if(*mode && strcmp(mode, "constant"))
+					THError("Unsupported padding type %s\n", mode);
+			}
+			if(net->modules[n].SpatialConvolution.padH || net->modules[n].SpatialConvolution.padW)
+				THError("Double padding not supported\n");
+			net->modules[n].SpatialConvolution.padH = onnx_getint(&graph, i, "pads", 1);//transposed the dimensions
+			net->modules[n].SpatialConvolution.padW = onnx_getint(&graph, i, "pads", 2);
+			net->modules[n].SpatialConvolution.padH2 = onnx_getint(&graph, i, "pads", 5);
+			net->modules[n].SpatialConvolution.padW2 = onnx_getint(&graph, i, "pads", 6);
+			free(net->modules[n].outputname);
+			net->modules[n].outputname = strdup(graph.node(i+2).output(0).c_str());
+
+			int k = getoutput(net, node.input(0).c_str());
+			if(k >= 0)
+				net->modules[n].inputs[net->modules[n].ninputs++] = k;
+
+			net->nelem = ++n;
+			i+=2;
 			continue;
 		}
 		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&

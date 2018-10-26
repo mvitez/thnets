@@ -46,6 +46,9 @@ void pyload_SpatialAveragePooling(struct pyfunction *f)
 #ifdef ONNX
 void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nodeidx)
 {
+	int naxes = onnx_getint(graph, nodeidx, "axes", -2);
+	if( !(naxes == 0 || (naxes == 2 && onnx_getint(graph, nodeidx, "axes", 0) == 2 && onnx_getint(graph, nodeidx, "axes", 1) == 3)))
+		THError("ReduceMean along channel is not supported\n");
 	m->updateOutput = nn_SpatialAveragePooling_updateOutput;
 	m->type = MT_SpatialAveragePooling;
 	struct SpatialAveragePooling *p = &m->SpatialAveragePooling;
