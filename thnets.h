@@ -155,6 +155,7 @@ struct SpatialAveragePooling
 struct Linear
 {
 	THFloatTensor *bias, *weight, *addBuffer;
+	int commute;	// Used for ONNX, if 1, invert A and B
 };
 
 struct Threshold
@@ -386,6 +387,7 @@ THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct
 // ONNX stuff
 #ifdef ONNX
 struct network *loadonnx(const char *path);
+int onnx_isinitializer(void *graph, int nodeidx, int inputidx);
 THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
 THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx);
 int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);

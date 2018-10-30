@@ -101,6 +101,11 @@ static int isinitializer(const onnx::GraphProto *graph, const string &name)
 	return 0;
 }
 
+int onnx_isinitializer(void *graph, int nodeidx, int inputidx)
+{
+	return isinitializer((const onnx::GraphProto *)graph, ((const onnx::GraphProto *)graph)->node(nodeidx).input(inputidx));
+}
+
 static const onnx::TensorProto *getinitializer(const onnx::GraphProto *graph, const string &name)
 {
 	for(int i = 0; i < graph->initializer_size(); i++)
@@ -471,7 +476,6 @@ static int isconstant(const onnx::GraphProto *graph, const onnx::NodeProto *node
 	for(int j = 0; j < node->input_size(); j++)
 		if(!isinitializer(graph, node->input(j)))
 			return 0;
-		else return 1;
 	return 1;
 }
 

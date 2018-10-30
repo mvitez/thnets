@@ -38,7 +38,15 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 	m->type = MT_Linear;
 	m->nnfree = nnfree_Linear;
 	struct Linear *p = &m->Linear;
-	THFloatTensor *weight = onnx_gettensor(graph, nodeidx, 1);
+	int widx = 1;
+	if(!onnx_isinitializer(graph, nodeidx, 1))
+	{
+		widx = 0;
+		p->commute = 1;
+		if(!onnx_isinitializer(graph, nodeidx, 0))
+			THError("MatMul between two inputs is not supported\n");
+	}
+	THFloatTensor *weight = onnx_gettensor(graph, nodeidx, widx);
 	p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
 	THFloatTensor_free(weight);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
@@ -67,7 +75,14 @@ THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *inpu
 	THFloatTensor *bias = module->Linear.bias;
 	THFloatTensor *output = module->output;
 	THFloatTensor *addBuffer = module->Linear.addBuffer;
+	int commute = module->Linear.commute;
 
+	if(commute)
+	{
+		THFloatTensor *tmp = input;
+		input = weight;
+		weight = tmp;
+	}
 	THFloatTensor *in = THFloatTensor_squeeze(input);
 	if (in->nDimension == 1) {
 		THFloatTensor_resize1d(output, bias->size[0]);
@@ -76,19 +91,20 @@ THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *inpu
 
 	} else if (in->nDimension == 2) {
 		long nframe = in->size[0];
+		THFloatTensor *t2 = commute ? THFloatTensor_newWithTensor(weight) : THFloatTensor_newTranspose(weight, 0, 1);
 		long nElement = THFloatTensor_nElement(in);
-		THFloatTensor_resize2d(output, nframe, bias->size[0]);
+		THFloatTensor_resize2d(output, nframe, t2->size[1]);
 		if (THFloatTensor_nElement(output) != nElement)
 			THFloatTensor_zero(output);
 
-		if (THFloatTensor_nElement(addBuffer) != nframe) {
+		if (bias->storage && THFloatTensor_nElement(addBuffer) != nframe) {
 			THFloatTensor_resize1d(addBuffer, nframe);
 			THFloatTensor_fill(addBuffer, 1.0);
 		}
-		THFloatTensor *t2 = THFloatTensor_newTranspose(weight, 0, 1);
 		THFloatTensor_addmm(output, 0, output, 1, in, t2);
 		THFloatTensor_free(t2);
-		THFloatTensor_addr(output, 1, output, 1, addBuffer, bias);
+		if(bias->storage)
+			THFloatTensor_addr(output, 1, output, 1, addBuffer, bias);
 
 	} else
 		THError("input must be vector or matrix");
