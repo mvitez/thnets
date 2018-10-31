@@ -101,7 +101,7 @@ static int isinitializer(const onnx::GraphProto *graph, const string &name)
 	return 0;
 }
 
-int onnx_isinitializer(void *graph, int nodeidx, int inputidx)
+int onnx_isinitializer(const void *graph, int nodeidx, int inputidx)
 {
 	return isinitializer((const onnx::GraphProto *)graph, ((const onnx::GraphProto *)graph)->node(nodeidx).input(inputidx));
 }
