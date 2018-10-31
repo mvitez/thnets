@@ -77,6 +77,7 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 			}
 		if(nelements != THFloatTensor_nElement(input))
 			THError("Wrong number of elements in Reshape: %ld (input) vs %ld (reshaped)\n", THFloatTensor_nElement(input), nelements);
+		THFloatTensor_set(module->output, input);
 		THFloatTensor_resize(module->output, size, p->nDimension);
 	} else {
 		long numElements = p->numElements;
