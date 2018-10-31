@@ -27,6 +27,7 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 	m->updateOutput = nn_View_updateOutput;
 	m->type = MT_View;
 	struct View *p = &m->View;
+	int i;
 
 	p->nDimension = 0;
 	p->numElements = -1;
@@ -38,7 +39,7 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 		THFloatTensor_free(t);
 	} else {
 		p->nDimension = onnx_getint(graph, nodeidx, "shape", -2);
-		for(int i = 0; i < p->nDimension; i++)
+		for(i = 0; i < p->nDimension; i++)
 			p->size[i] = onnx_getint(graph, nodeidx, "shape", i);
 	}
 	if(p->nDimension)
@@ -54,11 +55,13 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 {
 	long nElements = THFloatTensor_nElement(input);
 	struct View *p = &module->View;
+	int i, j;
+
 	if(p->nDimension)
 	{
 		long nelements = 1, size[4];
 		memcpy(size, p->size, sizeof(size));
-		for(int i = 0; i < p->nDimension; i++)
+		for(i = 0; i < p->nDimension; i++)
 			if(size[i] == 0)
 			{
 				if(i >= input->nDimension)
@@ -68,7 +71,7 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 				nelements *= size[i];
 			else {
 				size[i] = 1;
-				for(int j = i; j < input->nDimension; j++)
+				for(j = i; j < input->nDimension; j++)
 					size[i] *= input->size[j];
 				nelements *= size[i];
 			}
