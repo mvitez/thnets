@@ -55,7 +55,7 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 		THFloatTensor_free(p->bias);
 		p->bias = THFloatTensor_new();
 	}
-	if(!onnx_getint(graph, nodeidx, "transB", -1))
+	if(!onnx_getint(graph, nodeidx, "transB", -1) && !p->commute)
 	{
 		THFloatTensor *weight = THFloatTensor_newTranspose(p->weight, 0, 1);
 		THFloatTensor *cweight = THFloatTensor_new();
