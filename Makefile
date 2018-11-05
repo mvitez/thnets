@@ -35,7 +35,7 @@ LIBOBJS = thload.o thbasic.o thapi.o SpatialConvolutionMM.o SpatialMaxPooling.o 
 	View.o SoftMax.o Linear.o Dropout.o SpatialZeroPadding.o Reshape.o SpatialConvolution.o \
 	Normalize.o SpatialFullConvolution.o SpatialMaxUnpooling.o SpatialBatchNormalization.o \
 	SpatialAveragePooling.o Sequential.o Concat.o ConcatTable.o JoinTable.o CAddTable.o \
-	PReLU.o pytorch.o LogSoftMax.o Slice.o Cmax.o Sigmoid.o Tanh.o
+	PReLU.o pytorch.o LogSoftMax.o Slice.o Cmax.o Sigmoid.o Tanh.o Upsample.o
 
 ifeq ($(UNAME_S),Darwin)
 	CFLAGS += -DACCELERATE

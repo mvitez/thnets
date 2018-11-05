@@ -504,6 +504,7 @@ THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input
 THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Sigmoid_updateOutput(struct module *module, THFloatTensor *input);
 THFloatTensor *nn_Tanh_updateOutput(struct module *module, THFloatTensor *input);
+THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -560,6 +561,7 @@ void onnxload_Slice(const void *graph, struct module *m, int nodeidx);
 void onnxload_Cmax(const void *graph, struct module *m, int nodeidx);
 void onnxload_Sigmoid(const void *graph, struct module *m, int nodeidx);
 void onnxload_Tanh(const void *graph, struct module *m, int nodeidx);
+void onnxload_Upsample(const void *graph, struct module *m, int nodeidx);
 
 /* High level API */
 
