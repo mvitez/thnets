@@ -33,6 +33,7 @@ static struct {
 	{"BatchNormalization", onnxload_SpatialBatchNormalization},
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
+	{"LeakyRelu", onnxload_Threshold},
 	{"Dropout", onnxload_Dropout},
 	{"Constant", onnxload_Dropout},
 	{"Softmax", onnxload_SoftMax},

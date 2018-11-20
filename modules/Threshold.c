@@ -30,6 +30,7 @@ void pyload_Threshold(struct pyfunction *f)
 void onnxload_Threshold(const void *graph, struct module *m, int nodeidx)
 {
 	m->updateOutput = nn_Threshold_updateOutput;
+	m->Threshold.alpha = onnx_getfloat(graph, nodeidx, "alpha", -1);
 	m->type = MT_Threshold;
 }
 #endif
@@ -37,6 +38,7 @@ void onnxload_Threshold(const void *graph, struct module *m, int nodeidx)
 THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input)
 {
 	float val = module->Threshold.val;
+	float alpha = module->Threshold.alpha;
 	float threshold = module->Threshold.threshold;
 	THFloatTensor *output = module->output;
 	int inPlace = module->Threshold.inplace == 1;
@@ -50,8 +52,12 @@ THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *i
 		THFloatTensor_set(output, input);
 	} else {
 		THFloatTensor_resizeAs(output, input);
-		for(i = 0; i < n; i++)
-			output->storage->data[i] = (input->storage->data[i] > threshold) ? input->storage->data[i] : val;
+		if(alpha)
+			for(i = 0; i < n; i++)
+				output->storage->data[i] = (input->storage->data[i] >= 0) ? input->storage->data[i] : input->storage->data[i] * alpha;
+		else
+			for(i = 0; i < n; i++)
+				output->storage->data[i] = (input->storage->data[i] > threshold) ? input->storage->data[i] : val;
 	}
 	return output;
 }

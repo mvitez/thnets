@@ -160,7 +160,7 @@ struct Linear
 
 struct Threshold
 {
-	float threshold, val;
+	float threshold, val, alpha;
 	int inplace;
 };
 
