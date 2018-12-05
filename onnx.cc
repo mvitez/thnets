@@ -826,7 +826,5 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		}
 	}
 
-	google::protobuf::ShutdownProtobufLibrary();
-
 	return net;
 }
