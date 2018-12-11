@@ -469,7 +469,7 @@ static int isconstant(const onnx::GraphProto *graph, const onnx::NodeProto *node
 static void absorb_bn(struct network *net, int bnidx, int cidx)
 {
 	struct module *convm = net->modules + cidx;
-	struct module *m = net->modules + cidx + 1;
+	struct module *m = net->modules + bnidx;
 	struct SpatialBatchNormalization *bn = &m->SpatialBatchNormalization;
 	int n = bn->running_mean->size[0];
 	float *running_mean = THFloatTensor_data(bn->running_mean);
@@ -561,7 +561,7 @@ static void absorb_bn(struct network *net, int bnidx, int cidx)
 	THFloatTensor_free(m->output);
 	free(convm->outputname);
 	convm->outputname = m->outputname;
-	memmove(net->modules + cidx + 1, net->modules + cidx + 2, (net->nelem - (cidx + 2)) * sizeof(net->modules[0]));
+	memmove(net->modules + bnidx, net->modules + bnidx + 1, (net->nelem - (bnidx + 1)) * sizeof(net->modules[0]));
 	net->nelem--;
 	memset(net->modules + net->nelem, 0, sizeof(net->modules[0]));
 }
