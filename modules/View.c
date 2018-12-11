@@ -42,12 +42,6 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 		for(i = 0; i < p->nDimension; i++)
 			p->size[i] = onnx_getint(graph, nodeidx, "shape", i);
 	}
-	if(p->nDimension)
-	{
-		// Remove the first "batch" dimension, as we don't use it
-		p->nDimension--;
-		memmove(p->size, p->size+1, p->nDimension * sizeof(p->size[0]));
-	}
 }
 #endif
 
@@ -60,25 +54,34 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 	if(p->nDimension)
 	{
 		long nelements = 1, size[4];
-		memcpy(size, p->size, sizeof(size));
-		for(i = 0; i < p->nDimension; i++)
+		int ndim;
+		if(input->nDimension == 4)
+		{
+			ndim = p->nDimension;
+			memcpy(size, p->size, sizeof(size));
+		} else {
+			// p->size refers to a 4D tensor, we are working with 3D tensors
+			ndim = p->nDimension-1;
+			memcpy(size, p->size+1, sizeof(size[0]) * 3);
+		}
+		for(i = 0; i < ndim; i++)
 			if(size[i] == 0)
 			{
-				if(i >= input->nDimension)
+				if(i >= ndim)
 					THError("Reshape has size 0 for non-existing dimension %d\n", i);
 				nelements *= input->size[i];
 			} else if(size[i] > 0)
 				nelements *= size[i];
 			else {
 				size[i] = 1;
-				for(j = i; j < input->nDimension; j++)
+				for(j = i; j < ndim; j++)
 					size[i] *= input->size[j];
 				nelements *= size[i];
 			}
 		if(nelements != THFloatTensor_nElement(input))
 			THError("Wrong number of elements in Reshape: %ld (input) vs %ld (reshaped)\n", THFloatTensor_nElement(input), nelements);
 		THFloatTensor_set(module->output, input);
-		THFloatTensor_resize(module->output, size, p->nDimension);
+		THFloatTensor_resize(module->output, size, ndim);
 	} else {
 		long numElements = p->numElements;
 		long batchSize = input->nDimension == 4 ? input->size[0] : 1;
