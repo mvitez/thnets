@@ -262,7 +262,7 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
 		THFloatTensor *t1 = THFloatTensor_new();
 		int64_t sizes[4], total = 1;
-		int64_t *data = (int64_t *)t->raw_data().c_str();
+		int64_t *data = t->has_raw_data() ? (int64_t *)t->raw_data().c_str() : 0;
 		for(int i = 0; i < t->dims(0); i++)
 		{
 			sizes[i] = data && data[i] ? data[i] : t->int64_data(i);
