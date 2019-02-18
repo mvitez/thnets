@@ -149,6 +149,7 @@ and copy the executable here: /data/data/com.icecoldapps.sshserver (the only acc
 you can set the executable flag on files).
 images.c and test.c are required only for the test executable, leave them out if you only need the library.
 
+An example Android app is [here](https://github.com/e-lab/apps-android).
 
 
 ### iOs instructions (for experts only)
@@ -159,6 +160,8 @@ images.c and test.c are required only for the test executable, leave them out if
 In the project -> Build Phases -> You have to add -DUSEBLAS -DACCELERATE in the compiler options for files: SpatialConvolution.c, SpatialConvolutionMM.c thbasic.c, thapi.c
 
 Add Accelerate Framework to Project -> Build Phases -> Link Binary with Libraries
+
+An example iOs app is [here](https://github.com/e-lab/apps-iOs).
 
 ### PyTorch
 
