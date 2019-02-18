@@ -29,7 +29,7 @@ it will take advantage of new instructions present on more modern CPUs.
 
 gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp directory, if used.
 
-Raspbian installation: edit the Makefile and set 'USEQSML = no'
+Raspberry Pi / Raspbian installation: edit the Makefile and set 'USEQSML = no'
 
 ## Test program
 
