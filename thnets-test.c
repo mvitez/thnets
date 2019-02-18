@@ -159,10 +159,10 @@ int main(int argc, char **argv)
 				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
 				if(alg == 3 || alg == 5)
-					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], 3, &result, &outwidth, &outheight);
 				t = seconds();
 				for(i = 0; i < runs; i++)
-					n = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], &result, &outwidth, &outheight);
+					n = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], 3, &result, &outwidth, &outheight);
 				t = (seconds() - t) / runs;
 				THFloatTensor_free(in);
 				freeobject(&input_o);

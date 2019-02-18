@@ -360,24 +360,24 @@ void THInit()
 #endif
 }
 
-int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, float **result, int *outwidth, int *outheight)
+int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, int nplanes, float **result, int *outwidth, int *outheight)
 {
 	int b, c, i;
 	THFloatTensor *t = THFloatTensor_new();
 	THFloatTensor *out;
 	t->nDimension = 4;
 	t->size[0] = batchsize;
-	t->size[1] = 3;
+	t->size[1] = nplanes;
 	t->size[2] = height;
 	t->size[3] = width;
 
 	#ifdef USEQSML
-		t->stride[0] = 3 * width * height;//batch
+		t->stride[0] = nplanes * width * height;//batch
 		t->stride[1] = 1;//plane
-		t->stride[2] = 3 * width;//row
-		t->stride[3] = 3;//col
+		t->stride[2] = nplanes * width;//row
+		t->stride[3] = nplanes;//col
 	#else
-		t->stride[0] = 3 * width * height;//batch
+		t->stride[0] = nplanes * width * height;//batch
 		t->stride[1] = width * height;//plane
 		t->stride[2] = width;//row
 		t->stride[3] = 1;//col
@@ -389,14 +389,14 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 #pragma omp parallel for private(b, i, c)
 	for(b = 0; b < batchsize; b++)
 		for(i = 0; i < width*height; i++)
-			for(c = 0; c < 3; c++)
+			for(c = 0; c < nplanes; c++)
 				data[b * t->stride[0] + c  + i * t->stride[3]] =
 					(data[b * t->stride[0] + c + i * t->stride[3]] - network->mean[c]) / network->std[c];
 	}
 	else{//plane major
 #pragma omp parallel for private(b, c, i)
 		for(b = 0; b < batchsize; b++)
-			for(c = 0; c < 3; c++)
+			for(c = 0; c < nplanes; c++)
 				for(i = 0; i < width*height; i++)
 					data[b * t->stride[0] + c * t->stride[1] + i] =
 						(data[b * t->stride[0] + c * t->stride[1] + i] - network->mean[c]) / network->std[c];

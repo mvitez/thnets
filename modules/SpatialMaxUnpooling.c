@@ -49,8 +49,8 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 	int nslices;
 	int iheight;
 	int iwidth;
-	int oheight;
-	int owidth;
+	int oheight = 0;
+	int owidth = 0;
 	int i;
 	float *input_data;
 	float *output_data;

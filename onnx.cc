@@ -784,6 +784,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 				struct Slice *p = &net->modules[n].Slice;
 				p->from = from;
 				p->to = p->from + onnx_getint(&graph, i, "split", j);
+				p->axis = 1;
 				from = p->to;
 				net->nelem = ++n;
 			}
