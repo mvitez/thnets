@@ -2,8 +2,7 @@
 
 ## Compatibility
 
-This library has been tested on various flavours of Linux, Android, MacOS and iOS (for iOS has been
-compiled successfully, but not tested). A Makefile is provided that should work in most of the cases.
+This library has been tested on various flavours of Linux, Android, MacOS and iOS. A Makefile is provided that should work in most of the cases.
 Android build files are also provided for a test application. For Androi / iOS see section below.
 
 ## Installation
