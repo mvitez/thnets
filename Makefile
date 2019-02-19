@@ -183,7 +183,7 @@ ifeq ($(ONNX),1)
 	LIBS += -lprotobuf
 endif
 
-all : libthnets.so thnets-test
+all : libthnets.so libthnets.a thnets-test
 
 onnx.pb.cc: onnx.proto
 	protoc onnx.proto --cpp_out=.
@@ -199,6 +199,9 @@ onnx.pb.cc: onnx.proto
 libthnets.so: $(LIBOBJS)
 	$(CXX) -o $@ $(LIBOBJS) -shared $(LDFLAGS) $(LIBS)
 
+libthnets.a: $(LIBOBJS)
+	$(AR) rcs $@ $(LIBOBJS)
+
 thnets-test: $(LIBOBJS) thnets-test.o images.o
 	$(CC) -o $@ thnets-test.o images.o libthnets.so $(LDFLAGS) $(LIBS)
 
@@ -206,12 +209,12 @@ clean :
 	rm -f *.o libthnets.so test onnx.pb.*
 
 install:
-	cp libthnets.so /usr/local/lib
+	cp libthnets.so libthnets.a /usr/local/lib
 	cp thnets.h thvector.h /usr/local/include
 	cp thnets-test /usr/local/bin
 	ldconfig
 
 uninstall:
-	rm -f /usr/local/lib/libthnets.so
+	rm -f /usr/local/lib/libthnets.so /usr/local/lib/libthnets.a
 	rm -f /usr/local/include/thnets.h /usr/local/include/thvector.h
 	rm -f /usr/local/bin/thnets-test
