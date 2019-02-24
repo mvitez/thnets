@@ -10,7 +10,8 @@ tar xf protobuf-all-3.6.1.tar.gz\
 cd protobuf-3.6.1
 ./configure			
 make -j4
-make install
+sudo make install
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```
 
 
