@@ -2,7 +2,7 @@
 
 You will need protobuf to use ONNX models:
 
-Installing protobuf from source
+Installing protobuf from source can be accomplished this way:
 		
 ```
 wget https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-all-3.6.1.tar.gz
