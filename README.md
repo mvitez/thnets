@@ -27,7 +27,7 @@ On Intel architectures, the default is to use Penryn routines (e.g. Core 2 E8xxx
 will work on most machines. By activating SANDYBRIDGE (2nd generation Core) or HASWELL (4th generation)
 it will take advantage of new instructions present on more modern CPUs.
 
-ONNX support needs to install [protobuf](https://github.com/protocolbuffers/protobuf)
+ONNX support needs to install [protobuf](https://github.com/protocolbuffers/protobuf). See examples for an example of how to install protobuf.
 
 gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp directory, if used.
 
