@@ -3,7 +3,7 @@
 ## Compatibility
 
 This library has been tested on various flavours of Linux, Android, MacOS and iOS. A Makefile is provided that should work in most of the cases.
-Android build files are also provided for a test application. For Androi / iOS see section below.
+Android build files are also provided for a test application. For Android / iOS see section below.
 
 ## Installation
 
@@ -26,6 +26,8 @@ Make options are:
 On Intel architectures, the default is to use Penryn routines (e.g. Core 2 E8xxx CPUs), which
 will work on most machines. By activating SANDYBRIDGE (2nd generation Core) or HASWELL (4th generation)
 it will take advantage of new instructions present on more modern CPUs.
+
+ONNX support needs to install [protobuf](https://github.com/protocolbuffers/protobuf)
 
 gemmlowp (https://github.com/google/gemmlowp) has to be installed into the lowp directory, if used.
 
