@@ -72,7 +72,7 @@ static void printtensor(const onnx::TensorProto *t)
 	printf("%s_Init(", t->DataType_Name(t->data_type()).c_str());
 	for(int i = 0; i < t->dims_size(); i++)
 	{
-		printf("%ld", t->dims(i));
+		printf("%ld", (long)t->dims(i));
 		if(i < t->dims_size() - 1)
 			printf(",");
 	}
@@ -261,11 +261,11 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 		if(t->dims_size() != 1)
 			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
 		THFloatTensor *t1 = THFloatTensor_new();
-		int64_t sizes[4], total = 1;
+		long sizes[4], total = 1;
 		int64_t *data = t->has_raw_data() ? (int64_t *)t->raw_data().c_str() : 0;
 		for(int i = 0; i < t->dims(0); i++)
 		{
-			sizes[i] = data && data[i] ? data[i] : t->int64_data(i);
+			sizes[i] = (long)(data && data[i] ? data[i] : t->int64_data(i));
 			total *= sizes[i];
 		}
 		THFloatTensor_resize(t1, sizes, t->dims(0));

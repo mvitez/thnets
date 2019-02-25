@@ -25,7 +25,7 @@ OPENBLASPATH=/opt/OpenBLAS/lib
 UNAME_M := $(shell uname -m)
 UNAME_S := $(shell uname -s)
 CFLAGS = -Wall -c -fPIC
-CPPFLAGS = -Wall -c -fPIC -std=c++11
+CXXFLAGS = -Wall -c -fPIC -std=c++11
 LIBS = -lm
 CC = gcc
 CXX = g++
