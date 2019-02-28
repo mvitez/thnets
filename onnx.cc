@@ -59,6 +59,9 @@ static struct {
 	{"Transpose", onnxload_Transpose}
 };
 
+string inputnames[MAXMODULEINPUTS];
+int ninputnames;
+
 static int getfunction(const char *name)
 {
 	for(unsigned j = 0; j < sizeof(name2loadf)/sizeof(*name2loadf); j++)
@@ -466,6 +469,14 @@ static int isconstant(const onnx::GraphProto *graph, const onnx::NodeProto *node
 	return 1;
 }
 
+static int getinput(const onnx::GraphProto *graph, const string &name)
+{
+	for(int i = 0; i < ninputnames; i++)
+		if(inputnames[i] == name)
+			return i;
+	return -1;
+}
+
 static void absorb_bn(struct network *net, int bnidx, int cidx)
 {
 	struct module *convm = net->modules + cidx;
@@ -591,10 +602,11 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	// Build thnets::network object from onnx::Graph
 	network *net = (network *)malloc(sizeof(*net));
 	net->engine = ENGINE_CPU;
-	// Overallocate modules by a factor of 2, because of split
-	net->modules = (module *)calloc(graph.node_size() * 2, sizeof(*net->modules));
+	// Overallocate modules by a factor of 2 + 10, because of split and multiple inputs
+	net->modules = (module *)calloc(graph.node_size() * 2 + 10, sizeof(*net->modules));
 	net->nelem = 0;
 	int n = 0;
+	ninputnames = 0;
 	for (int i = 0; i < graph.node_size(); i++)
 	{
 		const onnx::NodeProto& node = graph.node(i);
@@ -799,18 +811,33 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			f = getfunction("Dropout");
 			//THError("Unsupported node type %s\n", node.op_type().c_str());
 		}
-		for(j = 0; j < node.input_size(); j++)
-		{
-			int k = getoutput(net, node.input(j).c_str());
-			if(k >= 0)
-			{
-				net->modules[n].inputs[net->modules[n].ninputs++] = k;
-				if(net->modules[n].ninputs > MAXMODULEINPUTS)
-					THError("Maximum number of node inputs exceeded\n");
-			}
-		}
 		if(!isconstant(&graph, &node))
 		{
+			for(j = 0; j < node.input_size(); j++)
+			{
+				int k = getoutput(net, node.input(j).c_str());
+				if(k == -1 && !isinitializer(&graph, node.input(j)))
+				{
+					k = getinput(&graph, node.input(j));
+					if(k == -1)
+					{
+						if(ninputnames == MAXMODULEINPUTS)
+							THError("Maximum number of inputs (%d) exceeded\n", MAXMODULEINPUTS);
+						else {
+							inputnames[ninputnames] = node.input(j);
+							k = ninputnames++;
+						}
+					}
+					k = -1 - k; // Inputs are numbered -1, -2, -3...
+				} else if(k == -1)
+					k = -99;
+				if(k != -99)
+				{
+					net->modules[n].inputs[net->modules[n].ninputs++] = k;
+					if(net->modules[n].ninputs > MAXMODULEINPUTS)
+						THError("Maximum number of node inputs exceeded\n");
+				}
+			}
 			net->modules[n].output = THFloatTensor_new();
 			net->modules[n].net = net;
 			name2loadf[f].onnxload(&graph, net->modules + n, i);
