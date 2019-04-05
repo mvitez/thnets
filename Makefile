@@ -17,6 +17,7 @@ QSML = noma
 #Or write its path like here:
 #QSML=/opt/Qualcomm/QSML-0.15.2/linux/arm32/lp64/gcc-4.8/
 
+LIBPROTOBUFPATH=/usr/local/lib
 CUDAPATH=/usr/local/cuda
 CUDAPATH2=/usr/local/cuda/targets/aarch64-linux
 OPENBLASPATH=/opt/OpenBLAS/lib
@@ -180,7 +181,7 @@ ifeq ($(ONNX),1)
 	LIBOBJS += onnx.pb.o onnx.o
 	CFLAGS += -DONNX
 	CPPFLAGS += -DONNX
-	LIBS += -lprotobuf
+	LIBS += -L$(LIBPROTOBUFPATH) -lprotobuf
 endif
 
 all : libthnets.so libthnets.a thnets-test
