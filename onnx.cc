@@ -33,6 +33,7 @@ static struct {
 	{"BatchNormalization", onnxload_SpatialBatchNormalization},
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
+	{"PRelu", onnxload_PReLU},
 	{"LeakyRelu", onnxload_Threshold},
 	{"Dropout", onnxload_Dropout},
 	{"Constant", onnxload_Dropout},
@@ -41,6 +42,7 @@ static struct {
 	{"Reshape", onnxload_View},
 	{"Flatten", onnxload_View},
 	{"Sum", onnxload_Add},
+	{"Sub", onnxload_Sub},
 	{"Add", onnxload_Add},
 	{"Mul", onnxload_SpatialBatchNormalization},
 	{"AveragePool", onnxload_SpatialAveragePooling},
@@ -158,12 +160,13 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 			else return 0;
 			THFloatTensor *t1 = THFloatTensor_new();
 			long sizes[4], total = 1;
+			sizes[0] = 1;
 			for(int i = 0; i < t->dims_size(); i++)
 			{
 				sizes[i] = t->dims(i);
 				total *= sizes[i];
 			}
-			THFloatTensor_resize(t1, sizes, t->dims_size());
+			THFloatTensor_resize(t1, sizes, t->dims_size() ? t->dims_size() : 1);
 			gettensordata(t1, t);
 			return t1;
 		}

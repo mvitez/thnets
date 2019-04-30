@@ -270,6 +270,7 @@ enum moduletype {
 	MT_ConcatTable,
 	MT_JoinTable,
 	MT_CAddTable,
+	MT_CSubTable,
 	MT_PReLU,
 	MT_Identity,
 	MT_Padding,
@@ -551,11 +552,13 @@ void onnxload_SpatialBatchNormalization(const void *graph, struct module *m, int
 void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx);
 void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nodeidx);
 void onnxload_Threshold(const void *graph, struct module *m, int nodeidx);
+void onnxload_PReLU(const void *graph, struct module *m, int nodeidx);
 void onnxload_Dropout(const void *graph, struct module *m, int nodeidx);
 void onnxload_SoftMax(const void *graph, struct module *m, int nodeidx);
 void onnxload_LogSoftMax(const void *graph, struct module *m, int nodeidx);
 void onnxload_View(const void *graph, struct module *m, int nodeidx);
 void onnxload_Add(const void *graph, struct module *m, int nodeidx);
+void onnxload_Sub(const void *graph, struct module *m, int nodeidx);
 void onnxload_Concat(const void *graph, struct module *m, int nodeidx);
 void onnxload_Slice(const void *graph, struct module *m, int nodeidx);
 void onnxload_Cmax(const void *graph, struct module *m, int nodeidx);
