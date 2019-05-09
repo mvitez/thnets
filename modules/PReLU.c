@@ -17,6 +17,18 @@ int nnload_PReLU(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
+#ifdef ONNX
+void onnxload_PReLU(const void *graph, struct module *m, int nodeidx)
+{
+	m->type = MT_PReLU;
+	m->updateOutput = nn_PReLU_updateOutput;
+	m->nnfree = nnfree_PReLU;
+	struct PReLU *p = &m->PReLU;
+	p->weight = onnx_gettensor(graph, nodeidx, 1);
+	p->nOutputPlane = (int)p->weight->size[0];
+}
+#endif
+
 THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input)
 {
 	THFloatTensor *output = module->output;
@@ -58,10 +70,10 @@ THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input
 		bs = 0;
 		break;
 	}
-	
+
 	if (input->size[(input_ndim + 1) % 2] != nOutputPlane)
 		THError("wrong number of input planes");
-	
+
 	int i, j, k;
 #pragma omp parallel for private(j,k)
 	for(i = 0; i < bs; ++i)

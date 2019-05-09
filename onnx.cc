@@ -33,6 +33,7 @@ static struct {
 	{"BatchNormalization", onnxload_SpatialBatchNormalization},
 	{"MaxPool", onnxload_SpatialMaxPooling},
 	{"Relu", onnxload_Threshold},
+	{"PRelu", onnxload_PReLU},
 	{"LeakyRelu", onnxload_Threshold},
 	{"Dropout", onnxload_Dropout},
 	{"Constant", onnxload_Dropout},
@@ -41,6 +42,7 @@ static struct {
 	{"Reshape", onnxload_View},
 	{"Flatten", onnxload_View},
 	{"Sum", onnxload_Add},
+	{"Sub", onnxload_Sub},
 	{"Add", onnxload_Add},
 	{"Mul", onnxload_SpatialBatchNormalization},
 	{"AveragePool", onnxload_SpatialAveragePooling},
@@ -75,7 +77,7 @@ static void printtensor(const onnx::TensorProto *t)
 	printf("%s_Init(", t->DataType_Name(t->data_type()).c_str());
 	for(int i = 0; i < t->dims_size(); i++)
 	{
-		printf("%ld", t->dims(i));
+		printf("%ld", (long)t->dims(i));
 		if(i < t->dims_size() - 1)
 			printf(",");
 	}
@@ -161,12 +163,13 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 			else return 0;
 			THFloatTensor *t1 = THFloatTensor_new();
 			long sizes[4], total = 1;
+			sizes[0] = 1;
 			for(int i = 0; i < t->dims_size(); i++)
 			{
 				sizes[i] = t->dims(i);
 				total *= sizes[i];
 			}
-			THFloatTensor_resize(t1, sizes, t->dims_size());
+			THFloatTensor_resize(t1, sizes, t->dims_size() ? t->dims_size() : 1);
 			gettensordata(t1, t);
 			return t1;
 		}
@@ -264,11 +267,11 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 		if(t->dims_size() != 1)
 			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
 		THFloatTensor *t1 = THFloatTensor_new();
-		int64_t sizes[4], total = 1;
+		long sizes[4], total = 1;
 		int64_t *data = t->has_raw_data() ? (int64_t *)t->raw_data().c_str() : 0;
 		for(int i = 0; i < t->dims(0); i++)
 		{
-			sizes[i] = data && data[i] ? data[i] : t->int64_data(i);
+			sizes[i] = (long)(data && data[i] ? data[i] : t->int64_data(i));
 			total *= sizes[i];
 		}
 		THFloatTensor_resize(t1, sizes, t->dims(0));

@@ -22,6 +22,11 @@ void onnxload_Add(const void *graph, struct module *m, int nodeidx)
 	m->updateOutput = nn_CAddTable_updateOutput;
 	m->type = MT_CAddTable;
 }
+void onnxload_Sub(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = nn_CAddTable_updateOutput;
+	m->type = MT_CSubTable;
+}
 #endif
 
 THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input)
@@ -54,17 +59,28 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 	if(nelem == 2)
 	{
 		// Optimized case
-		for(j = 0; j < n[1]; j++)
-			out[j] = outs[0][j] + outs[1][j];
+        if(module->type == MT_CSubTable)
+		    for(j = 0; j < n[1]; j++)
+			    out[j] = outs[0][j] + outs[1][j];
+        else
+		    for(j = 0; j < n[1]; j++)
+			    out[j] = outs[0][j] - outs[1][j];
 		for(; j < n[0]; j++)
 			out[j] = outs[0][j];
 		
 	} else {
 		for(j = 0; j < n[0]; j++)
 			out[j] = outs[0][j];
-		for(i = 0; i < nelem; i++)
-			for(j = 0; j < n[i]; j++)
-				out[j] += outs[i][j];
+		if(module->type == MT_CSubTable)
+		{
+			for(i = 0; i < nelem; i++)
+				for(j = 0; j < n[i]; j++)
+					out[j] -= outs[i][j];
+		} else {
+			for(i = 0; i < nelem; i++)
+				for(j = 0; j < n[i]; j++)
+					out[j] += outs[i][j];
+		}
 	}
 	return output;
 }
