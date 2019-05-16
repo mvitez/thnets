@@ -47,8 +47,11 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 			THError("MatMul between two inputs is not supported\n");
 	}
 	THFloatTensor *weight = onnx_gettensor(graph, nodeidx, widx);
-	p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
-	THFloatTensor_free(weight);
+	if(weight->nDimension > 2)
+	{
+		p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
+		THFloatTensor_free(weight);
+	} else p->weight = weight;
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
 	if (onnx_getfloat(graph, nodeidx, "beta", -1) == 0.0)
 	{
