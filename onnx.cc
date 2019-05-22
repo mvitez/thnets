@@ -610,8 +610,33 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	net->nelem = 0;
 	int n = 0;
 	ninputnames = 0;
+	// Topologically order the graph (put nodes that create outputs before nodes that use those outputs)
+	// This woudn't be necessary as per ONNX specification, but we found non compliant ONNX files
+	vector<int> nr;
 	for (int i = 0; i < graph.node_size(); i++)
 	{
+		const onnx::NodeProto& node = graph.node(i);
+		for(int k = 0; k < node.input_size(); k++)
+		{
+			int j;
+			for(j = 0; j < (int)nr.size(); j++)
+				if(graph.node(nr[j]).output_size() > 0 && graph.node(nr[j]).output(0) == node.input(k))
+					break;
+			if(j == (int)nr.size())
+			{
+				// No node found that produced node.input(k) in the vector of already processed nodes
+				for(j = i+1; j < graph.node_size(); j++)
+					if(graph.node(j).output_size() > 0 && graph.node(j).output(0) == node.input(k))
+						break;
+				if(j < graph.node_size())
+					nr.push_back(j);
+			}
+		}
+		nr.push_back(i);
+	}
+	for (unsigned nri = 0; nri < nr.size(); nri++)
+	{
+		int i = nr[nri];
 		const onnx::NodeProto& node = graph.node(i);
 		printop(&graph, &node);
 		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 &&
@@ -708,7 +733,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 				net->modules[n].inputs[net->modules[n].ninputs++] = k;
 
 			net->nelem = ++n;
-			i++;
+			nri++;
 			continue;
 		}
 		else if(i+2 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
@@ -746,7 +771,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 				net->modules[n].inputs[net->modules[n].ninputs++] = k;
 
 			net->nelem = ++n;
-			i+=2;
+			nri += 2;
 			continue;
 		}
 		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
@@ -781,7 +806,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 				net->modules[n].inputs[net->modules[n].ninputs++] = k;
 
 			net->nelem = ++n;
-			i++;
+			nri++;
 			continue;
 		}
 		if(!strcmp(node.op_type().c_str(), "Split"))
