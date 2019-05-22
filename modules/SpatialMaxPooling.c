@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "../thnets.h"
 
 static void nnfree_SpatialMaxPooling(struct module *mod)
@@ -59,6 +60,12 @@ void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx
 	m->nnfree = nnfree_SpatialMaxPooling;
 	struct SpatialMaxPooling *p = &m->SpatialMaxPooling;
 	p->indices = THFloatTensor_new();
+	const char *autopad = onnx_getstring(graph, nodeidx, "auto_pad", -1);
+	if(autopad && !strcmp(autopad, "SAME_UPPER"))
+		p->autopad = 1;
+	else if(autopad && !strcmp(autopad, "SAME_LOWER"))
+		p->autopad = 2;
+	else p->autopad = 0;
 	p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
 	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
 	p->padH = onnx_getint(graph, nodeidx, "pads", 0);

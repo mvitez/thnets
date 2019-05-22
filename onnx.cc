@@ -702,6 +702,39 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			}
 		}
 		if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
+			!strcmp(graph.node(i+1).op_type().c_str(), "MaxPool") &&
+			node.output(0) == graph.node(i+1).input(0))
+		{
+			// Special case, padding followed by convolution
+			printop(&graph, &graph.node(i+1));
+			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].net = net;
+			onnxload_SpatialMaxPooling(&graph, net->modules + n, i+1);
+			net->modules[n].outputname = strdup(node.output(0).c_str());
+			const char *mode = onnx_getstring(&graph, i, "mode", -1);
+			if(mode)
+			{
+				if(*mode && strcmp(mode, "constant"))
+					THError("Unsupported padding type %s\n", mode);
+			}
+			if(net->modules[n].SpatialMaxPooling.padH || net->modules[n].SpatialMaxPooling.padW)
+				THError("Double padding not supported\n");
+			net->modules[n].SpatialMaxPooling.padH = onnx_getint(&graph, i, "pads", 2);
+			net->modules[n].SpatialMaxPooling.padW = onnx_getint(&graph, i, "pads", 3);
+			net->modules[n].SpatialMaxPooling.padH2 = onnx_getint(&graph, i, "pads", 6);
+			net->modules[n].SpatialMaxPooling.padW2 = onnx_getint(&graph, i, "pads", 7);
+			free(net->modules[n].outputname);
+			net->modules[n].outputname = strdup(graph.node(i+1).output(0).c_str());
+
+			int k = getoutput(net, node.input(0).c_str());
+			if(k >= 0)
+				net->modules[n].inputs[net->modules[n].ninputs++] = k;
+
+			net->nelem = ++n;
+			nri++;
+			continue;
+		}
+		else if(i+1 < graph.node_size() && !strcmp(node.op_type().c_str(), "Pad") &&
 			!strcmp(graph.node(i+1).op_type().c_str(), "Conv") &&
 			node.output(0) == graph.node(i+1).input(0))
 		{

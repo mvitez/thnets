@@ -143,6 +143,7 @@ struct SpatialMaxPooling
 	int iwidth, iheight;
 	THFloatTensor *indices;
 	int padW2, padH2; // right and bottom, if different
+	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
 
 struct SpatialAveragePooling
@@ -150,6 +151,7 @@ struct SpatialAveragePooling
 	int padW, padH, dW, dH, kW, kH, ceil_mode;
 	int iwidth, iheight, count_include_pad;
 	int padW2, padH2; // right and bottom, if different
+	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
 
 struct Linear

@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "../thnets.h"
 
 int nnload_SpatialAveragePooling(struct module *mod, struct nnmodule *n)
@@ -52,6 +53,12 @@ void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nod
 	m->updateOutput = nn_SpatialAveragePooling_updateOutput;
 	m->type = MT_SpatialAveragePooling;
 	struct SpatialAveragePooling *p = &m->SpatialAveragePooling;
+	const char *autopad = onnx_getstring(graph, nodeidx, "auto_pad", -1);
+	if(autopad && !strcmp(autopad, "SAME_UPPER"))
+		p->autopad = 1;
+	else if(autopad && !strcmp(autopad, "SAME_LOWER"))
+		p->autopad = 2;
+	else p->autopad = 0;
 	p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
 	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
 	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
