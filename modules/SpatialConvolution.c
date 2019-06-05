@@ -107,7 +107,12 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 		p->dlW = 1;
 	if(p->dlH == 0)
 		p->dlH = 1;
-	if(onnx_getint(graph, nodeidx, "group", -1) > 1)
+	int g = onnx_getint(graph, nodeidx, "group", -1);
+	if(g == p->nOutputPlane && p->nInputPlane == 1)
+	{
+		m->type = MT_DepthwiseConvolution;
+		p->nInputPlane = g;
+	} else if(g > 1)
 		THError("Group convolution not supported\n");
 }
 #endif

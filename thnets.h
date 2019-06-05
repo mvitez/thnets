@@ -286,7 +286,8 @@ enum moduletype {
 	MT_Unsqueeze,
 	MT_Sigmoid,
 	MT_Tanh,
-	MT_Transpose
+	MT_Transpose,
+	MT_DepthwiseConvolution
 };
 
 struct network;
