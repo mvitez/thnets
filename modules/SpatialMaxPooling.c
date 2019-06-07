@@ -66,15 +66,41 @@ void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx
 	else if(autopad && !strcmp(autopad, "SAME_LOWER"))
 		p->autopad = 2;
 	else p->autopad = 0;
-	p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
-	p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
-	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
-	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
-	p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
-	p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
-	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
-	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
 	p->ceil_mode = 0;
+	if(onnx_getint(graph, nodeidx, "kernel_shape", -1) == 3)
+	{
+		p->kZ = onnx_getint(graph, nodeidx, "kernel_shape", 0);
+		p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 1);
+		p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 2);
+		p->padZ = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padH = onnx_getint(graph, nodeidx, "pads", 1);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 2);
+		p->padZ2 = onnx_getint(graph, nodeidx, "pads", 3);
+		p->padH2 = onnx_getint(graph, nodeidx, "pads", 4);
+		p->padW2 = onnx_getint(graph, nodeidx, "pads", 5);
+		p->dZ = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dH = onnx_getint(graph, nodeidx, "strides", 1);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 2);
+	} else {
+		p->kZ = 1;
+		p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 0);
+		p->kW = onnx_getint(graph, nodeidx, "kernel_shape", 1);
+		p->padZ = 0;
+		p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+		p->padZ2 = 0;
+		p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
+		p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
+		p->dZ = 1;
+		p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+	}
+	if(p->dZ == 0)
+		p->dZ = 1;
+	if(p->dH == 0)
+		p->dH = 1;
+	if(p->dW == 0)
+		p->dW = 1;
 }
 #endif
 

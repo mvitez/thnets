@@ -162,7 +162,7 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 				t = &attr.tensors(idx);
 			else return 0;
 			THFloatTensor *t1 = THFloatTensor_new();
-			long sizes[4], total = 1;
+			long sizes[5], total = 1;
 			sizes[0] = 1;
 			for(int i = 0; i < t->dims_size(); i++)
 			{
@@ -188,7 +188,7 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 		if(t->data_type() != 1)
 			THError("Only float tensors are supported, got data_type %d for %s\n", t->data_type(), t->name().c_str());
 		THFloatTensor *t1 = THFloatTensor_new();
-		long sizes[4], total = 1;
+		long sizes[5], total = 1;
 		for(int i = 0; i < t->dims_size(); i++)
 		{
 			sizes[i] = t->dims(i);
@@ -267,7 +267,7 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 		if(t->dims_size() != 1)
 			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
 		THFloatTensor *t1 = THFloatTensor_new();
-		long sizes[4], total = 1;
+		long sizes[5], total = 1;
 		int64_t *data = t->has_raw_data() ? (int64_t *)t->raw_data().c_str() : 0;
 		for(int i = 0; i < t->dims(0); i++)
 		{

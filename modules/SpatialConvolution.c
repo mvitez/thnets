@@ -80,33 +80,65 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 	p->finput = THFloatTensor_new();
 	p->nOutputPlane = (int)p->weight->size[0];
 	p->nInputPlane = (int)p->weight->size[1];
-	p->kH = (int)p->weight->size[2];
-	p->kW = (int)p->weight->size[3];
-	if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
-			p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
-		THError("Conflicting kernel sizes in proto file\n");
+	if(p->weight->nDimension == 5)
+	{ //Conv3d
+		p->kZ = (int)p->weight->size[2];
+		p->kH = (int)p->weight->size[3];
+		p->kW = (int)p->weight->size[4];
+		p->padZ = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padH = onnx_getint(graph, nodeidx, "pads", 1);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 2);
+		p->padZ2 = onnx_getint(graph, nodeidx, "pads", 3);
+		p->padH2 = onnx_getint(graph, nodeidx, "pads", 4);
+		p->padW2 = onnx_getint(graph, nodeidx, "pads", 5);
+		p->dZ = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dH = onnx_getint(graph, nodeidx, "strides", 1);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 2);
+		p->dlZ = onnx_getint(graph, nodeidx, "dilations", 0);
+		p->dlH = onnx_getint(graph, nodeidx, "dilations", 1);
+		p->dlW = onnx_getint(graph, nodeidx, "dilations", 2);
+		if(p->kZ != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+				p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 1) ||
+				p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 2))
+			THError("Conflicting kernel sizes in proto file\n");
+	} else { //Conv2d
+		p->kZ = 1;
+		p->kH = (int)p->weight->size[2];
+		p->kW = (int)p->weight->size[3];
+		p->padZ = 0;
+		p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+		p->padZ2 = 0;
+		p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
+		p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
+		p->dZ = 1;
+		p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+		p->dlZ = 1;
+		p->dlH = onnx_getint(graph, nodeidx, "dilations", 0);
+		p->dlW = onnx_getint(graph, nodeidx, "dilations", 1);
+		if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+				p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
+			THError("Conflicting kernel sizes in proto file\n");
+	}
 	const char *autopad = onnx_getstring(graph, nodeidx, "auto_pad", -1);
 	if(autopad && !strcmp(autopad, "SAME_UPPER"))
 		p->autopad = 1;
 	else if(autopad && !strcmp(autopad, "SAME_LOWER"))
 		p->autopad = 2;
 	else p->autopad = 0;
-	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
-	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
-	p->padH2 = onnx_getint(graph, nodeidx, "pads", 2);
-	p->padW2 = onnx_getint(graph, nodeidx, "pads", 3);
-	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
-	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
-	p->dlH = onnx_getint(graph, nodeidx, "dilations", 0);
-	p->dlW = onnx_getint(graph, nodeidx, "dilations", 1);
 	if(p->dW == 0)
 		p->dW = 1;
 	if(p->dH == 0)
 		p->dH = 1;
+	if(p->dZ == 0)
+		p->dZ = 1;
 	if(p->dlW == 0)
 		p->dlW = 1;
 	if(p->dlH == 0)
 		p->dlH = 1;
+	if(p->dlZ == 0)
+		p->dlZ = 1;
 	int g = onnx_getint(graph, nodeidx, "group", -1);
 	if(g == p->nOutputPlane && p->nInputPlane == 1)
 	{
@@ -134,7 +166,7 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 		dimw++;
 		dimh++;
 	}
-	
+
 	long nOutputPlane = weight->size[0];
 	long kW           = weight->size[3];
 	long kH           = weight->size[2];
@@ -167,7 +199,7 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 	else
 	{
 		float *bias_data;
-		float *output_data; 
+		float *output_data;
 		long p;
 
 		THFloatTensor_resize4d(output, input->size[0], nOutputPlane, outputHeight, outputWidth);

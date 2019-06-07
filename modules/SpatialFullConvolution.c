@@ -78,21 +78,48 @@ void onnxload_SpatialConvolutionTransposed(const void *graph, struct module *m, 
 	p->ones = THFloatTensor_new();
 	p->nOutputPlane = (int)p->weight->size[1];
 	p->nInputPlane = (int)p->weight->size[0];
-	p->kH = (int)p->weight->size[2];
-	p->kW = (int)p->weight->size[3];
-	if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
-			p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
-		THError("Conflicting kernel sizes in proto file\n");
-	p->padH = onnx_getint(graph, nodeidx, "pads", 0);
-	p->padW = onnx_getint(graph, nodeidx, "pads", 1);
-	p->adjH = onnx_getint(graph, nodeidx, "output_padding", 0);
-	p->adjW = onnx_getint(graph, nodeidx, "output_padding", 1);
-	p->dH = onnx_getint(graph, nodeidx, "strides", 0);
-	p->dW = onnx_getint(graph, nodeidx, "strides", 1);
-	if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1)
-		THError("Dilation not supported\n");
+	if(p->weight->nDimension == 5)
+	{ // 3D
+		p->kZ = (int)p->weight->size[2];
+		p->kH = (int)p->weight->size[3];
+		p->kW = (int)p->weight->size[4];
+		p->padZ = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padH = onnx_getint(graph, nodeidx, "pads", 1);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 2);
+		p->adjZ = onnx_getint(graph, nodeidx, "output_padding", 0);
+		p->adjH = onnx_getint(graph, nodeidx, "output_padding", 1);
+		p->adjW = onnx_getint(graph, nodeidx, "output_padding", 2);
+		p->dZ = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dH = onnx_getint(graph, nodeidx, "strides", 1);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 2);
+		if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1 || onnx_getint(graph, nodeidx, "dilations", 2) > 1)
+			THError("Dilation not supported\n");
+		if(p->kZ != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+				p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 1) ||
+				p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 2))
+			THError("Conflicting kernel sizes in proto file\n");
+	} else { // 2D
+		p->kZ = 1;
+		p->kH = (int)p->weight->size[2];
+		p->kW = (int)p->weight->size[3];
+		p->padZ = 0;
+		p->padH = onnx_getint(graph, nodeidx, "pads", 0);
+		p->padW = onnx_getint(graph, nodeidx, "pads", 1);
+		p->adjZ = 0;
+		p->adjH = onnx_getint(graph, nodeidx, "output_padding", 0);
+		p->adjW = onnx_getint(graph, nodeidx, "output_padding", 1);
+		p->dZ = 1;
+		p->dH = onnx_getint(graph, nodeidx, "strides", 0);
+		p->dW = onnx_getint(graph, nodeidx, "strides", 1);
+		if(onnx_getint(graph, nodeidx, "dilations", 0) > 1 || onnx_getint(graph, nodeidx, "dilations", 1) > 1)
+			THError("Dilation not supported\n");
+		if(p->kH != onnx_getint(graph, nodeidx, "kernel_shape", 0) ||
+				p->kW != onnx_getint(graph, nodeidx, "kernel_shape", 1))
+			THError("Conflicting kernel sizes in proto file\n");
+	}
 	if(onnx_getint(graph, nodeidx, "group", -1) > 1)
 		THError("Group convolution not supported\n");
+
 }
 #endif
 

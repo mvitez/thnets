@@ -22,25 +22,25 @@ enum therror {
 };
 
 enum thtype {
-   TYPE_NIL	  = 0,
-   TYPE_NUMBER   = 1,
-   TYPE_STRING   = 2,
-   TYPE_TABLE	= 3,
-   TYPE_TORCH	= 4,
-   TYPE_BOOLEAN  = 5,
-   TYPE_FUNCTION = 6,
-   LEGACY_TYPE_RECUR_FUNCTION = 7,
-   TYPE_RECUR_FUNCTION = 8,
-   TYPE_BYTE	 = 100,
-   TYPE_CHAR	 = 101,
-   TYPE_SHORT	= 102,
-   TYPE_INT	  = 103,
-   TYPE_LONG	 = 104,
-   TYPE_FLOAT	= 105,
-   TYPE_DOUBLE   = 106,
-   TYPE_STORAGE  = 200,
-   TYPE_TENSOR   = 201,
-   TYPE_NNMODULE = 202
+	TYPE_NIL = 0,
+	TYPE_NUMBER = 1,
+	TYPE_STRING = 2,
+	TYPE_TABLE = 3,
+	TYPE_TORCH = 4,
+	TYPE_BOOLEAN = 5,
+	TYPE_FUNCTION = 6,
+	LEGACY_TYPE_RECUR_FUNCTION = 7,
+	TYPE_RECUR_FUNCTION = 8,
+	TYPE_BYTE = 100,
+	TYPE_CHAR = 101,
+	TYPE_SHORT = 102,
+	TYPE_INT = 103,
+	TYPE_LONG = 104,
+	TYPE_FLOAT = 105,
+	TYPE_DOUBLE = 106,
+	TYPE_STORAGE = 200,
+	TYPE_TENSOR = 201,
+	TYPE_NNMODULE = 202
 };
 
 struct thobject;
@@ -109,8 +109,8 @@ typedef struct THFloatStorage
 
 typedef struct THFloatTensor
 {
-	long size[4];
-	long stride[4];
+	long size[5];
+	long stride[5];
 	int nDimension;
 	THFloatStorage *storage;
 	long storageOffset;
@@ -122,35 +122,35 @@ typedef struct THFloatTensor
 struct SpatialConvolution
 {
 	THFloatTensor *bias, *weight, *finput;
-	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
+	int dW, dH, dZ, padW, padH, padZ, kW, kH, kZ, nInputPlane, nOutputPlane;
 	int refl_pad;
-	int padW2, padH2; // right and bottom, if different
+	int padW2, padH2, padZ2; // right and bottom, if different
 	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
-	int dlH, dlW; // Dilations
+	int dlH, dlW, dlZ; // Dilations
 };
 
 struct SpatialFullConvolution
 {
 	THFloatTensor *bias, *weight;
-	int dW, dH, padW, padH, kW, kH, nInputPlane, nOutputPlane;
-	int adjW, adjH;
+	int dW, dH, dZ, padW, padH, padZ, kW, kH, kZ, nInputPlane, nOutputPlane;
+	int adjW, adjH, adjZ;
 	THFloatTensor *ones, *columns;
 };
 
 struct SpatialMaxPooling
 {
-	int padW, padH, dW, dH, kW, kH, ceil_mode;
+	int padW, padH, padZ, dW, dH, dZ, kW, kH, kZ, ceil_mode;
 	int iwidth, iheight;
 	THFloatTensor *indices;
-	int padW2, padH2; // right and bottom, if different
+	int padW2, padH2, padZ2; // right and bottom, if different
 	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
 
 struct SpatialAveragePooling
 {
-	int padW, padH, dW, dH, kW, kH, ceil_mode;
-	int iwidth, iheight, count_include_pad;
-	int padW2, padH2; // right and bottom, if different
+	int padW, padH, padZ, dW, dH, dZ, kW, kH, kZ, ceil_mode;
+	int count_include_pad;
+	int padW2, padH2, padZ2; // right and bottom, if different
 	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
 
@@ -169,7 +169,7 @@ struct Threshold
 struct View
 {
 	int numElements, nDimension;
-	long size[4];
+	long size[5];
 };
 
 struct Dropout
@@ -186,7 +186,7 @@ struct SpatialZeroPadding
 struct Reshape
 {
 	int numElements, batchMode;
-	long size[4], batchsize[4];
+	long size[5], batchsize[5];
 	int nsize, nbatchsize;
 };
 
