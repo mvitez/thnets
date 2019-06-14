@@ -60,7 +60,7 @@ void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nod
 		p->autopad = 2;
 	else p->autopad = 0;
 	p->ceil_mode = 0;
-	if(onnx_getint(graph, nodeidx, "kernel_shape", -1) == 3)
+	if(onnx_getint(graph, nodeidx, "kernel_shape", -2) == 3)
 	{
 		p->kZ = onnx_getint(graph, nodeidx, "kernel_shape", 0);
 		p->kH = onnx_getint(graph, nodeidx, "kernel_shape", 1);
