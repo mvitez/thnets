@@ -311,6 +311,7 @@ struct module
 	int ninputs;
 #define MAXMODULEINPUTS 16
 	int inputs[MAXMODULEINPUTS];
+	char *inputnames[MAXMODULEINPUTS];
 	// End ONNX
 	union {
 		struct SpatialConvolution SpatialConvolution;
@@ -473,6 +474,7 @@ void fromfp16(float *dst, const __fp16 *src, size_t len);
 int loadtorch(const char *path, struct thobject *obj, int longsize);
 int printobject(struct thobject *obj, int indent);
 int freeobject(struct thobject *obj);
+void freemodule(struct module *m);
 void freenetwork(struct network *net);
 THFloatTensor *forward(struct network *net, THFloatTensor *in);
 THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj);

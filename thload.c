@@ -103,7 +103,7 @@ static int scalarsize(int type)
 static const char *scalarname(int type)
 {
 	static const char *names[] = {"Byte", "Char", "Short", "Int", "Long", "Float", "Double"};
-	
+
 	if(type >= TYPE_CHAR && type <= TYPE_DOUBLE)
 		return names[type - TYPE_BYTE];
 	return "Unknown";
@@ -119,7 +119,7 @@ static struct thobject *findidx(struct thfile *f, int idx)
 static int readtable(struct thfile *f, struct thobject *obj)
 {
 	int idx, rc, i;
-	
+
 	if(readint(f, &idx))
 		return ERR_READFILE;
 	if(idx != f->idx)
@@ -256,7 +256,7 @@ static int readtorch(struct thfile *f, struct thobject *obj)
 	int idx, rc;
 	char *s;
 	int size;
-	
+
 	if(readint(f, &idx))
 		return ERR_READFILE;
 	if(idx != f->idx)
@@ -321,7 +321,7 @@ static int readtorch(struct thfile *f, struct thobject *obj)
 	} else if(!memcmp(s, "nn.", 3))
 	{
 		struct thobject tmp;
-		
+
 		obj->type = TYPE_NNMODULE;
 		obj->nnmodule = calloc(1, sizeof(*obj->nnmodule));
 		obj->nnmodule->idx = idx;
@@ -344,7 +344,7 @@ static int readtorch(struct thfile *f, struct thobject *obj)
 		return 0;
 	} else return ERR_NOTIMPLEMENTED;
 }
-	
+
 static int readobject(struct thfile *f, struct thobject *obj)
 {
 	int rc;
@@ -359,7 +359,7 @@ static int readobject(struct thfile *f, struct thobject *obj)
 	case TYPE_NUMBER:
 		if(readdouble(f, &obj->number))
 			return ERR_READFILE;
-		break;	
+		break;
 	case TYPE_STRING:
 		if(readstring(f, &obj->string.data, &obj->string.size))
 			return ERR_READFILE;
@@ -377,7 +377,7 @@ static int readobject(struct thfile *f, struct thobject *obj)
 	case TYPE_BOOLEAN:
 		if(readint(f, &obj->boolean))
 			return ERR_READFILE;
-		break;	
+		break;
 	case LEGACY_TYPE_RECUR_FUNCTION:
 	case TYPE_RECUR_FUNCTION:
 		// Read it and ignore it
@@ -625,13 +625,13 @@ int freeobject(struct thobject *obj)
 		}
 		break;
 	}
-	return 0;	
+	return 0;
 }
 
 double TableGetNumber(struct table *t, const char *name)
 {
 	int i;
-	
+
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
 			t->records[i].value.type == TYPE_NUMBER)
@@ -642,7 +642,7 @@ double TableGetNumber(struct table *t, const char *name)
 int TableGetBoolean(struct table *t, const char *name)
 {
 	int i;
-	
+
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
 			t->records[i].value.type == TYPE_BOOLEAN)
@@ -653,7 +653,7 @@ int TableGetBoolean(struct table *t, const char *name)
 THFloatTensor *TableGetTensor(struct table *t, const char *name)
 {
 	int i;
-	
+
 	THFloatTensor *th = THFloatTensor_new();
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
@@ -675,7 +675,7 @@ THFloatTensor *TableGetTensor(struct table *t, const char *name)
 void *TableGetStorage(struct table *t, const char *name, int *nelem)
 {
 	int i;
-	
+
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
 			t->records[i].value.type == TYPE_STORAGE)
@@ -690,7 +690,7 @@ void *TableGetStorage(struct table *t, const char *name, int *nelem)
 struct nnmodule *TableGetNNModule(struct table *t, const char *name)
 {
 	int i;
-	
+
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
 			t->records[i].value.type == TYPE_NNMODULE)
@@ -746,7 +746,7 @@ struct network *Module2Network(struct nnmodule *mod)
 	struct network *net;
 	struct table *mt;
 	int i, j;
-	
+
 	if(strcmp(mod->name, "nn.Sequential") && strcmp(mod->name, "nn.Concat") && strcmp(mod->name, "nn.ConcatTable"))
 		return 0;
 	for(i = 0; i < mod->table->nelem; i++)
@@ -780,24 +780,35 @@ struct network *Module2Network(struct nnmodule *mod)
 	return net;
 }
 
+void freemodule(struct module *m)
+{
+	int i;
+
+	if(m->nnfree)
+		m->nnfree(m);
+	for(i = 0; i < m->ninputs; i++)
+		if(m->inputnames[i])
+		{
+			free(m->inputnames[i]);
+			m->inputnames[i] = 0;
+		}
+	THFloatTensor_free(m->output);
+	m->output = 0;
+#ifdef ONNX
+	if(m->outputname)
+	{
+		free(m->outputname);
+		m->outputname = 0;
+	}
+#endif
+}
+
 void freenetwork(struct network *net)
 {
 	int i;
 
 	for(i = 0; i < net->nelem; i++)
-	{
-		if(net->modules[i].nnfree)
-			net->modules[i].nnfree(net->modules + i);
-		THFloatTensor_free(net->modules[i].output);
-		net->modules[i].output = 0;
-#ifdef ONNX
-		if(net->modules[i].outputname)
-		{
-			free(net->modules[i].outputname);
-			net->modules[i].outputname = 0;
-		}
-#endif
-	}
+		freemodule(&net->modules[i]);
 	free(net->modules);
 	free(net);
 }
