@@ -20,7 +20,6 @@ void onnxload_GRU(const void *graph, struct module *m, int nodeidx);
 void onnxload_Unsqueeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Transpose(const void *graph, struct module *m, int nodeidx);
-static void remove_module(struct network *net, int idx);
 
 static struct {
 	const char *name;
@@ -914,33 +913,6 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			net->modules[n].net = net;
 			name2loadf[f].onnxload(&graph, net->modules + n, i);
 			net->modules[n].outputname = strdup(node.output(0).c_str());
-			if(!strcmp(node.op_type().c_str(), "Add"))
-			{
-				for(int a = 0; a < net->nelem; a++)
-				{//check all previous Add layers
-					if(net->modules[a].type == MT_CAddTable)
-					{
-						for(int b = 0; b < net->modules[n].ninputs; b++)
-						{//if output of previous Add layer is directly used as input of this Add layer
-							if( !strcmp(net->modules[n].inputnames[b], net->modules[a].outputname) )
-							{
-								//combine add layers
-								net->modules[n].inputnames[b] = strdup(net->modules[a].inputnames[0]);//change output of previous layer to one of its inputs
-								net->modules[n].inputs[b] = net->modules[a].inputs[0];
-								for(int c = 1; c < net->modules[a].ninputs; c++)
-								{//add other inputs from the previous add layer
-									net->modules[n].inputs[net->modules[n].ninputs] = net->modules[a].inputs[c];
-									net->modules[n].inputnames[net->modules[n].ninputs++] = strdup(net->modules[a].inputnames[c]);
-								}
-								//remove previous add layer
-								remove_module(net, a);
-								n--;
-								break;
-							}
-						}
-					}
-				}
-			}
 			net->nelem = ++n;
 		}
 		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization &&
@@ -956,12 +928,3 @@ extern "C" struct network *loadonnx(const char* modelpath)
 	return net;
 }
 
-//remove a module given its idx from the network net
-static void remove_module(struct network* net, int idx)
-{
-	if(idx >= net->nelem)
-		idx = net->nelem - 1;
-	freemodule(&net->modules[idx]);
-	net->nelem--;
-	memmove(net->modules + idx, net->modules + idx + 1, sizeof(module)*(net->nelem - idx));
-}
