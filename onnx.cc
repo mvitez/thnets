@@ -20,6 +20,7 @@ void onnxload_GRU(const void *graph, struct module *m, int nodeidx);
 void onnxload_Unsqueeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Transpose(const void *graph, struct module *m, int nodeidx);
+static void remove_module(struct network *net, int idx);
 
 static struct {
 	const char *name;
@@ -925,6 +926,64 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		}
 		
 	}
+	for(n = 0; n < net->nelem; n++)
+	{
+		if(net->modules[n].type == MT_CAddTable)
+		{
+			// Fuse to this layer other add layers that contribute to the input of this add layer
+			for(int i = 0; i < net->modules[n].ninputs; i++)
+			{
+				int ni = net->modules[n].inputs[i];
+				if(net->modules[ni].type == MT_CAddTable)
+				{
+					// If input is a CAddTable, check if its output is not used in other places
+					for(int j = 0; j < net->nelem; j++)
+						for(int k = 0; k < net->modules[j].ninputs; k++)
+							if(net->modules[j].inputs[k] == ni && j != n)
+								goto skipfuse; // It's used by another layer, skip this
+					if(net->modules[n].ninputs - 1 + net->modules[ni].ninputs <= MAX_INPUT)
+					{
+						// Fuse
+						net->modules[n].inputs[i] = net->modules[ni].inputs[0];
+						net->modules[n].inputnames[i] = strdup(net->modules[ni].inputnames[0]);
+						for(int j = 1; j < net->modules[ni].ninputs; j++)
+						{
+							net->modules[n].inputs[ net->modules[n].ninputs ] = net->modules[ni].inputs[j];
+							net->modules[n].inputnames[ net->modules[n].ninputs++ ] = strdup(net->modules[ni].inputnames[j]);
+						}
+						remove_module(net, ni);
+						n--;
+					}
+				skipfuse:
+					;
+				}
+			}
+		}
+	}
+	if(th_debug > 1)
+		for(int i = 0; i < net->nelem; i++)
+		{
+			printf("%d) ", i);
+			for(int j = 0; j < net->modules[i].ninputs; j++)
+				printf("%d (%s) ", net->modules[i].inputs[j], net->modules[i].inputnames[j]);
+			printf(" -> (%s)\n", net->modules[i].outputname);
+		}
 	return net;
 }
 
+//remove a module given its idx from the network net
+static void remove_module(struct network* net, int idx)
+{
+	if(idx >= net->nelem)
+		idx = net->nelem - 1;
+	freemodule(&net->modules[idx]);
+	net->nelem--;
+	memmove(net->modules + idx, net->modules + idx + 1, sizeof(module)*(net->nelem - idx));
+	// We shifted all modules after idx down by 1, so all inputs must be shifted, too
+	for(int i = idx+1; i < net->nelem; i++)
+	{
+		for(int j = 0; j < net->modules[i].ninputs; j++)
+			if(net->modules[i].inputs[j] > idx)
+				net->modules[i].inputs[j]--;
+	}
+}
