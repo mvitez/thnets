@@ -633,7 +633,11 @@ extern "C" struct network *loadonnx(const char* modelpath)
 					nr.push_back(j);
 			}
 		}
-		nr.push_back(i);
+		for(j = 0; j < (int)nr.size(); j++)
+			if(nr[j] == i)
+				break;
+		if(j == (int)nr.size())
+			nr.push_back(i);
 	}
 	for (unsigned nri = 0; nri < nr.size(); nri++)
 	{

@@ -42,6 +42,10 @@ void pyload_SpatialBatchNormalization(struct pyfunction *f)
 #ifdef ONNX
 void onnxload_SpatialBatchNormalization(const void *graph, struct module *m, int nodeidx)
 {
+	if(m->ninputs == 2)
+		m->type = MT_CMulTable;
+    else
+		m->type = MT_SpatialBatchNormalization;
 	m->updateOutput = nn_SpatialBatchNormalization_updateOutput;
 	m->nnfree = nnfree_SpatialBatchNormalization;
 	m->type = MT_SpatialBatchNormalization;
@@ -86,7 +90,7 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 
 		float *ind = in->storage->data + in->storageOffset;
 		float *outd = out->storage->data + out->storageOffset;
-		
+
 		if(in->nDimension == 1)
 		{
 			long i;
@@ -108,7 +112,6 @@ THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, 
 						outd[out->stride[0] * i + out->stride[1] * j + out->stride[2] * k] =
 							((ind[in->stride[0] * i + in->stride[1] * j + in->stride[2] * k] - mean) * invstd) * w + b;
 		} else THError("SpatialBatchNormalization not supported for input dimensions higher of 4 (%d)\n", in->nDimension);
-			
 		THFloatTensor_free(out);
 		THFloatTensor_free(in);
 	}

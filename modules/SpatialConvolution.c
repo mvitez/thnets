@@ -140,7 +140,7 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 	if(p->dlZ == 0)
 		p->dlZ = 1;
 	int g = onnx_getint(graph, nodeidx, "group", -1);
-	if(g == p->nOutputPlane && p->nInputPlane == 1)
+	if(g == p->nOutputPlane && p->nInputPlane == 1 && g > 1)
 	{
 		m->type = MT_DepthwiseConvolution;
 		p->nInputPlane = g;
