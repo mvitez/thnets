@@ -20,6 +20,7 @@ void onnxload_GRU(const void *graph, struct module *m, int nodeidx);
 void onnxload_Unsqueeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx);
 void onnxload_Transpose(const void *graph, struct module *m, int nodeidx);
+void onnxload_Elu(const void *graph, struct module *m, int nodeidx);
 static void remove_module(struct network *net, int idx);
 
 static struct {
@@ -59,7 +60,8 @@ static struct {
 	{"Squeeze", onnxload_Squeeze},
 	{"Sigmoid", onnxload_Sigmoid},
 	{"Tanh", onnxload_Tanh},
-	{"Transpose", onnxload_Transpose}
+	{"Transpose", onnxload_Transpose},
+	{"Elu", onnxload_Elu}
 };
 
 string inputnames[MAXMODULEINPUTS];
@@ -429,6 +431,15 @@ THFloatTensor *updateOutput_Transpose(struct module *m, THFloatTensor *t)
 {
 	THFloatTensor_transpose(m->output, t, 0, 1);
 	return m->output;
+}
+
+void onnxload_Elu(const void *graph, struct module *m, int nodeidx)
+{
+	m->updateOutput = notimplemented;
+	m->type = MT_Elu;
+	m->Threshold.alpha = onnx_getfloat(graph, nodeidx, "alpha", -1);
+	if(m->Threshold.alpha == 0)
+		m->Threshold.alpha = 1;
 }
 
 void onnxload_Transpose(const void *graph, struct module *m, int nodeidx)

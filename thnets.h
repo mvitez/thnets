@@ -288,7 +288,8 @@ enum moduletype {
 	MT_Tanh,
 	MT_Transpose,
 	MT_DepthwiseConvolution,
-	MT_CMulTable
+	MT_CMulTable,
+	MT_Elu
 };
 
 struct network;
