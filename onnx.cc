@@ -509,6 +509,10 @@ static void absorb_bn(struct network *net, int bnidx, int cidx)
 	{
 		tbias = convm->SpatialFullConvolution.bias;
 		tweight = convm->SpatialFullConvolution.weight;
+    } else if(convm->type == MT_Linear)
+    {
+        tbias = convm->Linear.bias;
+        tweight = convm->Linear.weight;
 	} else {
 		tbias = convm->SpatialConvolution.bias;
 		tweight = convm->SpatialConvolution.weight;
