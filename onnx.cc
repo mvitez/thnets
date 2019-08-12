@@ -934,7 +934,8 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization &&
 			net->modules[net->nelem-1].inputs[0] >= 0 &&
 			(net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialConvolutionVirtMM ||
-			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialFullConvolution))
+			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialFullConvolution ||
+			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_Linear))
 		{
 			absorb_bn(net, net->nelem-1, net->modules[net->nelem-1].inputs[0]);
 			n--;
