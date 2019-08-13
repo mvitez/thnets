@@ -54,6 +54,7 @@ static struct {
 	{"Max", onnxload_Cmax},
 	{"Slice", onnxload_Slice},
 	{"Upsample", onnxload_Upsample},
+	{"Resize", onnxload_Upsample},
 	{"LSTM", onnxload_LSTM},
 	{"GRU", onnxload_GRU},
 	{"Unsqueeze", onnxload_Unsqueeze},
