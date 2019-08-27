@@ -48,7 +48,6 @@ void onnxload_SpatialBatchNormalization(const void *graph, struct module *m, int
 		m->type = MT_SpatialBatchNormalization;
 	m->updateOutput = nn_SpatialBatchNormalization_updateOutput;
 	m->nnfree = nnfree_SpatialBatchNormalization;
-	m->type = MT_SpatialBatchNormalization;
 	struct SpatialBatchNormalization *p = &m->SpatialBatchNormalization;
 	p->weight = onnx_gettensor(graph, nodeidx, 1);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
