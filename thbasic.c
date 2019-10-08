@@ -71,7 +71,7 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 		if(t->size[i] == -1)
 			nostorage = 1;
 	}
-	if(nelem != THFloatTensor_nElement(t))
+	if(nelem != THFloatTensor_nElement(t) || !t->storage)
 	{
 		if(nostorage)
 		{
@@ -236,16 +236,11 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 
 long THFloatTensor_nElement(THFloatTensor *t)
 {
-	if(t->nDimension == 0)
-		return 0;
-	else
-	{
-		long nElement = 1;
-		int i;
-		for(i = 0; i < t->nDimension; i++)
-			nElement *= t->size[i];
-		return nElement;
-	}
+	long nElement = 1;
+	int i;
+	for(i = 0; i < t->nDimension; i++)
+		nElement *= t->size[i];
+	return nElement;
 }
 
 int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* src)

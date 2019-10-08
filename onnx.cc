@@ -493,30 +493,33 @@ static int getinput(const onnx::GraphProto *graph, const string &name)
 	return -1;
 }
 
-static void absorb_bn(struct network *net, int bnidx, int cidx)
+static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 {
-	struct module *convm = net->modules + cidx;
 	struct module *m = net->modules + bnidx;
 	struct SpatialBatchNormalization *bn = &m->SpatialBatchNormalization;
-	int n = bn->running_mean->size[0];
+	int n;
 	float *running_mean = THFloatTensor_data(bn->running_mean);
 	float *running_var = THFloatTensor_data(bn->running_var);
 	float *w_bn = THFloatTensor_data(bn->weight);
 	float *b_bn = THFloatTensor_data(bn->bias);
 	float eps = bn->eps;
 	THFloatTensor *tbias, *tweight;
+	bool scalar = bn->weight->nDimension == 0;
 
 	if(convm->type == MT_SpatialFullConvolution)
 	{
 		tbias = convm->SpatialFullConvolution.bias;
 		tweight = convm->SpatialFullConvolution.weight;
+		n = tweight->size[1];
     } else if(convm->type == MT_Linear)
     {
         tbias = convm->Linear.bias;
         tweight = convm->Linear.weight;
+        n = tweight->size[0];
 	} else {
 		tbias = convm->SpatialConvolution.bias;
 		tweight = convm->SpatialConvolution.weight;
+		n = tweight->size[0];
 	}
 
 	if(tbias->nDimension == 0)
@@ -576,9 +579,17 @@ static void absorb_bn(struct network *net, int bnidx, int cidx)
 				bias[i] = bias[i] * w_bn[i] + b_bn[i];
 			} else if(w_bn)
 			{
-				for(int j = 0; j < m; j++)
-					w[j] *= w_bn[i];
-				bias[i] = bias[i] * w_bn[i];
+				if(scalar)
+				{
+					// This is for Mul (not batchnorm), when it multiplies by a scalar
+					for(int j = 0; j < m; j++)
+						w[j] *= w_bn[0];
+					bias[i] = bias[i] * w_bn[0];
+				} else {
+					for(int j = 0; j < m; j++)
+						w[j] *= w_bn[i];
+					bias[i] = bias[i] * w_bn[i];
+				}
 			} else if(b_bn)
 				bias[i] += b_bn[i];
 			THFloatTensor_free(weight);
@@ -660,6 +671,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		int i = nr[nri];
 		const onnx::NodeProto& node = graph.node(i);
 		printop(&graph, &node);
+		// Special case: we are adding bias to convolution or linear
 		if(!strcmp(node.op_type().c_str(), "Add") && node.input_size() == 2 &&
 			(isinitializer(&graph, node.input(0)) || isinitializer(&graph, node.input(1))))
 		{
@@ -675,7 +687,6 @@ extern "C" struct network *loadonnx(const char* modelpath)
 				for(j = 0; j < n; j++)
 					if(!strcmp(node.input(!init).c_str(), net->modules[j].outputname))
 					{
-						// Special case: we are adding bias to convolution or linear
 						if(net->modules[j].type == MT_SpatialConvolutionVirtMM)
 						{
 							if(net->modules[j].SpatialConvolution.bias->storage)
@@ -936,16 +947,19 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			net->modules[n].outputname = strdup(node.output(0).c_str());
 			net->nelem = ++n;
 		}
-		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization &&
-			net->modules[net->nelem-1].inputs[0] >= 0 &&
-			(net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialConvolutionVirtMM ||
-			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_SpatialFullConvolution ||
-			net->modules[net->modules[net->nelem-1].inputs[0]].type == MT_Linear))
+		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization && net->modules[net->nelem-1].inputs[0] >= 0)
 		{
-			absorb_bn(net, net->nelem-1, net->modules[net->nelem-1].inputs[0]);
-			n--;
+			struct module *prevm = &net->modules[net->modules[net->nelem-1].inputs[0]];
+			if((prevm->type == MT_Dropout || prevm->type == MT_Transpose) && prevm->inputs[0] >= 0)
+				prevm = &net->modules[prevm->inputs[0]];
+			if(prevm->type == MT_SpatialConvolutionVirtMM ||
+					prevm->type == MT_SpatialFullConvolution ||
+					prevm->type == MT_Linear)
+			{
+				absorb_bn(net, net->nelem-1, prevm);
+				n--;
+			}
 		}
-		
 	}
 	for(n = 0; n < net->nelem; n++)
 	{
