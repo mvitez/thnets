@@ -53,7 +53,7 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 		THFloatTensor_free(weight);
 	} else p->weight = weight;
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
-	if (onnx_getfloat(graph, nodeidx, "beta", -1) == 0.0)
+	if (onnx_getfloat(graph, nodeidx, "beta", -1) == 0.0 && onnx_getfloat(graph, nodeidx, "beta", -3) == 1)
 	{
 		THFloatTensor_free(p->bias);
 		p->bias = THFloatTensor_new();

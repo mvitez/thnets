@@ -316,6 +316,8 @@ extern "C" float onnx_getfloat(const void *graph, int nodeidx, const char *attrn
 				return attr.f();
 			if(idx == -2)
 				return attr.floats_size();
+			if(idx == -3)
+				return 1; // Just return "found"
 			if(idx < attr.floats_size())
 				return attr.floats(idx);
 			return 0;
