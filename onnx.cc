@@ -506,7 +506,7 @@ static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 	float *b_bn = THFloatTensor_data(bn->bias);
 	float eps = bn->eps;
 	THFloatTensor *tbias, *tweight;
-	bool scalar = bn->weight->nDimension == 0;
+	bool scalar = bn->weight->nDimension == 0 || (bn->weight->nDimension == 1 && bn->weight->size[0] == 1);
 
 	if(convm->type == MT_SpatialFullConvolution)
 	{
@@ -949,7 +949,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			net->modules[n].outputname = strdup(node.output(0).c_str());
 			net->nelem = ++n;
 		}
-		if(net->modules[net->nelem-1].type == MT_SpatialBatchNormalization && net->modules[net->nelem-1].inputs[0] >= 0)
+		if(net->nelem > 0 && net->modules[net->nelem-1].type == MT_SpatialBatchNormalization && net->modules[net->nelem-1].inputs[0] >= 0)
 		{
 			struct module *prevm = &net->modules[net->modules[net->nelem-1].inputs[0]];
 			if((prevm->type == MT_Dropout || prevm->type == MT_Transpose) && prevm->inputs[0] >= 0)

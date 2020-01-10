@@ -106,7 +106,7 @@ void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2
 		t->stride[1] = size2 * size3;//plane
 		t->stride[0] = size1 * size2 * size3;//batch
 	#endif
-	if(nElement != size0 * size1 * size2 * size3)
+	if(nElement != size0 * size1 * size2 * size3 || !t->storage)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2 * size3);
@@ -131,7 +131,7 @@ void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2
 		t->stride[1] = size2;//row
 		t->stride[0] = size1 * size2;//plane
 	#endif
-	if(nElement != size0 * size1 * size2)
+	if(nElement != size0 * size1 * size2 || !t->storage)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2);
@@ -147,7 +147,7 @@ void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1)
 	t->size[1] = size1;
 	t->stride[1] = 1;
 	t->stride[0] = size1;
-	if(nElement != size0 * size1)
+	if(nElement != size0 * size1 || !t->storage)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1);
@@ -161,7 +161,7 @@ void THFloatTensor_resize1d(THFloatTensor *t, long size0)
 	t->nDimension = 1;
 	t->size[0] = size0;
 	t->stride[0] = 1;
-	if(nElement != size0)
+	if(nElement != size0 || !t->storage)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0);
