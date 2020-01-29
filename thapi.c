@@ -138,12 +138,12 @@ double th_seconds()
 #endif
 }
 
-void FindMinMax(THFloatTensor *t, float *min, float *max)
+void FindMinMax(THNTensor *t, float *min, float *max)
 {
 	*min = THInf;
 	*max = -THInf;
-	float *data = THFloatTensor_data(t);
-	long i, n = THFloatTensor_nElement(t);
+	float *data = THNTensor_data(t);
+	long i, n = THNTensor_nElement(t);
 	for(i = 0; i < n; i++)
 	{
 		if(data[i] > *max)
@@ -155,7 +155,7 @@ void FindMinMax(THFloatTensor *t, float *min, float *max)
 
 double th_convtot, th_convflops;
 
-THFloatTensor *forward(struct network *net, THFloatTensor *in)
+THNTensor *forward(struct network *net, THNTensor *in)
 {
 	int i;
 	double t = 0;
@@ -178,7 +178,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			in = net->modules[i].updateOutput(&net->modules[i], net->modules[net->modules[i].inputs[0]].output);
 		else if(net->modules[i].ninputs > 1)
 		{
-			// Nodes with multiple inputs expect a module of type ConcatTable instead of THFloatTensor as their input
+			// Nodes with multiple inputs expect a module of type ConcatTable instead of THNTensor as their input
 			struct module modules[net->modules[i].ninputs];
 			struct network subnet;
 			struct module m;
@@ -189,7 +189,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 			subnet.modules = modules;
 			subnet.engine = net->engine;
 			m.ConcatTable.net = &subnet;
-			in = net->modules[i].updateOutput(&net->modules[i], (THFloatTensor *)&m);
+			in = net->modules[i].updateOutput(&net->modules[i], (THNTensor *)&m);
 		} else
 #endif
 		in = net->modules[i].updateOutput(&net->modules[i], in);
@@ -205,8 +205,8 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 		// In case of ONNX we cannot free an output, as we can still need it
 		if(i > 0)
 		{
-			THFloatTensor_free(net->modules[i-1].output);
-			net->modules[i-1].output = THFloatTensor_new();
+			THNTensor_free(net->modules[i-1].output);
+			net->modules[i-1].output = THNTensor_new();
 		}
 #endif
 		if(th_profile)
@@ -220,7 +220,7 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 				net->modules[i].type == MT_SpatialConvolutionVirtMM ||
 				net->modules[i].type == MT_SpatialConvolution)
 			{
-				double flops = 2.0 * THFloatTensor_nElement(in) * net->modules[i].SpatialConvolution.nInputPlane *
+				double flops = 2.0 * THNTensor_nElement(in) * net->modules[i].SpatialConvolution.nInputPlane *
 					net->modules[i].SpatialConvolution.kW * net->modules[i].SpatialConvolution.kH;
 				printf("%f seconds for module %d, %f Gflops/s\n", t, i+1, flops * 1e-9 / t);
 				th_convtot += t;
@@ -235,11 +235,9 @@ THFloatTensor *forward(struct network *net, THFloatTensor *in)
 	return in;
 }
 
-THFloatTensor *THForward(THNETWORK *net, THFloatTensor *in)
+THNTensor *THForward(THNETWORK *net, THNTensor *in)
 {
-	if(net->pynet)
-		return forward_pytorch(net->pynet, in, net->allpynodes);
-	else return forward(net->net, in);
+	return forward(net->net, in);
 }
 
 THNETWORK *THLoadNetwork(const char *path)
@@ -261,17 +259,6 @@ THNETWORK *THLoadNetwork(const char *path)
 			return net;
 	}
 #endif
-	// Try pytorch
-	net->allpynodes = calloc(MAXPYNODES, sizeof(*net->allpynodes));
-	net->pynet = loadpytorch(path, net->allpynodes);
-	if(net->pynet)
-		return net;
-	sprintf(tmppath, "%s/pymodel.net", path);
-	net->pynet = loadpytorch(tmppath, net->allpynodes);
-	if(net->pynet)
-		return net;
-	free(net->allpynodes);
-	net->allpynodes = 0;
 	// Try torch
 	sprintf(tmppath, "%s/model.net", path);
 	net->netobj = malloc(sizeof(*net->netobj));
@@ -364,8 +351,8 @@ void THInit()
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, int nplanes, float **result, int *outwidth, int *outheight)
 {
 	int b, c, i;
-	THFloatTensor *t = THFloatTensor_new();
-	THFloatTensor *out;
+	THNTensor *t = THNTensor_new();
+	THNTensor *out;
 	t->nDimension = 4;
 	t->size[0] = batchsize;
 	t->size[1] = nplanes;
@@ -385,7 +372,7 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 	#endif
 
 
-	t->storage = THFloatStorage_newwithbuffer((float *)data);
+	t->storage = THNStorage_newwithbuffer((float *)data);
 	if(t->stride[1] == 1){//row major-plane minor
 #pragma omp parallel for private(b, i, c)
 	for(b = 0; b < batchsize; b++)
@@ -406,55 +393,55 @@ int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, in
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)
 	{
-		THFloatTensor *t2 = THCudaTensor_newFromFloatTensor(t);
+		THNTensor *t2 = THCudaTensor_newFromFloatTensor(t);
 		out = THForward(network, t2);
-		THFloatTensor_free(t2);
+		THNTensor_free(t2);
 		if(network->out)
-			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromCudaTensor(out);
+			THNTensor_free(network->out);
+		network->out = THNTensor_newFromCudaTensor(out);
 		out = network->out;
 	} else
 #endif
 #ifdef OPENCL
 	if(network->net->engine == ENGINE_OPENCL || network->net->engine == ENGINE_OPENCLINIT)
 	{
-		THFloatTensor *t2 = THOpenCLTensor_newFromImageTensor(t);
+		THNTensor *t2 = THOpenCLTensor_newFromImageTensor(t);
 		out = THForward(network, t2);
-		THFloatTensor_free(t2);
+		THNTensor_free(t2);
 		if(network->out)
-			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromOpenCLImageTensor(out);
+			THNTensor_free(network->out);
+		network->out = THNTensor_newFromOpenCLImageTensor(out);
 		out = network->out;
 	} else
 #endif
 #ifdef LOWP
 	if(network->net->engine == ENGINE_LOWP)
 	{
-		THFloatTensor *t2 = THLowpTensor_newFromFloatTensor(t);
+		THNTensor *t2 = THLowpTensor_newFromFloatTensor(t);
 		out = THForward(network, t2);
-		THFloatTensor_free(t2);
+		THNTensor_free(t2);
 		if(network->out)
-			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromLowpTensor(out);
+			THNTensor_free(network->out);
+		network->out = THNTensor_newFromLowpTensor(out);
 		out = network->out;
 	} else
 #endif
 	out = THForward(network, t);
-	THFloatTensor_free(t);
+	THNTensor_free(t);
 	*result = out->storage->data;
 	if(out->nDimension >= 3)
 	{
 		*outwidth = (int)out->size[out->nDimension - 1];
 		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return (int)THFloatTensor_nElement(out);
+	return (int)THNTensor_nElement(out);
 }
 
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **results, int *outwidth, int *outheight, int bgr)
 {
 	int i, cp = 3;
-	THFloatTensor *out, *t = 0;
-	THFloatStorage *st;
+	THNTensor *out, *t = 0;
+	THNStorage *st;
 
 	if(stride < width*3)
 		cp = 1;	// Guess color planes, if stride is less than 3*width, it cannot be 3 color planes, so assume grayscale
@@ -487,7 +474,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	else
 #endif
 	{
-		st = THFloatStorage_new(batchsize * width * height * cp);
+		st = THNStorage_new(batchsize * width * height * cp);
 		if(bgr)
 #pragma omp parallel for if(batchsize>1) private(i)
 			for(i = 0; i < batchsize; i++)
@@ -499,7 +486,7 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	}
 	if(!t)
 	{
-		t = THFloatTensor_new();
+		t = THNTensor_new();
 		t->storage = st;
 		if(batchsize == 1)
 		{
@@ -527,13 +514,13 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	{
 		out = THForward(network, t);
 		if(network->out)
-			THFloatTensor_free(network->out);
+			THNTensor_free(network->out);
 #ifdef HAVEFP16
 		if(floattype == CUDNN_DATA_HALF)
-			network->out = THFloatTensor_newFromHalfCudaTensor(out);
+			network->out = THNTensor_newFromHalfCudaTensor(out);
 		else
 #endif
-			network->out = THFloatTensor_newFromCudaTensor(out);
+			network->out = THNTensor_newFromCudaTensor(out);
 		out = network->out;
 	} else
 #endif
@@ -542,13 +529,13 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	{
 		out = THForward(network, t);
 		if(network->out)
-			THFloatTensor_free(network->out);
+			THNTensor_free(network->out);
 #ifdef HAVEFP16
 		if(cl_datasize == 2)
-			network->out = THFloatTensor_newFromHalfOpenCLImageTensor(out);
+			network->out = THNTensor_newFromHalfOpenCLImageTensor(out);
 		else
 #endif
-			network->out = THFloatTensor_newFromOpenCLImageTensor(out);
+			network->out = THNTensor_newFromOpenCLImageTensor(out);
 		out = network->out;
 	} else
 #endif
@@ -557,26 +544,26 @@ int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, i
 	{
 		out = THForward(network, t);
 		if(network->out)
-			THFloatTensor_free(network->out);
-		network->out = THFloatTensor_newFromLowpTensor(out);
+			THNTensor_free(network->out);
+		network->out = THNTensor_newFromLowpTensor(out);
 		out = network->out;
 	} else
 #endif
 		out = THForward(network, t);
-	THFloatTensor_free(t);
+	THNTensor_free(t);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
 	{
 		*outwidth = (int)out->size[out->nDimension - 1];
 		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return (int)THFloatTensor_nElement(out);
+	return (int)THNTensor_nElement(out);
 }
 
 int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int height, float **results, int *outwidth, int *outheight)
 {
-	THFloatTensor *out;
-	THFloatStorage *st;
+	THNTensor *out;
+	THNStorage *st;
 
 #ifdef CUDNN
 	if(network->net->engine == ENGINE_CUDA)
@@ -590,9 +577,9 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 	if(network->net->engine == ENGINE_LOWP)
 		THError("This function is not supported with Lowp");
 #endif
-	st = THFloatStorage_new(width * height * 3);
+	st = THNStorage_new(width * height * 3);
 	yuyv2fRGB(image, st->data, width*height, width, width, height, network->mean, network->std);
-	THFloatTensor *t = THFloatTensor_new();
+	THNTensor *t = THNTensor_new();
 	t->storage = st;
 	t->nDimension = 3;
 	t->size[0] = 3;
@@ -602,22 +589,18 @@ int THProcessYUYV(THNETWORK *network, unsigned char *image, int width, int heigh
 	t->stride[1] = width;
 	t->stride[2] = 1;
 	out = THForward(network, t);
-	THFloatTensor_free(t);
+	THNTensor_free(t);
 	*results = out->storage->data;
 	if(out->nDimension >= 3)
 	{
 		*outwidth = (int)out->size[out->nDimension - 1];
 		*outheight = (int)out->size[out->nDimension - 2];
 	} else *outwidth = *outheight = 1;
-	return (int)THFloatTensor_nElement(out);
+	return (int)THNTensor_nElement(out);
 }
 
 void THFreeNetwork(THNETWORK *network)
 {
-	if(network->allpynodes)
-		free(network->allpynodes);
-	if(network->pynet)
-		freepynet(network->pynet);
 	if(network->net)
 		freenetwork(network->net);
 	if(network->netobj)
@@ -631,7 +614,7 @@ void THFreeNetwork(THNETWORK *network)
 		free(network->statobj);
 	}
 	if(network->out)
-		THFloatTensor_free(network->out);
+		THNTensor_free(network->out);
 	free(network);
 }
 
@@ -648,13 +631,13 @@ void THMakeSpatial(THNETWORK *network, int size)
 	{
 		if(network->net->modules[i].type == MT_View || network->net->modules[i].type == MT_Reshape)
 		{
-			THFloatTensor_free(network->net->modules[i].output);
+			THNTensor_free(network->net->modules[i].output);
 			memmove(network->net->modules+i, network->net->modules+i+1, sizeof(*network->net->modules) * (network->net->nelem - i - 1));
 			network->net->nelem--;
 			i--;
 		} else if(network->net->modules[i].type == MT_Linear)
 		{
-			THFloatTensor_free(network->net->modules[i].Linear.addBuffer);
+			THNTensor_free(network->net->modules[i].Linear.addBuffer);
 			network->net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
 #ifndef USEBLAS
 			network->net->modules[i].type = MT_SpatialConvolutionVirtMM;
@@ -662,7 +645,7 @@ void THMakeSpatial(THNETWORK *network, int size)
 			network->net->modules[i].type = MT_SpatialConvolutionMM;
 #endif
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
-			c->finput = THFloatTensor_new();
+			c->finput = THNTensor_new();
 			c->padW = c->padH = 0;
 			c->dW = c->dH = 1;
 			c->kW = c->kH = size;
@@ -704,7 +687,7 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 			struct SpatialConvolution *c = &network->net->modules[i].SpatialConvolution;
 			network->net->modules[i].type = MT_SpatialConvolutionMM;
 			network->net->modules[i].updateOutput = nn_SpatialConvolutionMM_updateOutput;
-			THFloatTensor_resize2d(c->weight, c->nOutputPlane, c->nInputPlane * c->kH * c->kW);
+			THNTensor_resize2d(c->weight, c->nOutputPlane, c->nInputPlane * c->kH * c->kW);
 		} else if(!mm_type && (network->net->modules[i].type == MT_SpatialConvolutionMM ||
 			network->net->modules[i].type == MT_SpatialConvolutionVirtMM))
 		{
@@ -716,7 +699,7 @@ int THUseSpatialConvolutionMM(THNETWORK *network, int mm_type)
 			}
 			network->net->modules[i].type = MT_SpatialConvolution;
 			network->net->modules[i].updateOutput = nn_SpatialConvolution_updateOutput;
-			THFloatTensor_resize4d(c->weight, c->nOutputPlane, c->nInputPlane, c->kH, c->kW);
+			THNTensor_resize4d(c->weight, c->nOutputPlane, c->nInputPlane, c->kH, c->kW);
 		}
 #ifndef USEBLAS
 		if(mm_type == 2 && network->net->modules[i].type == MT_SpatialConvolutionMM)

@@ -19,31 +19,6 @@ int nnload_SpatialAveragePooling(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-void pyload_SpatialAveragePooling(struct pyfunction *f)
-{
-	struct SpatialAveragePooling *p = &f->module.SpatialAveragePooling;
-	f->module.updateOutput = nn_SpatialAveragePooling_updateOutput;
-	f->module.type = MT_SpatialAveragePooling;
-	struct pyelement *el;
-	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->padH = el->ivect[0];
-		p->padW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "stride", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->dH = el->ivect[0];
-		p->dW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "kernel_size", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->kH = el->ivect[0];
-		p->kW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "ceil_mode", 0)) && el->type == ELTYPE_INT)
-		p->ceil_mode = el->ivalue;
-}
-
 #ifdef ONNX
 void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nodeidx)
 {
@@ -97,7 +72,7 @@ void onnxload_SpatialAveragePooling(const void *graph, struct module *m, int nod
 }
 #endif
 
-THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THNTensor *input)
 {
 	int kW = module->SpatialAveragePooling.kW;
 	int kH = module->SpatialAveragePooling.kH;
@@ -107,7 +82,7 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 	int padH = module->SpatialAveragePooling.padH;
 	int ceil_mode = module->SpatialAveragePooling.ceil_mode;
 	int count_include_pad = module->SpatialAveragePooling.count_include_pad;
-	THFloatTensor *output = module->output;
+	THNTensor *output = module->output;
 
 	float *output_data;
 	float *input_data;
@@ -170,16 +145,16 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 		THError("input image smaller than kernel size");
 
 	if (input->nDimension == 3)
-		THFloatTensor_resize3d(output, nInputPlane, outputHeight, outputWidth);
+		THNTensor_resize3d(output, nInputPlane, outputHeight, outputWidth);
 	else
-		THFloatTensor_resize4d(output, input->size[0], nInputPlane, outputHeight, outputWidth);
+		THNTensor_resize4d(output, input->size[0], nInputPlane, outputHeight, outputWidth);
 
-	THFloatTensor *input2 = THFloatTensor_new();
-	THFloatTensor_resizeAs(input2, input);
-	THFloatTensor_copy(input2, input);
+	THNTensor *input2 = THNTensor_new();
+	THNTensor_resizeAs(input2, input);
+	THNTensor_copy(input2, input);
 	input = input2;
-	input_data = THFloatTensor_data(input);
-	output_data = THFloatTensor_data(output);
+	input_data = THNTensor_data(input);
+	output_data = THNTensor_data(output);
   
 #pragma omp parallel for private(k)
 	for(k = 0; k < nInputPlane; k++)
@@ -231,6 +206,6 @@ THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFl
 			}
 		}
 	}
-	THFloatTensor_free(input);
+	THNTensor_free(input);
 	return output;
 }

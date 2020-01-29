@@ -11,16 +11,6 @@ int nnload_View(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-void pyload_View(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_View_updateOutput;
-	f->module.type = MT_View;
-	struct View *p = &f->module.View;
-	struct pyelement *el;
-	if( (el = findelement(f->params, "sizes", 0)) && el->type == ELTYPE_INTVECT)
-		p->numElements = el->ivect[1];
-}
-
 #ifdef ONNX
 void onnxload_View(const void *graph, struct module *m, int nodeidx)
 {
@@ -31,12 +21,12 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 
 	p->nDimension = 0;
 	p->numElements = -1;
-	THFloatTensor *t = onnx_getshapetensor(graph, nodeidx, 1);
+	THNTensor *t = onnx_getshapetensor(graph, nodeidx, 1);
 	if(t)
 	{
 		p->nDimension = t->nDimension;
 		memcpy(p->size, t->size, sizeof(p->size));
-		THFloatTensor_free(t);
+		THNTensor_free(t);
 	} else {
 		p->nDimension = onnx_getint(graph, nodeidx, "shape", -2);
 		for(i = 0; i < p->nDimension; i++)
@@ -45,9 +35,9 @@ void onnxload_View(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_View_updateOutput(struct module *module, THNTensor *input)
 {
-	long nElements = THFloatTensor_nElement(input);
+	long nElements = THNTensor_nElement(input);
 	struct View *p = &module->View;
 	int i, j;
 
@@ -78,22 +68,22 @@ THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input)
 					size[i] *= input->size[j];
 				nelements *= size[i];
 			}
-		if(nelements != THFloatTensor_nElement(input))
-			THError("Wrong number of elements in Reshape: %ld (input) vs %ld (reshaped)\n", THFloatTensor_nElement(input), nelements);
-		THFloatTensor_set(module->output, input);
-		THFloatTensor_resize(module->output, size, ndim);
+		if(nelements != THNTensor_nElement(input))
+			THError("Wrong number of elements in Reshape: %ld (input) vs %ld (reshaped)\n", THNTensor_nElement(input), nelements);
+		THNTensor_set(module->output, input);
+		THNTensor_resize(module->output, size, ndim);
 	} else {
 		long numElements = p->numElements;
 		long batchSize = input->nDimension == 4 ? input->size[0] : 1;
 		if(numElements == -1)
 			numElements = nElements / batchSize;
 		else batchSize = nElements / numElements;
-		THFloatTensor *view;
+		THNTensor *view;
 		if (batchSize > 1)
-			view = THFloatTensor_newWithStorage2d(input->storage, input->storageOffset, batchSize, numElements, numElements, 1);
+			view = THNTensor_newWithStorage2d(input->storage, input->storageOffset, batchSize, numElements, numElements, 1);
 		else
-			view = THFloatTensor_newWithStorage1d(input->storage, input->storageOffset, numElements, 1);
-		THFloatTensor_free(module->output);
+			view = THNTensor_newWithStorage1d(input->storage, input->storageOffset, numElements, 1);
+		THNTensor_free(module->output);
 		module->output = view;
 	}
 	return module->output;

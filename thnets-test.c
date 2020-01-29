@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 				rc = loadtorch(inputfile, &input_o, 4);
 			if(!rc)
 			{
-				THFloatTensor *in = THFloatTensor_newFromObject(&input_o);
+				THNTensor *in = THNTensor_newFromObject(&input_o);
 				// In CuDNN the first one has to do some initializations, so don't count it for timing
 				if(alg == 3 || alg == 5)
 					THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], 3, &result, &outwidth, &outheight);
@@ -164,7 +164,7 @@ int main(int argc, char **argv)
 				for(i = 0; i < runs; i++)
 					n = THProcessFloat(net, in->storage->data, 1, in->size[2], in->size[1], 3, &result, &outwidth, &outheight);
 				t = (seconds() - t) / runs;
-				THFloatTensor_free(in);
+				THNTensor_free(in);
 				freeobject(&input_o);
 			} else printf("Error loading %s\n", inputfile);
 		} else {

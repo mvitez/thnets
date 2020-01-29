@@ -9,16 +9,16 @@ void onnxload_Tanh(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_Tanh_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Tanh_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
+	THNTensor *output = module->output;
 	float *input_data, *output_data;
-	long i, n = THFloatTensor_nElement(input);
+	long i, n = THNTensor_nElement(input);
 
-	THFloatTensor_resizeAs(output, input);
+	THNTensor_resizeAs(output, input);
 
-	input_data = THFloatTensor_data(input);
-	output_data = THFloatTensor_data(output);
+	input_data = THNTensor_data(input);
+	output_data = THNTensor_data(output);
 
 #pragma omp parallel for
 	for(i = 0; i < n; i++)

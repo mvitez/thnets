@@ -10,12 +10,6 @@ int nnload_CAddTable(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-void pyload_Add(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_CAddTable_updateOutput;
-	f->module.type = MT_CAddTable;
-}
-
 #ifdef ONNX
 void onnxload_Add(const void *graph, struct module *m, int nodeidx)
 {
@@ -29,9 +23,9 @@ void onnxload_Sub(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_CAddTable_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
+	THNTensor *output = module->output;
 	struct module *concattable_module = (struct module *)input;
 	int nelem = concattable_module->ConcatTable.net->nelem;
 	long size[4];
@@ -47,14 +41,14 @@ THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *i
 				THError("Sum of tensors of different sizes");
 	}
 	memcpy(size, modules[0].output->size, sizeof(size));
-	THFloatTensor_resize(output, size, modules[0].output->nDimension);
-	float *out = THFloatTensor_data(output);
+	THNTensor_resize(output, size, modules[0].output->nDimension);
+	float *out = THNTensor_data(output);
 	long n[nelem];
 	float *outs[nelem];
 	for(i = 0; i < nelem; i++)
 	{
-		outs[i] = THFloatTensor_data(modules[i].output);
-		n[i] = THFloatTensor_nElement(modules[i].output);
+		outs[i] = THNTensor_data(modules[i].output);
+		n[i] = THNTensor_nElement(modules[i].output);
 	}
 	if(nelem == 2)
 	{

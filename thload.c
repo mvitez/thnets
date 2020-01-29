@@ -650,11 +650,11 @@ int TableGetBoolean(struct table *t, const char *name)
 	return -1;
 }
 
-THFloatTensor *TableGetTensor(struct table *t, const char *name)
+THNTensor *TableGetTensor(struct table *t, const char *name)
 {
 	int i;
 
-	THFloatTensor *th = THFloatTensor_new();
+	THNTensor *th = THNTensor_new();
 	for(i = 0; i < t->nelem; i++)
 		if(t->records[i].name.type == TYPE_STRING && !strcmp(t->records[i].name.string.data, name) &&
 			t->records[i].value.type == TYPE_TENSOR)
@@ -665,7 +665,7 @@ THFloatTensor *TableGetTensor(struct table *t, const char *name)
 			memcpy(th->stride, tt->stride, sizeof(long) * tt->ndim);
 			th->storageOffset = tt->storageoffset;
 			if(tt->storage)
-				th->storage = THFloatStorage_newwithbuffer(tt->storage->data);
+				th->storage = THNStorage_newwithbuffer(tt->storage->data);
 			else th->storage = 0;
 			break;
 		}
@@ -698,14 +698,14 @@ struct nnmodule *TableGetNNModule(struct table *t, const char *name)
 	return 0;
 }
 
-THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj)
+THNTensor *THNTensor_newFromObject(struct thobject *obj)
 {
-	THFloatTensor *th = THFloatTensor_new();
+	THNTensor *th = THNTensor_new();
 
 	th->nDimension = obj->tensor->ndim;
 	memcpy(th->size, obj->tensor->size, sizeof(long) * obj->tensor->ndim);
 	memcpy(th->stride, obj->tensor->stride, sizeof(long) * obj->tensor->ndim);
-	th->storage = THFloatStorage_newwithbuffer(obj->tensor->storage->data);
+	th->storage = THNStorage_newwithbuffer(obj->tensor->storage->data);
 	return th;
 }
 
@@ -763,7 +763,7 @@ struct network *Module2Network(struct nnmodule *mod)
 	net->modules = calloc(mt->nelem, sizeof(*net->modules));
 	for(i = 0; i < mt->nelem; i++)
 	{
-		net->modules[i].output = THFloatTensor_new();
+		net->modules[i].output = THNTensor_new();
 		net->modules[i].net = net;
 		net->modules[i].nnmodule = mt->records[i].value.nnmodule;
 
@@ -792,7 +792,7 @@ void freemodule(struct module *m)
 			free(m->inputnames[i]);
 			m->inputnames[i] = 0;
 		}
-	THFloatTensor_free(m->output);
+	THNTensor_free(m->output);
 	m->output = 0;
 #ifdef ONNX
 	if(m->outputname)

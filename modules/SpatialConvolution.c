@@ -3,9 +3,9 @@
 
 static void nnfree_SpatialConvolution(struct module *mod)
 {
-	THFloatTensor_free(mod->SpatialConvolution.bias);
-	THFloatTensor_free(mod->SpatialConvolution.weight);
-	THFloatTensor_free(mod->SpatialConvolution.finput);
+	THNTensor_free(mod->SpatialConvolution.bias);
+	THNTensor_free(mod->SpatialConvolution.weight);
+	THNTensor_free(mod->SpatialConvolution.finput);
 }
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n)
@@ -28,39 +28,9 @@ int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n)
 	m->bias = TableGetTensor(t, "bias");
 	m->weight = TableGetTensor(t, "weight");
 	if(m->weight->nDimension == 4)
-		THFloatTensor_resize2d(m->weight, m->weight->size[0], m->weight->size[1] * m->weight->size[2] * m->weight->size[3]);
-	m->finput = THFloatTensor_new();
+		THNTensor_resize2d(m->weight, m->weight->size[0], m->weight->size[1] * m->weight->size[2] * m->weight->size[3]);
+	m->finput = THNTensor_new();
 	return 0;
-}
-
-void pyload_SpatialConvolution(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_SpatialConvolutionMM_updateOutput;
-#ifdef USEBLAS
-	f->module.type = MT_SpatialConvolutionMM;
-#else
-	f->module.type = MT_SpatialConvolutionVirtMM;
-#endif
-	f->module.nnfree = nnfree_SpatialConvolution;
-	struct SpatialConvolution *p = &f->module.SpatialConvolution;
-	struct pyelement *el;
-	p->weight = pygettensor(f->params, "", 0);
-	p->bias = pygettensor(f->params, "", 1);
-	p->finput = THFloatTensor_new();
-	p->nOutputPlane = (int)p->weight->size[0];
-	p->nInputPlane = (int)p->weight->size[1];
-	p->kH = (int)p->weight->size[2];
-	p->kW = (int)p->weight->size[3];
-	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->padH = el->ivect[0];
-		p->padW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "stride", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->dH = el->ivect[0];
-		p->dW = el->ivect[1];
-	}
 }
 
 #ifdef ONNX
@@ -77,7 +47,7 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 	p->refl_pad = 0;
 	p->weight = onnx_gettensor(graph, nodeidx, 1);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
-	p->finput = THFloatTensor_new();
+	p->finput = THNTensor_new();
 	p->nOutputPlane = (int)p->weight->size[0];
 	p->nInputPlane = (int)p->weight->size[1];
 	if(p->weight->nDimension == 5)
@@ -149,14 +119,14 @@ void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeid
 }
 #endif
 
-THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialConvolution_updateOutput(struct module *module, THNTensor *input)
 {
 	int dW = module->SpatialConvolution.dW;
 	int dH = module->SpatialConvolution.dH;
 
-	THFloatTensor *weight = module->SpatialConvolution.weight;
-	THFloatTensor *bias = module->SpatialConvolution.bias;
-	THFloatTensor *output = module->output;
+	THNTensor *weight = module->SpatialConvolution.weight;
+	THNTensor *bias = module->SpatialConvolution.bias;
+	THNTensor *output = module->output;
 
 	int dimw = 2;
 	int dimh = 1;
@@ -181,10 +151,10 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 		float *bias_data;
 		float *output_data;
 
-		THFloatTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
+		THNTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
 		/* add bias */
-		bias_data = THFloatTensor_data(bias);
-		output_data = THFloatTensor_data(output);
+		bias_data = THNTensor_data(bias);
+		output_data = THNTensor_data(output);
 
 #pragma omp parallel for private(i)
 		for (i=0; i<bias->size[0]; i++)
@@ -194,7 +164,7 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 			for(j = 0; j < outputWidth*outputHeight; j++)
 				ptr_output[j] = bias_data[i];
 		}
-		THFloatTensor_conv2Dmv(output, 1.0, 1.0, input, weight, dH, dW, "V","X");
+		THNTensor_conv2Dmv(output, 1.0, 1.0, input, weight, dH, dW, "V","X");
 	}
 	else
 	{
@@ -202,10 +172,10 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 		float *output_data;
 		long p;
 
-		THFloatTensor_resize4d(output, input->size[0], nOutputPlane, outputHeight, outputWidth);
+		THNTensor_resize4d(output, input->size[0], nOutputPlane, outputHeight, outputWidth);
 
-		bias_data = THFloatTensor_data(bias);
-		output_data = THFloatTensor_data(output);
+		bias_data = THNTensor_data(bias);
+		output_data = THNTensor_data(output);
 
 #pragma omp parallel for private(p)
 		for (p=0; p<input->size[0]; p++)
@@ -222,7 +192,7 @@ THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloat
 		}
 
 		/* do convolutions */
-		THFloatTensor_conv2Dmm(output, 1.0, 1.0, input, weight, dH, dW, "V","X");
+		THNTensor_conv2Dmm(output, 1.0, 1.0, input, weight, dH, dW, "V","X");
 	}
 	return output;
 }

@@ -14,9 +14,9 @@
 #define THAtomicIncrement(a) __sync_fetch_and_add(a, 1);
 #define THAtomicDecrement(a) __sync_fetch_and_add(a, -1);
 
-THFloatStorage *THFloatStorage_new(long size)
+THNStorage *THNStorage_new(long size)
 {
-	THFloatStorage *s = malloc(sizeof(*s));
+	THNStorage *s = malloc(sizeof(*s));
 	s->data = malloc(sizeof(*s->data) * size);
 	if(!s->data)
 		THError("Out of memory tryting to allocate %u bytes", sizeof(*s->data) * size);
@@ -25,16 +25,16 @@ THFloatStorage *THFloatStorage_new(long size)
 	return s;
 }
 
-THFloatStorage *THFloatStorage_newwithbuffer(void *buffer)
+THNStorage *THNStorage_newwithbuffer(void *buffer)
 {
-	THFloatStorage *s = malloc(sizeof(*s));
+	THNStorage *s = malloc(sizeof(*s));
 	s->data = buffer;
 	s->nref = 1;
 	s->mustfree = 0;
 	return s;
 }
 
-void THFloatStorage_free(THFloatStorage *s)
+void THNStorage_free(THNStorage *s)
 {
 	THAtomicDecrement(&s->nref);
 	if(s->nref == 0)
@@ -55,13 +55,13 @@ void THFloatStorage_free(THFloatStorage *s)
 	}
 }
 
-void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
+void THNTensor_resize(THNTensor *t, long *size, int nDimension)
 {
 	int i;
 	long stride = 1;
 	char nostorage = 0;
 
-	long nelem = THFloatTensor_nElement(t);
+	long nelem = THNTensor_nElement(t);
 	t->nDimension = nDimension;
 	memcpy(t->size, size, nDimension * sizeof(*t->size));
 	for(i = nDimension - 1; i >= 0; i--)
@@ -71,24 +71,24 @@ void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension)
 		if(t->size[i] == -1)
 			nostorage = 1;
 	}
-	if(nelem != THFloatTensor_nElement(t) || !t->storage)
+	if(nelem != THNTensor_nElement(t) || !t->storage)
 	{
 		if(nostorage)
 		{
 			if(t->storage)
 			{
-				THFloatStorage_free(t->storage);
+				THNStorage_free(t->storage);
 				t->storage = 0;
 			}
 		} else if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * stride);
-		else t->storage = THFloatStorage_new(stride);
+		else t->storage = THNStorage_new(stride);
 	}
 }
 
-void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3)
+void THNTensor_resize4d(THNTensor *t, long size0, long size1, long size2, long size3)
 {
-	long nElement = THFloatTensor_nElement(t);
+	long nElement = THNTensor_nElement(t);
 	t->nDimension = 4;
 	t->size[0] = size0;//batch
 	t->size[1] = size1;//plane
@@ -110,13 +110,13 @@ void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2 * size3);
-		else t->storage = THFloatStorage_new(size0 * size1 * size2 * size3);
+		else t->storage = THNStorage_new(size0 * size1 * size2 * size3);
 	}
 }
 
-void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2)
+void THNTensor_resize3d(THNTensor *t, long size0, long size1, long size2)
 {
-	long nElement = THFloatTensor_nElement(t);
+	long nElement = THNTensor_nElement(t);
 	t->nDimension = 3;
 	t->size[0] = size0;//col
 	t->size[1] = size1;//row
@@ -135,13 +135,13 @@ void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1 * size2);
-		else t->storage = THFloatStorage_new(size0 * size1 * size2);
+		else t->storage = THNStorage_new(size0 * size1 * size2);
 	}
 }
 
-void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1)
+void THNTensor_resize2d(THNTensor *t, long size0, long size1)
 {
-	long nElement = THFloatTensor_nElement(t);
+	long nElement = THNTensor_nElement(t);
 	t->nDimension = 2;
 	t->size[0] = size0;
 	t->size[1] = size1;
@@ -151,13 +151,13 @@ void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0 * size1);
-		else t->storage = THFloatStorage_new(size0 * size1);
+		else t->storage = THNStorage_new(size0 * size1);
 	}
 }
 
-void THFloatTensor_resize1d(THFloatTensor *t, long size0)
+void THNTensor_resize1d(THNTensor *t, long size0)
 {
-	long nElement = THFloatTensor_nElement(t);
+	long nElement = THNTensor_nElement(t);
 	t->nDimension = 1;
 	t->size[0] = size0;
 	t->stride[0] = 1;
@@ -165,7 +165,7 @@ void THFloatTensor_resize1d(THFloatTensor *t, long size0)
 	{
 		if(t->storage)
 			t->storage->data = realloc(t->storage->data, sizeof(*t->storage->data) * size0);
-		else t->storage = THFloatStorage_new(size0);
+		else t->storage = THNStorage_new(size0);
 	}
 }
 
@@ -180,21 +180,21 @@ void THError(const char *fmt, ...)
 	exit(-1);
 }
 
-void THFloatTensor_free(THFloatTensor *t)
+void THNTensor_free(THNTensor *t)
 {
 	if(!t)
 		return;
 	if(t->storage)
-		THFloatStorage_free(t->storage);
+		THNStorage_free(t->storage);
 	free(t);
 }
 
-void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to)
+void THNTensor_slice(THNTensor *dst, THNTensor *src, int dimension, long from, long to)
 {
 	int i;
 
 	if(dst->storage)
-		THFloatStorage_free(dst->storage);
+		THNStorage_free(dst->storage);
 	dst->nDimension = src->nDimension;
 	dst->storageOffset = from * src->stride[dimension];
 	dst->size[dimension] = to - from;
@@ -208,11 +208,11 @@ void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, 
 	THAtomicIncrement(&dst->storage->nref);
 }
 
-THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex)
+THNTensor *THNTensor_newSelect(THNTensor *tensor, int dimension, long sliceIndex)
 {
 	int i;
 
-	THFloatTensor *t = malloc(sizeof(*t));
+	THNTensor *t = malloc(sizeof(*t));
 #ifdef LOWP
 	t->mult = tensor->mult;
 	t->sub = tensor->sub;
@@ -234,7 +234,7 @@ THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, lon
 	return t;
 }
 
-long THFloatTensor_nElement(THFloatTensor *t)
+long THNTensor_nElement(THNTensor *t)
 {
 	long nElement = 1;
 	int i;
@@ -243,7 +243,7 @@ long THFloatTensor_nElement(THFloatTensor *t)
 	return nElement;
 }
 
-int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* src)
+int THNTensor_isSameSizeAs(const THNTensor *self, const THNTensor* src)
 {
 	int d;
 	if (self->nDimension != src->nDimension)
@@ -256,12 +256,12 @@ int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* s
 	return 1;
 }
 
-void THFloatTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
+void THNTensor_resizeAs(THNTensor *tdst, THNTensor *tsrc)
 {
 	if(tsrc == tdst)
 		return;
-	long nelemdst = THFloatTensor_nElement(tdst);
-	long nelemsrc = THFloatTensor_nElement(tsrc);
+	long nelemdst = THNTensor_nElement(tdst);
+	long nelemsrc = THNTensor_nElement(tsrc);
 	tdst->nDimension = tsrc->nDimension;
 	memcpy(tdst->size, tsrc->size, sizeof(tsrc->size));
 	memcpy(tdst->stride, tsrc->stride, sizeof(tsrc->stride));
@@ -269,36 +269,36 @@ void THFloatTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc)
 	{
 		if(tdst->storage)
 			tdst->storage->data = realloc(tdst->storage->data, sizeof(*tdst->storage->data) * nelemsrc);
-		else tdst->storage = THFloatStorage_new(nelemsrc);
+		else tdst->storage = THNStorage_new(nelemsrc);
 	}
 }
 
-void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc)
+void THNTensor_set(THNTensor *tdst, THNTensor *tsrc)
 {
 	if(tsrc == tdst)
 		return;
 	if(tdst->storage)
-		THFloatStorage_free(tdst->storage);
+		THNStorage_free(tdst->storage);
 	*tdst = *tsrc;
 	if(tdst->storage)
 		THAtomicIncrement(&tsrc->storage->nref);
 }
 
-float *THFloatTensor_data(THFloatTensor *tensor)
+float *THNTensor_data(THNTensor *tensor)
 {
 	if(tensor && tensor->storage && tensor->storage->data)
 		return tensor->storage->data + tensor->storageOffset;
 	return 0;
 }
 
-THFloatTensor *THFloatTensor_new()
+THNTensor *THNTensor_new()
 {
-	return calloc(1, sizeof(THFloatTensor));
+	return calloc(1, sizeof(THNTensor));
 }
 
-THFloatTensor *THFloatTensor_newWithStorage3d(THFloatStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1, long size2, long stride2)
+THNTensor *THNTensor_newWithStorage3d(THNStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1, long size2, long stride2)
 {
-	THFloatTensor *t = THFloatTensor_new();
+	THNTensor *t = THNTensor_new();
 	t->nDimension = 3;
 	t->size[0] = size0;
 	t->size[1] = size1;
@@ -312,9 +312,9 @@ THFloatTensor *THFloatTensor_newWithStorage3d(THFloatStorage *storage, long stor
 	return t;
 }
 
-THFloatTensor *THFloatTensor_newWithStorage2d(THFloatStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1)
+THNTensor *THNTensor_newWithStorage2d(THNStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1)
 {
-	THFloatTensor *t = THFloatTensor_new();
+	THNTensor *t = THNTensor_new();
 	t->nDimension = 2;
 	t->size[0] = size0;
 	t->size[1] = size1;
@@ -326,9 +326,9 @@ THFloatTensor *THFloatTensor_newWithStorage2d(THFloatStorage *storage, long stor
 	return t;
 }
 
-THFloatTensor *THFloatTensor_newWithStorage1d(THFloatStorage *storage, long storageOffset, long size0, long stride0)
+THNTensor *THNTensor_newWithStorage1d(THNStorage *storage, long storageOffset, long size0, long stride0)
 {
-	THFloatTensor *t = THFloatTensor_new();
+	THNTensor *t = THNTensor_new();
 	t->nDimension = 1;
 	t->size[0] = size0;
 	t->stride[0] = stride0 == -1 ? 1 : stride0;
@@ -338,39 +338,39 @@ THFloatTensor *THFloatTensor_newWithStorage1d(THFloatStorage *storage, long stor
 	return t;
 }
 
-THFloatTensor *THFloatTensor_newWithTensor(THFloatTensor *tensor)
+THNTensor *THNTensor_newWithTensor(THNTensor *tensor)
 {
-	THFloatTensor *self = THFloatTensor_new();
-	THFloatTensor_set(self, tensor);
+	THNTensor *self = THNTensor_new();
+	THNTensor_set(self, tensor);
 	return self;
 }
 
-void THFloatTensor_zero(THFloatTensor *t)
+void THNTensor_zero(THNTensor *t)
 {
-	memset(t->storage->data, 0, THFloatTensor_nElement(t) * sizeof(*t->storage->data));
+	memset(t->storage->data, 0, THNTensor_nElement(t) * sizeof(*t->storage->data));
 }
 
-void THFloatTensor_fill(THFloatTensor *t, float value)
+void THNTensor_fill(THNTensor *t, float value)
 {
-	THFloatVector_fill(t->storage->data, value, THFloatTensor_nElement(t));
+	THFloatVector_fill(t->storage->data, value, THNTensor_nElement(t));
 }
 
-void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc)
+void THNTensor_copy(THNTensor *tdst, THNTensor *tsrc)
 {
 	float *src, *dst;
 
-	src = THFloatTensor_data(tsrc);
-	dst = THFloatTensor_data(tdst);
-	memcpy(dst, src, sizeof(*dst) * THFloatTensor_nElement(tsrc));
+	src = THNTensor_data(tsrc);
+	dst = THNTensor_data(tdst);
+	memcpy(dst, src, sizeof(*dst) * THNTensor_nElement(tsrc));
 }
 
-void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc)
+void THNTensor_safecopy(THNTensor *tdst, THNTensor *tsrc)
 {
 	float *src, *dst;
 	long i0, i1, i2, i3;
 
-	src = THFloatTensor_data(tsrc);
-	dst = THFloatTensor_data(tdst);
+	src = THNTensor_data(tsrc);
+	dst = THNTensor_data(tdst);
 	if(tsrc->nDimension == 1)
 	{
 		for(i0 = 0; i0 < tsrc->size[0]; i0++)
@@ -409,14 +409,14 @@ void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc)
 						src[tsrc->stride[0] * i0 + tsrc->stride[1] * i1 + tsrc->stride[2] * i2 + tsrc->stride[3] * i3];
 }
 
-void THFloatTensor_transpose(THFloatTensor *tdst, THFloatTensor *tsrc, int dimension1, int dimension2)
+void THNTensor_transpose(THNTensor *tdst, THNTensor *tsrc, int dimension1, int dimension2)
 {
 	long z;
 
 	if(!tsrc)
 		tsrc = tdst;
 
-	THFloatTensor_set(tdst, tsrc);
+	THNTensor_set(tdst, tsrc);
 
 	if(dimension1 == dimension2)
 		return;
@@ -429,17 +429,17 @@ void THFloatTensor_transpose(THFloatTensor *tdst, THFloatTensor *tsrc, int dimen
 	tdst->size[dimension2] = z;
 }
 
-THFloatTensor *THFloatTensor_newTranspose(THFloatTensor *tensor, int dimension1_, int dimension2_)
+THNTensor *THNTensor_newTranspose(THNTensor *tensor, int dimension1_, int dimension2_)
 {
-  THFloatTensor *self = THFloatTensor_newWithTensor(tensor);
-  THFloatTensor_transpose(self, NULL, dimension1_, dimension2_);
+  THNTensor *self = THNTensor_newWithTensor(tensor);
+  THNTensor_transpose(self, NULL, dimension1_, dimension2_);
   return self;
 }
 
-THFloatTensor *THFloatTensor_squeeze(THFloatTensor *t)
+THNTensor *THNTensor_squeeze(THNTensor *t)
 {
 	int ndim = 0, i;
-	THFloatTensor *t2 = THFloatTensor_newWithTensor(t);
+	THNTensor *t2 = THNTensor_newWithTensor(t);
 	for(i = 0; i < t->nDimension; i++)
 		if(t->size[i] != 1)
 		{
@@ -593,10 +593,10 @@ void THBlas_ger(long m, long n, float alpha, float *x, long incx, float *y, long
 #endif
 }
 
-void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2)
+void THNTensor_addmm(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *m1, THNTensor *m2)
 {
 	char transpose_r, transpose_m1, transpose_m2;
-	THFloatTensor *r__, *m1_, *m2_;
+	THNTensor *r__, *m1_, *m2_;
 
 	if( (m1->nDimension != 2) || (m2->nDimension != 2))
 		THError("matrices expected, got %dD, %dD tensors", m1->nDimension, m2->nDimension);
@@ -623,7 +623,7 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 	}
 	else if(r_->stride[1] == 1 && r_->stride[0] != 0)
 	{
-		THFloatTensor *swap = m2;
+		THNTensor *swap = m2;
 		m2 = m1;
 		m1 = swap;
 		transpose_r = 't';
@@ -635,9 +635,9 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		return;
 /*		transpose_r = 'n';
 
-		r__ = THFloatTensor_newWithSize2d(r_->size[1], r_->size[0]);
-		THFloatTensor_copy(r__, r_);
-		THFloatTensor_transpose(r__, NULL, 0, 1);*/
+		r__ = THNTensor_newWithSize2d(r_->size[1], r_->size[0]);
+		THNTensor_copy(r__, r_);
+		THNTensor_transpose(r__, NULL, 0, 1);*/
 	}
 
 	/* m1 */
@@ -656,7 +656,7 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		THError("Transpose not implemented (2)");
 		return;
 		/*transpose_m1 = (transpose_r == 'n' ? 't' : 'n');
-		m1_ = THFloatTensor_newContiguous(m1);*/
+		m1_ = THNTensor_newContiguous(m1);*/
 	}
 
 	/* m2 */
@@ -675,7 +675,7 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		THError("Transpose not implemented (3)");
 		return;
 		/*transpose_m2 = (transpose_r == 'n' ? 't' : 'n');
-		m2_ = THFloatTensor_(newContiguous)(m2);*/
+		m2_ = THNTensor_(newContiguous)(m2);*/
 	}
 
 	/* do the operation */
@@ -685,27 +685,27 @@ void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 		r__->size[(transpose_r == 'n' ? 1 : 0)],
 		m1_->size[(transpose_r == 'n' ? 1 : 0)],
 		alpha,
-		THFloatTensor_data(m1_),
+		THNTensor_data(m1_),
 		(transpose_m1 == 'n' ? m1_->stride[(transpose_r == 'n' ? 1 : 0)] : m1_->stride[(transpose_r == 'n' ? 0 : 1)]),
-		THFloatTensor_data(m2_),
+		THNTensor_data(m2_),
 		(transpose_m2 == 'n' ? m2_->stride[(transpose_r == 'n' ? 1 : 0)] : m2_->stride[(transpose_r == 'n' ? 0 : 1)]),
 		beta,
-		THFloatTensor_data(r__),
+		THNTensor_data(r__),
 		r__->stride[(transpose_r == 'n' ? 1 : 0)]);
 
 	/* free intermediate variables */
 	if(m1_ != m1)
-		THFloatTensor_free(m1_);
+		THNTensor_free(m1_);
 
 	if(m2_ != m2)
-		THFloatTensor_free(m2_);
+		THNTensor_free(m2_);
 
 	if(r__ != r_)
 		THError("freeCopyTo not implemented");
-		/*THFloatTensor_(freeCopyTo)(r__, r_);*/
+		/*THNTensor_(freeCopyTo)(r__, r_);*/
 }
 
-void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *mat, THFloatTensor *vec)
+void THNTensor_addmv(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *mat, THNTensor *vec)
 {
 	if( (mat->nDimension != 2) || (vec->nDimension != 1) )
 		THError("matrix and vector expected, got %dD, %dD", mat->nDimension, vec->nDimension);
@@ -724,32 +724,32 @@ void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float 
 
 	if(mat->stride[0] == 1)
 	{
-		THBlas_gemv('n', mat->size[0], mat->size[1], alpha, THFloatTensor_data(mat), mat->stride[1],
-			THFloatTensor_data(vec), vec->stride[0], beta, THFloatTensor_data(r_), r_->stride[0]);
+		THBlas_gemv('n', mat->size[0], mat->size[1], alpha, THNTensor_data(mat), mat->stride[1],
+			THNTensor_data(vec), vec->stride[0], beta, THNTensor_data(r_), r_->stride[0]);
 	}
 	else if(mat->stride[1] == 1)
 	{
-		THBlas_gemv('t',  mat->size[1], mat->size[0], alpha, THFloatTensor_data(mat), mat->stride[0],
-			THFloatTensor_data(vec), vec->stride[0], beta, THFloatTensor_data(r_), r_->stride[0]);
+		THBlas_gemv('t',  mat->size[1], mat->size[0], alpha, THNTensor_data(mat), mat->stride[0],
+			THNTensor_data(vec), vec->stride[0], beta, THNTensor_data(r_), r_->stride[0]);
 	}
 	else THError("addmv for non-contiguous not implemented");
 }
 
 #define TH_OMP_OVERHEAD_THRESHOLD 100000
 
-void THFloatTensor_mul(THFloatTensor *r_, THFloatTensor *t, float value)
+void THNTensor_mul(THNTensor *r_, THNTensor *t, float value)
 {
-	float *tp = THFloatTensor_data(t);
-	float *rp = THFloatTensor_data(r_);
+	float *tp = THNTensor_data(t);
+	float *rp = THNTensor_data(r_);
 	long i;
-	long sz = THFloatTensor_nElement(t);
+	long sz = THNTensor_nElement(t);
 
 #pragma omp parallel for if(sz > TH_OMP_OVERHEAD_THRESHOLD) private(i)
 	for (i=0; i<sz; i++)
 		rp[i] = tp[i] * value;
 }
 
-void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *vec1, THFloatTensor *vec2)
+void THNTensor_addr(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *vec1, THNTensor *vec2)
 {
 	if( (vec1->nDimension != 1) || (vec2->nDimension != 1) )
 		THError("vector and vector expected, got %dD, %dD tensors", vec1->nDimension, vec2->nDimension);
@@ -764,26 +764,26 @@ void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float a
 		THError("r_ != t not implemented");
 
 	if(beta != 1)
-		THFloatTensor_mul(r_, r_, beta);
+		THNTensor_mul(r_, r_, beta);
 
   if(r_->stride[0] == 1)
   {
 	THBlas_ger(vec1->size[0], vec2->size[0],
-				 alpha, THFloatTensor_data(vec1), vec1->stride[0],
-				 THFloatTensor_data(vec2), vec2->stride[0],
-				 THFloatTensor_data(r_), r_->stride[1]);
+				 alpha, THNTensor_data(vec1), vec1->stride[0],
+				 THNTensor_data(vec2), vec2->stride[0],
+				 THNTensor_data(r_), r_->stride[1]);
   }
   else if(r_->stride[1] == 1)
   {
 	THBlas_ger(vec2->size[0], vec1->size[0],
-				 alpha, THFloatTensor_data(vec2), vec2->stride[0],
-				 THFloatTensor_data(vec1), vec1->stride[0],
-				 THFloatTensor_data(r_), r_->stride[0]);
+				 alpha, THNTensor_data(vec2), vec2->stride[0],
+				 THNTensor_data(vec1), vec1->stride[0],
+				 THNTensor_data(r_), r_->stride[0]);
   }
   else THError("addr for non-contiguous not implemented");
 }
 
-void printtensor(THFloatTensor *t)
+void printtensor(THNTensor *t)
 {
 	if(t->nDimension == 2)
 	{
@@ -799,7 +799,7 @@ void printtensor(THFloatTensor *t)
 	} else printf("printtensor: nDimension not implemented\n");
 }
 
-void THFloatTensor_validXCorr2Dptr(float *r_,
+void THNTensor_validXCorr2Dptr(float *r_,
 	float alpha,
 	float *t_, long ir, long ic,
 	float *k_, long kr, long kc,
@@ -848,14 +848,14 @@ void THFloatTensor_validXCorr2Dptr(float *r_,
 	}
 }
 
-void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc)
+void THNTensor_conv2Dmv(THNTensor *r_, float beta, float alpha, THNTensor *t_, THNTensor *k_, long srow, long scol, const char *vf, const char *xc)
 {
 	long nInputPlane, nInputRows, nInputCols;
 	long nKernelRows, nKernelCols;
 	long nOutputPlane, nOutputRows, nOutputCols;
 	long istride0, kstride0, kstride1;
-	THFloatTensor *input;
-	THFloatTensor *kernel;
+	THNTensor *input;
+	THNTensor *kernel;
 	float *input_data;
 	float *weight_data;
 	float *output_data;
@@ -894,16 +894,16 @@ void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatT
 	nOutputRows = (nInputRows - nKernelRows) / srow + 1;
 	nOutputCols = (nInputCols - nKernelCols) / scol + 1;
 
-	nelem = THFloatTensor_nElement(r_);
-	THFloatTensor_resize3d(r_, nOutputPlane, nOutputRows, nOutputCols);
+	nelem = THNTensor_nElement(r_);
+	THNTensor_resize3d(r_, nOutputPlane, nOutputRows, nOutputCols);
 
-	input_data = THFloatTensor_data(input);
-	weight_data = THFloatTensor_data(kernel);
-	output_data = THFloatTensor_data(r_);
+	input_data = THNTensor_data(input);
+	weight_data = THNTensor_data(kernel);
+	output_data = THNTensor_data(r_);
 
-	if (nelem == 0 || beta == 0 || nelem != THFloatTensor_nElement(r_))
+	if (nelem == 0 || beta == 0 || nelem != THNTensor_nElement(r_))
 	{
-		/*THFloatTensor_zero)(r_);*/
+		/*THNTensor_zero)(r_);*/
 #pragma omp parallel for private(k)
 		for (k = 0; k < r_->size[0]; k++)
 		{
@@ -915,7 +915,7 @@ void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatT
 	}
 	else if (beta != 1)
 	{
-		/*THFloatTensor_mul)(r_, beta);*/
+		/*THNTensor_mul)(r_, beta);*/
 #pragma omp parallel for private(k)
 		for (k = 0; k < r_->size[0]; k++)
 		{
@@ -940,7 +940,7 @@ void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatT
 			float *ptr_input = input_data + i*istride0;
 
 			/* do image, kernel convolution */
-			THFloatTensor_validXCorr2Dptr(ptr_output,
+			THNTensor_validXCorr2Dptr(ptr_output,
 				alpha,
 				ptr_input,  nInputRows,  nInputCols,
 				ptr_weight, nKernelRows, nKernelCols,
@@ -949,14 +949,14 @@ void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatT
 	}
 }
 
-void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc)
+void THNTensor_conv2Dmm(THNTensor *r_, float beta, float alpha, THNTensor *t_, THNTensor *k_, long srow, long scol, const char *vf, const char *xc)
 {
 	long nInputPlane, nInputRows, nInputCols;
 	long nKernelRows, nKernelCols;
 	long nOutputPlane, nOutputRows, nOutputCols;
 	long kstride0, kstride1;
-	THFloatTensor *input;
-	THFloatTensor* kernel;
+	THNTensor *input;
+	THNTensor* kernel;
 	long nbatch;
 	long nelem;
 	float *input_data;
@@ -997,16 +997,16 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 	nOutputRows = (nInputRows - nKernelRows) / srow + 1;
 	nOutputCols = (nInputCols - nKernelCols) / scol + 1;
 
-	nelem = THFloatTensor_nElement(r_);
-	THFloatTensor_resize4d(r_, nbatch, nOutputPlane, nOutputRows, nOutputCols);
+	nelem = THNTensor_nElement(r_);
+	THNTensor_resize4d(r_, nbatch, nOutputPlane, nOutputRows, nOutputCols);
 
-	input_data = THFloatTensor_data(input);
-	weight_data = THFloatTensor_data(kernel);
-	output_data = THFloatTensor_data(r_);
+	input_data = THNTensor_data(input);
+	weight_data = THNTensor_data(kernel);
+	output_data = THNTensor_data(r_);
 
-	if (nelem == 0 || beta == 0 || nelem != THFloatTensor_nElement(r_))
+	if (nelem == 0 || beta == 0 || nelem != THNTensor_nElement(r_))
 	{
-		/*THFloatTensor_(zero)(r_);*/
+		/*THNTensor_(zero)(r_);*/
 #pragma omp parallel for private(p)
 		for (p=0; p < r_->size[0]; p++)
 		{
@@ -1022,7 +1022,7 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 	}
 	else if (beta != 1)
 	{
-		/*THFloatTensor_(mul)(r_, beta);*/
+		/*THNTensor_(mul)(r_, beta);*/
 #pragma omp parallel for private(p)
 		for(p=0; p < r_->size[0]; p++)
 		{
@@ -1054,7 +1054,7 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 				float *ptr_input = input_data + p*nInputPlane*nInputRows*nInputCols + i*nInputRows*nInputCols;
 
 				/* do image, kernel convolution */
-				THFloatTensor_validXCorr2Dptr(ptr_output,
+				THNTensor_validXCorr2Dptr(ptr_output,
 					alpha,
 					ptr_input,  nInputRows,  nInputCols,
 					ptr_weight, nKernelRows, nKernelCols,
@@ -1065,7 +1065,7 @@ void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatT
 }
 
 #ifndef USEBLAS
-void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTensor *filt, THFloatTensor *m,
+void THNTensor_convmm(THNTensor *r, float beta, float alpha, THNTensor *filt, THNTensor *m,
 	int kH, int kW, int dH, int dW, int padH, int padW)
 {
 	struct sgemmargs args;
@@ -1080,9 +1080,9 @@ void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTens
 	args.lda = m->stride[0];
 	args.ldb = filt->stride[0];
 	args.ldc = r->stride[0];
-	args.a = THFloatTensor_data(m);
-	args.b = THFloatTensor_data(filt);
-	args.c = THFloatTensor_data(r);
+	args.a = THNTensor_data(m);
+	args.b = THNTensor_data(filt);
+	args.c = THNTensor_data(r);
 	args.ks0 = kH * kW;
 	args.ks1 = kW;
 	args.is0 = m->stride[0];
@@ -1142,7 +1142,7 @@ void transform_mem(struct module newmod, int col, int row, int plane, int outp)
 {
 	int i, j, k, m, isx, idx;
 	int wsize = col*row*plane*outp;
-	float* weightout = THFloatTensor_data(newmod.SpatialConvolution.weight);
+	float* weightout = THNTensor_data(newmod.SpatialConvolution.weight);
 	float* weightin = (float*)malloc(wsize*sizeof(float));
 	memcpy(weightin, weightout, wsize*sizeof(float));
 

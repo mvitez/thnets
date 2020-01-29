@@ -137,7 +137,7 @@ extern "C" void onnx_printintslist(const void *graph, int nodeidx, const char *n
 	printf("]\n");
 }
 
-void gettensordata(THFloatTensor *tdst, const onnx::TensorProto *tsrc)
+void gettensordata(THNTensor *tdst, const onnx::TensorProto *tsrc)
 {
 	float *ddata = tdst->storage->data;
 	if(tsrc->has_raw_data())
@@ -149,7 +149,7 @@ void gettensordata(THFloatTensor *tdst, const onnx::TensorProto *tsrc)
 	}
 }
 
-static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attrname, int idx)
+static THNTensor *gettensor(const void *graph, int nodeidx, const char *attrname, int idx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
 	for(int i = 0; i < g->node(nodeidx).attribute_size(); i++)
@@ -161,11 +161,11 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 			if(idx == -1)
 				t = &attr.t();
 			else if(idx == -2)
-				return (THFloatTensor *)(size_t)attr.tensors_size();
+				return (THNTensor *)(size_t)attr.tensors_size();
 			else if(idx < attr.tensors_size())
 				t = &attr.tensors(idx);
 			else return 0;
-			THFloatTensor *t1 = THFloatTensor_new();
+			THNTensor *t1 = THNTensor_new();
 			long sizes[5], total = 1;
 			sizes[0] = 1;
 			for(int i = 0; i < t->dims_size(); i++)
@@ -173,7 +173,7 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 				sizes[i] = t->dims(i);
 				total *= sizes[i];
 			}
-			THFloatTensor_resize(t1, sizes, t->dims_size() ? t->dims_size() : 1);
+			THNTensor_resize(t1, sizes, t->dims_size() ? t->dims_size() : 1);
 			gettensordata(t1, t);
 			return t1;
 		}
@@ -181,24 +181,24 @@ static THFloatTensor *gettensor(const void *graph, int nodeidx, const char *attr
 	return 0;
 }
 
-extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx)
+extern "C" THNTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
 	if(inputidx >= g->node(nodeidx).input_size())
-		return THFloatTensor_new();
+		return THNTensor_new();
 	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
 	if(t)
 	{
 		if(t->data_type() != 1)
 			THError("Only float tensors are supported, got data_type %d for %s\n", t->data_type(), t->name().c_str());
-		THFloatTensor *t1 = THFloatTensor_new();
+		THNTensor *t1 = THNTensor_new();
 		long sizes[5], total = 1;
 		for(int i = 0; i < t->dims_size(); i++)
 		{
 			sizes[i] = t->dims(i);
 			total *= sizes[i];
 		}
-		THFloatTensor_resize(t1, sizes, t->dims_size());
+		THNTensor_resize(t1, sizes, t->dims_size());
 		gettensordata(t1, t);
 		return t1;
 	}
@@ -218,7 +218,7 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 			struct module m;
 			memset(&m, 0, sizeof(m));
 			int f = getfunction(g->node(i).op_type().c_str());
-			m.output = THFloatTensor_new();
+			m.output = THNTensor_new();
 			if(f == -1)
 				THError("Unsupported node type %s\n", g->node(i).op_type().c_str());
 			name2loadf[f].onnxload(graph, &m, i);
@@ -231,17 +231,17 @@ extern "C" THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inp
 				for(int j = 0; j < net.nelem; j++)
 					modules[j].output = onnx_gettensor(graph, i, j);
 				m.ConcatTable.net = &net;
-				return m.updateOutput(&m, (THFloatTensor *)&m);
+				return m.updateOutput(&m, (THNTensor *)&m);
 			} else return m.updateOutput(&m, onnx_gettensor(graph, i, 0));
 		}
 	return 0;
 }
 
-extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx)
+extern "C" THNTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx)
 {
 	const onnx::GraphProto *g = (const onnx::GraphProto *)graph;
 	if(inputidx >= g->node(nodeidx).input_size())
-		return THFloatTensor_new();
+		return THNTensor_new();
 	const onnx::TensorProto *t = getinitializer(g, g->node(nodeidx).input(inputidx));
 	// Not found in initializers, see if it's a constant
 	if(!t)
@@ -270,7 +270,7 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 			THError("Only int64 tensors are supported for shapes, got data_type %d for %s\n", t->data_type(), t->name().c_str());
 		if(t->dims_size() != 1)
 			THError("Shape tensors must have dimension 1, this one has dimension %d\n", t->dims_size());
-		THFloatTensor *t1 = THFloatTensor_new();
+		THNTensor *t1 = THNTensor_new();
 		long sizes[5], total = 1;
 		int64_t *data = t->has_raw_data() ? (int64_t *)t->raw_data().c_str() : 0;
 		for(int i = 0; i < t->dims(0); i++)
@@ -278,7 +278,7 @@ extern "C" THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, in
 			sizes[i] = (long)(data && data[i] ? data[i] : t->int64_data(i));
 			total *= sizes[i];
 		}
-		THFloatTensor_resize(t1, sizes, t->dims(0));
+		THNTensor_resize(t1, sizes, t->dims(0));
 		return t1;
 	}
 	return 0;
@@ -346,7 +346,7 @@ extern "C" const char *onnx_getstring(const void *graph, int nodeidx, const char
 	return 0;
 }
 
-THFloatTensor *notimplemented(struct module *m, THFloatTensor *t)
+THNTensor *notimplemented(struct module *m, THNTensor *t)
 {
 	printf("Not implemented\n");
 	return t;
@@ -372,12 +372,12 @@ void onnxload_GRU(const void *graph, struct module *m, int nodeidx)
 	p->B = onnx_gettensor(graph, nodeidx, 3);
 }
 
-THFloatTensor *updateOutput_Unsqueeze(struct module *m, THFloatTensor *t)
+THNTensor *updateOutput_Unsqueeze(struct module *m, THNTensor *t)
 {
 	struct Squeeze *p = &m->Squeeze;
 	int i, idx;
-	THFloatTensor *t2 = THFloatTensor_new();
-	THFloatTensor_set(t2, t);
+	THNTensor *t2 = THNTensor_new();
+	THNTensor_set(t2, t);
 	for(i = 0; i < p->naxes && t->nDimension < 4; i++)
 	{
 		idx = p->axes[i];
@@ -400,14 +400,14 @@ void onnxload_Unsqueeze(const void *graph, struct module *m, int nodeidx)
 		p->axes[i] = onnx_getint(graph, nodeidx, "axes", i);
 }
 
-THFloatTensor *updateOutput_Squeeze(struct module *m, THFloatTensor *t)
+THNTensor *updateOutput_Squeeze(struct module *m, THNTensor *t)
 {
 	int i, idx;
 	struct Squeeze *p = &m->Squeeze;
 	if(p->naxes == 0)
-		return THFloatTensor_squeeze(t);
-	THFloatTensor *t2 = THFloatTensor_new();
-	THFloatTensor_set(t2, t);
+		return THNTensor_squeeze(t);
+	THNTensor *t2 = THNTensor_new();
+	THNTensor_set(t2, t);
 	for(i = p->naxes-1; i >= 0; i--)
 	{
 		idx = p->axes[i];
@@ -430,9 +430,9 @@ void onnxload_Squeeze(const void *graph, struct module *m, int nodeidx)
 		p->axes[i] = onnx_getint(graph, nodeidx, "axes", i);
 }
 
-THFloatTensor *updateOutput_Transpose(struct module *m, THFloatTensor *t)
+THNTensor *updateOutput_Transpose(struct module *m, THNTensor *t)
 {
-	THFloatTensor_transpose(m->output, t, 0, 1);
+	THNTensor_transpose(m->output, t, 0, 1);
 	return m->output;
 }
 
@@ -500,12 +500,12 @@ static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 	struct module *m = net->modules + bnidx;
 	struct SpatialBatchNormalization *bn = &m->SpatialBatchNormalization;
 	int n;
-	float *running_mean = THFloatTensor_data(bn->running_mean);
-	float *running_var = THFloatTensor_data(bn->running_var);
-	float *w_bn = THFloatTensor_data(bn->weight);
-	float *b_bn = THFloatTensor_data(bn->bias);
+	float *running_mean = THNTensor_data(bn->running_mean);
+	float *running_var = THNTensor_data(bn->running_var);
+	float *w_bn = THNTensor_data(bn->weight);
+	float *b_bn = THNTensor_data(bn->bias);
 	float eps = bn->eps;
-	THFloatTensor *tbias, *tweight;
+	THNTensor *tbias, *tweight;
 	bool scalar = bn->weight->nDimension == 0 || (bn->weight->nDimension == 1 && bn->weight->size[0] == 1);
 
 	if(convm->type == MT_SpatialFullConvolution)
@@ -526,31 +526,31 @@ static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 
 	if(tbias->nDimension == 0)
 	{
-		THFloatTensor_resize1d(tbias, n);
-		memset(THFloatTensor_data(tbias), 0, n * sizeof(float));
+		THNTensor_resize1d(tbias, n);
+		memset(THNTensor_data(tbias), 0, n * sizeof(float));
 	}
-	float *bias = THFloatTensor_data(tbias);
+	float *bias = THNTensor_data(tbias);
 	if(convm->type == MT_SpatialFullConvolution)
 	{
 		// Here output planes are in index 1, so we need to loops
 		for(int ii = 0; ii < tweight->size[0]; ii++)
 		{
-			THFloatTensor *weight2 = THFloatTensor_newSelect(tweight, 0, ii);
+			THNTensor *weight2 = THNTensor_newSelect(tweight, 0, ii);
 			for(int i = 0; i < n; i++)
 			{
-				THFloatTensor *weight = THFloatTensor_newSelect(weight2, 0, i);
-				float *w = THFloatTensor_data(weight);
+				THNTensor *weight = THNTensor_newSelect(weight2, 0, i);
+				float *w = THNTensor_data(weight);
 
 				float invstd = 1 / sqrtf(running_var[i] + eps);
-				int m = THFloatTensor_nElement(weight);
+				int m = THNTensor_nElement(weight);
 				for(int j = 0; j < m; j++)
 					w[j] *= invstd;
 				if(w_bn && b_bn)
 					for(int j = 0; j < m; j++)
 						w[j] *= w_bn[i];
-				THFloatTensor_free(weight);
+				THNTensor_free(weight);
 			}
-			THFloatTensor_free(weight2);
+			THNTensor_free(weight2);
 		}
 		for(int i = 0; i < n; i++)
 		{
@@ -562,18 +562,18 @@ static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 	} else {
 		for(int i = 0; i < n; i++)
 		{
-			THFloatTensor *weight = THFloatTensor_newSelect(tweight, 0, i);
-			float *w = THFloatTensor_data(weight);
+			THNTensor *weight = THNTensor_newSelect(tweight, 0, i);
+			float *w = THNTensor_data(weight);
 
 			if(running_mean && running_var)
 			{
 				float invstd = 1 / sqrtf(running_var[i] + eps);
-				int m = THFloatTensor_nElement(weight);
+				int m = THNTensor_nElement(weight);
 				for(int j = 0; j < m; j++)
 					w[j] *= invstd;
 				bias[i] = (bias[i] - running_mean[i]) * invstd;
 			}
-			int m = THFloatTensor_nElement(weight);
+			int m = THNTensor_nElement(weight);
 			if(w_bn && b_bn)
 			{
 				for(int j = 0; j < m; j++)
@@ -594,15 +594,15 @@ static void absorb_bn(struct network *net, int bnidx, struct module *convm)
 				}
 			} else if(b_bn)
 				bias[i] += b_bn[i];
-			THFloatTensor_free(weight);
+			THNTensor_free(weight);
 		}
 	}
 	// Free unused tensors
-	THFloatTensor_free(m->SpatialBatchNormalization.running_mean);
-	THFloatTensor_free(m->SpatialBatchNormalization.running_var);
-	THFloatTensor_free(m->SpatialBatchNormalization.weight);
-	THFloatTensor_free(m->SpatialBatchNormalization.bias);
-	THFloatTensor_free(m->output);
+	THNTensor_free(m->SpatialBatchNormalization.running_mean);
+	THNTensor_free(m->SpatialBatchNormalization.running_var);
+	THNTensor_free(m->SpatialBatchNormalization.weight);
+	THNTensor_free(m->SpatialBatchNormalization.bias);
+	THNTensor_free(m->output);
 	free(convm->outputname);
 	convm->outputname = m->outputname;
 	memmove(net->modules + bnidx, net->modules + bnidx + 1, (net->nelem - (bnidx + 1)) * sizeof(net->modules[0]));
@@ -693,16 +693,16 @@ extern "C" struct network *loadonnx(const char* modelpath)
 						{
 							if(net->modules[j].SpatialConvolution.bias->storage)
 							{
-								THFloatTensor *t = onnx_gettensor(&graph, i, init);
-								float *d = THFloatTensor_data(net->modules[j].SpatialConvolution.bias);
-								float *s = THFloatTensor_data(t);
-								int n = THFloatTensor_nElement(net->modules[j].SpatialConvolution.bias);
-								if (THFloatTensor_nElement(t) != n)
-									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
+								THNTensor *t = onnx_gettensor(&graph, i, init);
+								float *d = THNTensor_data(net->modules[j].SpatialConvolution.bias);
+								float *s = THNTensor_data(t);
+								int n = THNTensor_nElement(net->modules[j].SpatialConvolution.bias);
+								if (THNTensor_nElement(t) != n)
+									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THNTensor_nElement(t), n);
 								for(int i = 0; i < n; i++)
 									d[i] += s[i];
 							} else {
-								THFloatTensor_free(net->modules[j].SpatialConvolution.bias);
+								THNTensor_free(net->modules[j].SpatialConvolution.bias);
 								net->modules[j].SpatialConvolution.bias = onnx_gettensor(&graph, i, init);
 							}
 							free(net->modules[j].outputname);
@@ -712,19 +712,19 @@ extern "C" struct network *loadonnx(const char* modelpath)
 						{
 							if(net->modules[j].Linear.bias->storage)
 							{
-								THFloatTensor *t = onnx_gettensor(&graph, i, init);
-								float *d = THFloatTensor_data(net->modules[j].Linear.bias);
-								float *s = THFloatTensor_data(t);
-								int n = THFloatTensor_nElement(net->modules[j].Linear.bias);
-								if (THFloatTensor_nElement(t) != n)
-									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THFloatTensor_nElement(t), n);
+								THNTensor *t = onnx_gettensor(&graph, i, init);
+								float *d = THNTensor_data(net->modules[j].Linear.bias);
+								float *s = THNTensor_data(t);
+								int n = THNTensor_nElement(net->modules[j].Linear.bias);
+								if (THNTensor_nElement(t) != n)
+									THError("Number of elements mismatch in Add operation (add %d to %d)\n", THNTensor_nElement(t), n);
 								for(int i = 0; i < n; i++)
 									d[i] += s[i];
 							} else {
-								THFloatTensor *bias = onnx_gettensor(&graph, i, init);
-								THFloatTensor_free(net->modules[j].Linear.bias);
-								net->modules[j].Linear.bias = THFloatTensor_squeeze(bias);
-								THFloatTensor_free(bias);
+								THNTensor *bias = onnx_gettensor(&graph, i, init);
+								THNTensor_free(net->modules[j].Linear.bias);
+								net->modules[j].Linear.bias = THNTensor_squeeze(bias);
+								THNTensor_free(bias);
 							}
 							free(net->modules[j].outputname);
 							net->modules[j].outputname = strdup(node.output(0).c_str());
@@ -741,7 +741,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		{
 			// Special case, padding followed by convolution
 			printop(&graph, &graph.node(i+1));
-			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].output = THNTensor_new();
 			net->modules[n].net = net;
 			onnxload_SpatialMaxPooling(&graph, net->modules + n, i+1);
 			net->modules[n].outputname = strdup(node.output(0).c_str());
@@ -776,7 +776,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		{
 			// Special case, padding followed by convolution
 			printop(&graph, &graph.node(i+1));
-			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].output = THNTensor_new();
 			net->modules[n].net = net;
 			onnxload_SpatialConvolution(&graph, net->modules + n, i+1);
 			net->modules[n].outputname = strdup(node.output(0).c_str());
@@ -816,7 +816,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			// Special case, padding followed by transpose and convolution
 			printop(&graph, &graph.node(i+1));
 			printop(&graph, &graph.node(i+2));
-			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].output = THNTensor_new();
 			net->modules[n].net = net;
 			onnxload_SpatialConvolution(&graph, net->modules + n, i+2);
 			net->modules[n].outputname = strdup(node.output(0).c_str());
@@ -853,7 +853,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 		{
 			// Special case, padding followed by average pooling
 			printop(&graph, &graph.node(i+1));
-			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].output = THNTensor_new();
 			net->modules[n].net = net;
 			onnxload_SpatialAveragePooling(&graph, net->modules + n, i+1);
 			net->modules[n].outputname = strdup(node.output(0).c_str());
@@ -889,7 +889,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 			int from = 0;
 			for(j = 0; j < node.output_size(); j++)
 			{
-				net->modules[n].output = THFloatTensor_new();
+				net->modules[n].output = THNTensor_new();
 				net->modules[n].net = net;
 				net->modules[n].updateOutput = nn_Slice_updateOutput;
 				net->modules[n].type = MT_Slice;
@@ -943,7 +943,7 @@ extern "C" struct network *loadonnx(const char* modelpath)
 						THError("Maximum number of node inputs exceeded\n");
 				}
 			}
-			net->modules[n].output = THFloatTensor_new();
+			net->modules[n].output = THNTensor_new();
 			net->modules[n].net = net;
 			name2loadf[f].onnxload(&graph, net->modules + n, i);
 			net->modules[n].outputname = strdup(node.output(0).c_str());

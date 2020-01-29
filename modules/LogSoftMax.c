@@ -16,9 +16,9 @@ void onnxload_LogSoftMax(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_LogSoftMax_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
+	THNTensor *output = module->output;
 	float *input_data, *output_data;
 	long nframe = 0, dim = 0, stride = 0;
 	long t;
@@ -50,10 +50,10 @@ THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *
 	else
 		THError("1D, 2D, 3D or 4D tensor expected");
 
-	THFloatTensor_resizeAs(output, input);
+	THNTensor_resizeAs(output, input);
 
-	input_data = THFloatTensor_data(input);
-	output_data = THFloatTensor_data(output);
+	input_data = THNTensor_data(input);
+	output_data = THNTensor_data(output);
 
 #pragma omp parallel for private(t)
 	for(t = 0; t < stride*nframe; t++)

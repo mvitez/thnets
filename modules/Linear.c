@@ -2,9 +2,9 @@
 
 static void nnfree_Linear(struct module *mod)
 {
-	THFloatTensor_free(mod->Linear.bias);
-	THFloatTensor_free(mod->Linear.weight);
-	THFloatTensor_free(mod->Linear.addBuffer);
+	THNTensor_free(mod->Linear.bias);
+	THNTensor_free(mod->Linear.weight);
+	THNTensor_free(mod->Linear.addBuffer);
 }
 
 int nnload_Linear(struct module *mod, struct nnmodule *n)
@@ -18,17 +18,6 @@ int nnload_Linear(struct module *mod, struct nnmodule *n)
 	m->addBuffer = TableGetTensor(t, "addBuffer");
 	m->bias = TableGetTensor(t, "bias");
 	return 0;
-}
-
-void pyload_Linear(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_Linear_updateOutput;
-	f->module.type = MT_Linear;
-	f->module.nnfree = nnfree_Linear;
-	struct Linear *p = &f->module.Linear;
-	p->weight = pygettensor(f->params, "", 0);
-	p->bias = pygettensor(f->params, "", 1);
-	p->addBuffer = THFloatTensor_new();
 }
 
 #ifdef ONNX
@@ -46,71 +35,71 @@ void onnxload_Linear(const void *graph, struct module *m, int nodeidx)
 		if(!onnx_isinitializer(graph, nodeidx, 0))
 			THError("MatMul between two inputs is not supported\n");
 	}
-	THFloatTensor *weight = onnx_gettensor(graph, nodeidx, widx);
+	THNTensor *weight = onnx_gettensor(graph, nodeidx, widx);
 	if(weight->nDimension > 2)
 	{
-		p->weight = THFloatTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
-		THFloatTensor_free(weight);
+		p->weight = THNTensor_squeeze(weight);	// To deal with some networks that have a reshape after weight
+		THNTensor_free(weight);
 	} else p->weight = weight;
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
 	if (onnx_getfloat(graph, nodeidx, "beta", -1) == 0.0 && onnx_getfloat(graph, nodeidx, "beta", -3) == 1)
 	{
-		THFloatTensor_free(p->bias);
-		p->bias = THFloatTensor_new();
+		THNTensor_free(p->bias);
+		p->bias = THNTensor_new();
 	}
 	if(!onnx_getint(graph, nodeidx, "transB", -1) && !p->commute)
 	{
-		THFloatTensor *weight = THFloatTensor_newTranspose(p->weight, 0, 1);
-		THFloatTensor *cweight = THFloatTensor_new();
-		THFloatTensor_resize2d(cweight, weight->size[0], weight->size[1]);
-		THFloatTensor_safecopy(cweight, weight);
-		THFloatTensor_free(weight);
-		THFloatTensor_free(p->weight);
+		THNTensor *weight = THNTensor_newTranspose(p->weight, 0, 1);
+		THNTensor *cweight = THNTensor_new();
+		THNTensor_resize2d(cweight, weight->size[0], weight->size[1]);
+		THNTensor_safecopy(cweight, weight);
+		THNTensor_free(weight);
+		THNTensor_free(p->weight);
 		p->weight = cweight;
 	}
-	p->addBuffer = THFloatTensor_new();
+	p->addBuffer = THNTensor_new();
 }
 #endif
 
-THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Linear_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *weight = module->Linear.weight;
-	THFloatTensor *bias = module->Linear.bias;
-	THFloatTensor *output = module->output;
-	THFloatTensor *addBuffer = module->Linear.addBuffer;
+	THNTensor *weight = module->Linear.weight;
+	THNTensor *bias = module->Linear.bias;
+	THNTensor *output = module->output;
+	THNTensor *addBuffer = module->Linear.addBuffer;
 	int commute = module->Linear.commute;
 
 	if(commute)
 	{
-		THFloatTensor *tmp = input;
+		THNTensor *tmp = input;
 		input = weight;
 		weight = tmp;
 	}
-	THFloatTensor *in = THFloatTensor_squeeze(input);
+	THNTensor *in = THNTensor_squeeze(input);
 	if (in->nDimension == 1) {
-		THFloatTensor_resize1d(output, bias->size[0]);
-		THFloatTensor_copy(output, bias);
-		THFloatTensor_addmv(output, 1, output, 1, weight, in);
+		THNTensor_resize1d(output, bias->size[0]);
+		THNTensor_copy(output, bias);
+		THNTensor_addmv(output, 1, output, 1, weight, in);
 
 	} else if (in->nDimension == 2) {
 		long nframe = in->size[0];
-		THFloatTensor *t2 = commute ? THFloatTensor_newWithTensor(weight) : THFloatTensor_newTranspose(weight, 0, 1);
-		long nElement = THFloatTensor_nElement(in);
-		THFloatTensor_resize2d(output, nframe, t2->size[1]);
-		if (THFloatTensor_nElement(output) != nElement)
-			THFloatTensor_zero(output);
+		THNTensor *t2 = commute ? THNTensor_newWithTensor(weight) : THNTensor_newTranspose(weight, 0, 1);
+		long nElement = THNTensor_nElement(in);
+		THNTensor_resize2d(output, nframe, t2->size[1]);
+		if (THNTensor_nElement(output) != nElement)
+			THNTensor_zero(output);
 
-		if (bias->storage && THFloatTensor_nElement(addBuffer) != nframe) {
-			THFloatTensor_resize1d(addBuffer, nframe);
-			THFloatTensor_fill(addBuffer, 1.0);
+		if (bias->storage && THNTensor_nElement(addBuffer) != nframe) {
+			THNTensor_resize1d(addBuffer, nframe);
+			THNTensor_fill(addBuffer, 1.0);
 		}
-		THFloatTensor_addmm(output, 0, output, 1, in, t2);
-		THFloatTensor_free(t2);
+		THNTensor_addmm(output, 0, output, 1, in, t2);
+		THNTensor_free(t2);
 		if(bias->storage)
-			THFloatTensor_addr(output, 1, output, 1, addBuffer, bias);
+			THNTensor_addr(output, 1, output, 1, addBuffer, bias);
 
 	} else
 		THError("input must be vector or matrix");
-	THFloatTensor_free(in);
+	THNTensor_free(in);
 	return output;
 }

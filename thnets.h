@@ -101,27 +101,27 @@ struct threcord {
 	struct thobject value;
 };
 
-typedef struct THFloatStorage
+typedef struct THNStorage
 {
 	float *data;
 	int nref, mustfree;	// mustfree = 0 (allocated somewhere else), 1 (free), 2 (cuda free)
-} THFloatStorage;
+} THNStorage;
 
-typedef struct THFloatTensor
+typedef struct THNTensor
 {
 	long size[5];
 	long stride[5];
 	int nDimension;
-	THFloatStorage *storage;
+	THNStorage *storage;
 	long storageOffset;
 #ifdef LOWP
 	float sub, mult;
 #endif
-} THFloatTensor;
+} THNTensor;
 
 struct SpatialConvolution
 {
-	THFloatTensor *bias, *weight, *finput;
+	THNTensor *bias, *weight, *finput;
 	int dW, dH, dZ, padW, padH, padZ, kW, kH, kZ, nInputPlane, nOutputPlane;
 	int refl_pad;
 	int padW2, padH2, padZ2; // right and bottom, if different
@@ -131,17 +131,17 @@ struct SpatialConvolution
 
 struct SpatialFullConvolution
 {
-	THFloatTensor *bias, *weight;
+	THNTensor *bias, *weight;
 	int dW, dH, dZ, padW, padH, padZ, kW, kH, kZ, nInputPlane, nOutputPlane;
 	int adjW, adjH, adjZ;
-	THFloatTensor *ones, *columns;
+	THNTensor *ones, *columns;
 };
 
 struct SpatialMaxPooling
 {
 	int padW, padH, padZ, dW, dH, dZ, kW, kH, kZ, ceil_mode;
 	int iwidth, iheight;
-	THFloatTensor *indices;
+	THNTensor *indices;
 	int padW2, padH2, padZ2; // right and bottom, if different
 	int autopad; // ONNX, 0 = VALID, 1 = SAME_UPPER, 2 = SAME_LOWER
 };
@@ -156,7 +156,7 @@ struct SpatialAveragePooling
 
 struct Linear
 {
-	THFloatTensor *bias, *weight, *addBuffer;
+	THNTensor *bias, *weight, *addBuffer;
 	int commute;	// Used for ONNX, if 1, invert A and B
 };
 
@@ -197,7 +197,7 @@ struct SpatialMaxUnpooling
 
 struct SpatialBatchNormalization
 {
-	THFloatTensor *running_mean, *running_var, *weight, *bias;
+	THNTensor *running_mean, *running_var, *weight, *bias;
 	double eps;
 };
 
@@ -214,7 +214,7 @@ struct Sequential
 
 struct PReLU
 {
-	THFloatTensor *weight;
+	THNTensor *weight;
 	int nOutputPlane;
 };
 
@@ -235,12 +235,12 @@ struct Upsample
 
 struct LSTM
 {
-	THFloatTensor *W, *R, *B;
+	THNTensor *W, *R, *B;
 };
 
 struct GRU
 {
-	THFloatTensor *W, *R, *B;
+	THNTensor *W, *R, *B;
 };
 
 struct Squeeze
@@ -297,9 +297,9 @@ struct network;
 struct module
 {
 	int type;
-	THFloatTensor *(*updateOutput)(struct module *m, THFloatTensor *in);
+	THNTensor *(*updateOutput)(struct module *m, THNTensor *in);
 	void (*nnfree)(struct module *m);
-	THFloatTensor *output;
+	THNTensor *output;
 	struct network *net;
 	struct nnmodule *nnmodule;
 #ifdef OPENCL
@@ -341,62 +341,12 @@ struct module
 	};
 };
 
-// Pytorch stuff
-
-#define MAXPYNODES 10000
-
-enum eltype {
-	ELTYPE_END = 0,
-	ELTYPE_INPUT = 1,
-	ELTYPE_FUNCTION = 2,
-	ELTYPE_TENSOR = 3,
-	ELTYPE_INT = 4,
-	ELTYPE_FLOAT = 5,
-	ELTYPE_INTVECT = 6,
-	ELTYPE_OUTPUTID = 7
-};
-
-struct ellist;
-
-struct pyfunction {
-	int id;
-	int ninputs;
-	struct elemlist *inputs; // Linked list of inputs
-	struct elemlist *params; // Linked list of params
-	struct module module;
-};
-
-struct pyelement {
-	enum eltype type;
-	char *name;
-	union {
-		struct pyfunction function;
-		int ivalue;
-		float fvalue;
-		int ivect[4];
-		THFloatTensor *tensor;
-	};
-};
-
-struct elemlist {
-	struct pyelement *elem;
-	struct elemlist *next;
-};
-
-struct pyelement *findelement(struct elemlist *list, const char *name, int skip);
-THFloatTensor *pygettensor(struct elemlist *list, const char *name, int skip);
-struct pyelement *loadpytorch(const char *path, struct pyelement **allpynodes);
-void freepynet(struct pyelement *node);
-THFloatTensor *forward_pytorch(struct pyelement *node, THFloatTensor *in, struct pyelement **allpynodes);
-
-// End Pytorch
-
 // ONNX stuff
 #ifdef ONNX
 struct network *loadonnx(const char *path);
 int onnx_isinitializer(const void *graph, int nodeidx, int inputidx);
-THFloatTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
-THFloatTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx);
+THNTensor *onnx_gettensor(const void *graph, int nodeidx, int inputidx);
+THNTensor *onnx_getshapetensor(const void *graph, int nodeidx, int inputidx);
 int onnx_getint(const void *graph, int nodeidx, const char *attrname, int idx);
 float onnx_getfloat(const void *graph, int nodeidx, const char *attrname, int idx);
 const char *onnx_getstring(const void *graph, int nodeidx, const char *attrname, int idx);
@@ -422,46 +372,46 @@ extern struct object2module object2module[];
 
 double TableGetNumber(struct table *t, const char *name);
 int TableGetBoolean(struct table *t, const char *name);
-THFloatTensor *TableGetTensor(struct table *t, const char *name);
+THNTensor *TableGetTensor(struct table *t, const char *name);
 void *TableGetStorage(struct table *t, const char *name, int *nelem);
 struct nnmodule *TableGetNNModule(struct table *t, const char *name);
 void THError(const char *fmt, ...);
-THFloatTensor *THFloatTensor_new();
-THFloatStorage *THFloatStorage_new(long size);
-THFloatStorage *THFloatStorage_newwithbuffer(void *buffer);
-THFloatTensor *THFloatTensor_newWithStorage1d(THFloatStorage *storage, long storageOffset, long size0, long stride0);
-THFloatTensor *THFloatTensor_newWithStorage2d(THFloatStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1);
-THFloatTensor *THFloatTensor_newWithStorage3d(THFloatStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1, long size2, long stride2);
-THFloatTensor *THFloatTensor_newWithTensor(THFloatTensor *tensor);
-void THFloatTensor_transpose(THFloatTensor *tdst, THFloatTensor *tsrc, int dimension1, int dimension2);
-THFloatTensor *THFloatTensor_newTranspose(THFloatTensor *tensor, int dimension1_, int dimension2_);
-float *THFloatTensor_data(THFloatTensor *tensor);
-int THFloatTensor_isSameSizeAs(const THFloatTensor *self, const THFloatTensor* src);
-void THFloatTensor_resize(THFloatTensor *t, long *size, int nDimension);
-void THFloatTensor_resize4d(THFloatTensor *t, long size0, long size1, long size2, long size3);
-void THFloatTensor_resize3d(THFloatTensor *t, long size0, long size1, long size2);
-void THFloatTensor_resize2d(THFloatTensor *t, long size0, long size1);
-void THFloatTensor_resize1d(THFloatTensor *t, long size0);
-void THFloatTensor_resizeAs(THFloatTensor *tdst, THFloatTensor *tsrc);
-long THFloatTensor_nElement(THFloatTensor *t);
-void THFloatTensor_set(THFloatTensor *tdst, THFloatTensor *tsrc);
-void THFloatTensor_zero(THFloatTensor *t);
-void THFloatTensor_fill(THFloatTensor *t, float value);
-void THFloatTensor_copy(THFloatTensor *tdst, THFloatTensor *tsrc);
-void THFloatTensor_safecopy(THFloatTensor *tdst, THFloatTensor *tsrc);
-void THFloatTensor_slice(THFloatTensor *dst, THFloatTensor *src, int dimension, long from, long to);
-void THFloatTensor_free(THFloatTensor *t);
-THFloatTensor *THFloatTensor_newSelect(THFloatTensor *tensor, int dimension, long sliceIndex);
-THFloatTensor *THFloatTensor_squeeze(THFloatTensor *t);
+THNTensor *THNTensor_new();
+THNStorage *THNStorage_new(long size);
+THNStorage *THNStorage_newwithbuffer(void *buffer);
+THNTensor *THNTensor_newWithStorage1d(THNStorage *storage, long storageOffset, long size0, long stride0);
+THNTensor *THNTensor_newWithStorage2d(THNStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1);
+THNTensor *THNTensor_newWithStorage3d(THNStorage *storage, long storageOffset, long size0, long stride0, long size1, long stride1, long size2, long stride2);
+THNTensor *THNTensor_newWithTensor(THNTensor *tensor);
+void THNTensor_transpose(THNTensor *tdst, THNTensor *tsrc, int dimension1, int dimension2);
+THNTensor *THNTensor_newTranspose(THNTensor *tensor, int dimension1_, int dimension2_);
+float *THNTensor_data(THNTensor *tensor);
+int THNTensor_isSameSizeAs(const THNTensor *self, const THNTensor* src);
+void THNTensor_resize(THNTensor *t, long *size, int nDimension);
+void THNTensor_resize4d(THNTensor *t, long size0, long size1, long size2, long size3);
+void THNTensor_resize3d(THNTensor *t, long size0, long size1, long size2);
+void THNTensor_resize2d(THNTensor *t, long size0, long size1);
+void THNTensor_resize1d(THNTensor *t, long size0);
+void THNTensor_resizeAs(THNTensor *tdst, THNTensor *tsrc);
+long THNTensor_nElement(THNTensor *t);
+void THNTensor_set(THNTensor *tdst, THNTensor *tsrc);
+void THNTensor_zero(THNTensor *t);
+void THNTensor_fill(THNTensor *t, float value);
+void THNTensor_copy(THNTensor *tdst, THNTensor *tsrc);
+void THNTensor_safecopy(THNTensor *tdst, THNTensor *tsrc);
+void THNTensor_slice(THNTensor *dst, THNTensor *src, int dimension, long from, long to);
+void THNTensor_free(THNTensor *t);
+THNTensor *THNTensor_newSelect(THNTensor *tensor, int dimension, long sliceIndex);
+THNTensor *THNTensor_squeeze(THNTensor *t);
 double THExpMinusApprox(double x);
 void THBlas_gemm(char transa, char transb, long m, long n, long k, float alpha, float *a, long lda, float *b, long ldb, float beta, float *c, long ldc);
-void THFloatTensor_addmm(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *m1, THFloatTensor *m2);
-void THFloatTensor_convmm(THFloatTensor *r, float beta, float alpha, THFloatTensor *filt, THFloatTensor *m,
+void THNTensor_addmm(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *m1, THNTensor *m2);
+void THNTensor_convmm(THNTensor *r, float beta, float alpha, THNTensor *filt, THNTensor *m,
 	int kH, int kW, int dH, int dW, int padH, int padW);
-void THFloatTensor_addr(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *vec1, THFloatTensor *vec2);
-void THFloatTensor_addmv(THFloatTensor *r_, float beta, THFloatTensor *t, float alpha, THFloatTensor *mat, THFloatTensor *vec);
-void THFloatTensor_conv2Dmm(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
-void THFloatTensor_conv2Dmv(THFloatTensor *r_, float beta, float alpha, THFloatTensor *t_, THFloatTensor *k_, long srow, long scol, const char *vf, const char *xc);
+void THNTensor_addr(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *vec1, THNTensor *vec2);
+void THNTensor_addmv(THNTensor *r_, float beta, THNTensor *t, float alpha, THNTensor *mat, THNTensor *vec);
+void THNTensor_conv2Dmm(THNTensor *r_, float beta, float alpha, THNTensor *t_, THNTensor *k_, long srow, long scol, const char *vf, const char *xc);
+void THNTensor_conv2Dmv(THNTensor *r_, float beta, float alpha, THNTensor *t_, THNTensor *k_, long srow, long scol, const char *vf, const char *xc);
 
 #define thfmaxf(a,b) ((a) > (b) ? (a) : (b))
 #define thfminf(a,b) ((a) < (b) ? (a) : (b))
@@ -478,41 +428,41 @@ int printobject(struct thobject *obj, int indent);
 int freeobject(struct thobject *obj);
 void freemodule(struct module *m);
 void freenetwork(struct network *net);
-THFloatTensor *forward(struct network *net, THFloatTensor *in);
-THFloatTensor *THFloatTensor_newFromObject(struct thobject *obj);
+THNTensor *forward(struct network *net, THNTensor *in);
+THNTensor *THNTensor_newFromObject(struct thobject *obj);
 struct network *Module2Network(struct nnmodule *obj);
-void printtensor(THFloatTensor *t);
+void printtensor(THNTensor *t);
 void blas_init();
 double th_seconds();
 
-THFloatTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialConvolution_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Threshold_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_View_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SoftMax_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Linear_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Dropout_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Reshape_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Concat_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_ConcatTable_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_JoinTable_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_CAddTable_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Identity_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_LogSoftMax_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Cmax_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Sigmoid_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Tanh_updateOutput(struct module *module, THFloatTensor *input);
-THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *input);
+THNTensor *nn_SpatialConvolutionMM_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialConvolution_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialAveragePooling_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Threshold_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_View_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SoftMax_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Linear_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Dropout_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Reshape_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Normalize_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_SpatialBatchNormalization_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Sequential_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Concat_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_ConcatTable_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_JoinTable_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_CAddTable_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_PReLU_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Identity_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_LogSoftMax_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Slice_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Cmax_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Sigmoid_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Tanh_updateOutput(struct module *module, THNTensor *input);
+THNTensor *nn_Upsample_updateOutput(struct module *module, THNTensor *input);
 
 int nnload_SpatialConvolution(struct module *mod, struct nnmodule *n);
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n);
@@ -536,21 +486,6 @@ int nnload_CAddTable(struct module *mod, struct nnmodule *n);
 int nnload_PReLU(struct module *mod, struct nnmodule *n);
 int nnload_Identity(struct module *mod, struct nnmodule *n);
 int nnload_LogSoftMax(struct module *mod, struct nnmodule *n);
-
-void pyload_SpatialConvolution(struct pyfunction *f);
-void pyload_SpatialConvolutionTransposed(struct pyfunction *f);
-void pyload_Linear(struct pyfunction *f);
-void pyload_SpatialBatchNormalization(struct pyfunction *f);
-void pyload_SpatialMaxPooling(struct pyfunction *f);
-void pyload_SpatialAveragePooling(struct pyfunction *f);
-void pyload_Threshold(struct pyfunction *f);
-void pyload_Dropout(struct pyfunction *f);
-void pyload_SoftMax(struct pyfunction *f);
-void pyload_View(struct pyfunction *f);
-void pyload_Add(struct pyfunction *f);
-void pyload_Concat(struct pyfunction *f);
-void pyload_Slice(struct pyfunction *f);
-void pyload_Cmax(struct pyfunction *f);
 
 void onnxload_SpatialConvolution(const void *graph, struct module *m, int nodeidx);
 void onnxload_SpatialConvolutionTransposed(const void *graph, struct module *m, int nodeidx);
@@ -580,15 +515,13 @@ typedef struct thnetwork
 	struct thobject *netobj;
 	struct thobject *statobj;
 	struct network *net;
-	struct pyelement *pynet;
-	struct pyelement **allpynodes;
-	THFloatTensor *out;
+	THNTensor *out;
 	float mean[3], std[3];
 } THNETWORK;
 
 void THInit();
 THNETWORK *THLoadNetwork(const char *path);
-THFloatTensor *THForward(THNETWORK *net, THFloatTensor *in);
+THNTensor *THForward(THNETWORK *net, THNTensor *in);
 void THMakeSpatial(THNETWORK *network, int size);
 int THProcessFloat(THNETWORK *network, float *data, int batchsize, int width, int height, int nplanes, float **result, int *outwidth, int *outheight);
 int THProcessImages(THNETWORK *network, unsigned char **images, int batchsize, int width, int height, int stride, float **result, int *outwidth, int *outheight, int bgr);

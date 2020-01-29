@@ -39,10 +39,10 @@ static void SpatialMaxUnpooling_updateOutput_frame(float *input_p, float *output
 	}
 }
 
-THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
-	THFloatTensor *indices = 0;
+	THNTensor *output = module->output;
+	THNTensor *indices = 0;
 	int dimw = 2;
 	int dimh = 1;
 	int nbatch = 1;
@@ -69,7 +69,7 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 			indices = net->modules[i].SpatialMaxPooling.indices;
 			break;
 		}
-	if (!indices || !THFloatTensor_isSameSizeAs(input, indices))
+	if (!indices || !THNTensor_isSameSizeAs(input, indices))
 		THError("Invalid input size w.r.t current indices size");
 	if (input->nDimension == 4) 
 	{
@@ -86,12 +86,12 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 	/* resize output */
 	if (input->nDimension == 3)
 	{
-		THFloatTensor_resize3d(output, nslices, oheight, owidth);
-		THFloatTensor_zero(output);
+		THNTensor_resize3d(output, nslices, oheight, owidth);
+		THNTensor_zero(output);
 
-		input_data = THFloatTensor_data(input);
-		output_data = THFloatTensor_data(output);
-		indices_data = THFloatTensor_data(indices);
+		input_data = THNTensor_data(input);
+		output_data = THNTensor_data(output);
+		indices_data = THNTensor_data(indices);
 		SpatialMaxUnpooling_updateOutput_frame(input_data, output_data,
 			indices_data,
 			nslices,
@@ -100,12 +100,12 @@ THFloatTensor *nn_SpatialMaxUnpooling_updateOutput(struct module *module, THFloa
 	} else {
 		long p;
 
-		THFloatTensor_resize4d(output, nbatch, nslices, oheight, owidth);
-		THFloatTensor_zero(output);
+		THNTensor_resize4d(output, nbatch, nslices, oheight, owidth);
+		THNTensor_zero(output);
 
-		input_data = THFloatTensor_data(input);
-		output_data = THFloatTensor_data(output);
-		indices_data = THFloatTensor_data(indices);
+		input_data = THNTensor_data(input);
+		output_data = THNTensor_data(output);
+		indices_data = THNTensor_data(indices);
 
 		#pragma omp parallel for private(p)
 		for (p = 0; p < nbatch; p++)

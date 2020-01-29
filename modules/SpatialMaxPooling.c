@@ -4,7 +4,7 @@
 
 static void nnfree_SpatialMaxPooling(struct module *mod)
 {
-	THFloatTensor_free(mod->SpatialMaxPooling.indices);
+	THNTensor_free(mod->SpatialMaxPooling.indices);
 }
 
 int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n)
@@ -21,35 +21,8 @@ int nnload_SpatialMaxPooling(struct module *mod, struct nnmodule *n)
 	m->kW = TableGetNumber(t, "kW");
 	m->kH = TableGetNumber(t, "kH");
 	m->ceil_mode = TableGetNumber(t, "ceil_mode");
-	m->indices = THFloatTensor_new();
+	m->indices = THNTensor_new();
 	return 0;
-}
-
-void pyload_SpatialMaxPooling(struct pyfunction *f)
-{
-	struct SpatialMaxPooling *p = &f->module.SpatialMaxPooling;
-	f->module.updateOutput = nn_SpatialMaxPooling_updateOutput;
-	f->module.type = MT_SpatialMaxPooling;
-	f->module.nnfree = nnfree_SpatialMaxPooling;
-	p->indices = THFloatTensor_new();
-	struct pyelement *el;
-	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->padH = el->ivect[0];
-		p->padW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "stride", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->dH = el->ivect[0];
-		p->dW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "kernel_size", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->kH = el->ivect[0];
-		p->kW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "ceil_mode", 0)) && el->type == ELTYPE_INT)
-		p->ceil_mode = el->ivalue;
 }
 
 #ifdef ONNX
@@ -59,7 +32,7 @@ void onnxload_SpatialMaxPooling(const void *graph, struct module *m, int nodeidx
 	m->type = MT_SpatialMaxPooling;
 	m->nnfree = nnfree_SpatialMaxPooling;
 	struct SpatialMaxPooling *p = &m->SpatialMaxPooling;
-	p->indices = THFloatTensor_new();
+	p->indices = THNTensor_new();
 	const char *autopad = onnx_getstring(graph, nodeidx, "auto_pad", -1);
 	if(autopad && !strcmp(autopad, "SAME_UPPER"))
 		p->autopad = 1;
@@ -198,7 +171,7 @@ static void nn_SpatialMaxPooling_updateOutput_frame_planeminor(float *input_p, f
 	}
 }
 
-THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THNTensor *input)
 {
 	int kW = module->SpatialMaxPooling.kW;
 	int kH = module->SpatialMaxPooling.kH;
@@ -207,13 +180,13 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 	int padW = module->SpatialMaxPooling.padW;
 	int padH = module->SpatialMaxPooling.padH;
 	int ceil_mode = module->SpatialMaxPooling.ceil_mode;
-	THFloatTensor *output = module->output;
-	THFloatTensor *indices = module->SpatialMaxPooling.indices;
+	THNTensor *output = module->output;
+	THNTensor *indices = module->SpatialMaxPooling.indices;
 
 	int batch = 1;
 	if (input->nDimension == 3) {
 		batch = 0;
-		THFloatTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
+		THNTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
 	}
 
 	long batchSize = input->size[0];
@@ -242,12 +215,12 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 			--owidth;
 	}
 
-	THFloatTensor_resize4d(output, batchSize, nslices, oheight, owidth);
-	THFloatTensor_resize4d(indices, batchSize, nslices, oheight, owidth);
+	THNTensor_resize4d(output, batchSize, nslices, oheight, owidth);
+	THNTensor_resize4d(indices, batchSize, nslices, oheight, owidth);
 
-	float *input_data = THFloatTensor_data(input);
-	float *output_data = THFloatTensor_data(output);
-	float *indices_data = THFloatTensor_data(indices);
+	float *input_data = THNTensor_data(input);
+	float *output_data = THNTensor_data(output);
+	float *indices_data = THNTensor_data(indices);
 
 	long p;
 	if(planeminor)
@@ -271,9 +244,9 @@ THFloatTensor *nn_SpatialMaxPooling_updateOutput(struct module *module, THFloatT
 	}
 
 	if (batch == 0) {
-		THFloatTensor_resize3d(output, nslices, oheight, owidth);
-		THFloatTensor_resize3d(indices, nslices, oheight, owidth);
-		THFloatTensor_resize3d(input, nslices, iheight, iwidth);
+		THNTensor_resize3d(output, nslices, oheight, owidth);
+		THNTensor_resize3d(indices, nslices, oheight, owidth);
+		THNTensor_resize3d(input, nslices, iheight, iwidth);
 	}
 
 	return output;

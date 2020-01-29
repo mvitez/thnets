@@ -14,7 +14,7 @@ int nnload_SpatialZeroPadding(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THNTensor *input)
 {
 	int idim = input->nDimension;
 	if(idim != 3 && idim != 4)
@@ -32,8 +32,8 @@ THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloat
 	int ix2 = pad_r < 0 ? iw + pad_r : iw;
 	int iy2 = pad_b < 0 ? ih + pad_b : ih;
 	if(idim == 3)
-		THFloatTensor_resize3d(module->output, input->size[0], oh, ow);
-	else THFloatTensor_resize4d(module->output, input->size[0], input->size[1], oh, ow);
+		THNTensor_resize3d(module->output, input->size[0], oh, ow);
+	else THNTensor_resize4d(module->output, input->size[0], input->size[1], oh, ow);
 	int batchsize = idim == 4 ? (int)input->size[0] : 1;
 	int batch, plane, y;
 	int istride = (int)input->size[idim-2];
@@ -41,8 +41,8 @@ THFloatTensor *nn_SpatialZeroPadding_updateOutput(struct module *module, THFloat
 	for(batch = 0; batch < batchsize; batch++)
 		for(plane = 0; plane < input->size[idim - 3]; plane++)
 		{
-			float *in = THFloatTensor_data(input) + batch * input->stride[0] + plane * input->stride[idim-3];
-			float *out = THFloatTensor_data(module->output) + batch * module->output->stride[0] + plane * module->output->stride[idim-3];
+			float *in = THNTensor_data(input) + batch * input->stride[0] + plane * input->stride[idim-3];
+			float *out = THNTensor_data(module->output) + batch * module->output->stride[0] + plane * module->output->stride[idim-3];
 			if(pad_t > 0)
 				memset(out, 0, ow * pad_t * sizeof(*out));
 			if(pad_b > 0)

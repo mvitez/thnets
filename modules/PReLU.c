@@ -2,7 +2,7 @@
 
 static void nnfree_PReLU(struct module *mod)
 {
-	THFloatTensor_free(mod->PReLU.weight);
+	THNTensor_free(mod->PReLU.weight);
 }
 
 int nnload_PReLU(struct module *mod, struct nnmodule *n)
@@ -29,19 +29,19 @@ void onnxload_PReLU(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_PReLU_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_PReLU_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
-	THFloatTensor *weight = module->PReLU.weight;
+	THNTensor *output = module->output;
+	THNTensor *weight = module->PReLU.weight;
 
-	THFloatTensor_resizeAs(output, input);
-	float *in = THFloatTensor_data(input);
-	float *out = THFloatTensor_data(output);
-	float *w = THFloatTensor_data(weight);
+	THNTensor_resizeAs(output, input);
+	float *in = THNTensor_data(input);
+	float *out = THNTensor_data(output);
+	float *w = THNTensor_data(weight);
 	long bs, ks, nOutputPlane = module->PReLU.nOutputPlane;
 	if(nOutputPlane == 0)
 	{
-		long i, n = THFloatTensor_nElement(input);
+		long i, n = THNTensor_nElement(input);
 		for(i = 0; i < n; i++)
 			out[i] = in[i] > 0 ? in[i] : *w*in[i];
 		return output;

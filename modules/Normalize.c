@@ -8,14 +8,14 @@ int nnload_Normalize(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Normalize_updateOutput(struct module *module, THNTensor *input)
 {
-	THFloatTensor *output = module->output;
+	THNTensor *output = module->output;
 	long i, j, n;
 	float sum;
 	float *idata, *odata;
 
-	THFloatTensor_resizeAs(output, input);
+	THNTensor_resizeAs(output, input);
 	if(input->nDimension == 2)
 	{
 		for(i = 0; i < input->size[0]; i++)
@@ -33,7 +33,7 @@ THFloatTensor *nn_Normalize_updateOutput(struct module *module, THFloatTensor *i
 		sum = 0;
 		idata = input->storage->data + input->storageOffset;
 		odata = output->storage->data + output->storageOffset;
-		n = THFloatTensor_nElement(input);
+		n = THNTensor_nElement(input);
 		for(j = 0; j < n; j++)
 			sum += idata[j] * idata[j];
 		sum = sqrtf(sum);

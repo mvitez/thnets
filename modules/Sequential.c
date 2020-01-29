@@ -17,7 +17,7 @@ int nnload_Sequential(struct module *mod, struct nnmodule *n)
 	return 0;
 }
 
-THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Sequential_updateOutput(struct module *module, THNTensor *input)
 {
 	int nelem = module->Sequential.net->nelem;
 	int i;
@@ -36,7 +36,7 @@ THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *
 				modules[i].type == MT_SpatialConvolutionVirtMM ||
 				modules[i].type == MT_SpatialConvolution)
 			{
-				double flops = 2.0 * THFloatTensor_nElement(input) * modules[i].SpatialConvolution.nInputPlane *
+				double flops = 2.0 * THNTensor_nElement(input) * modules[i].SpatialConvolution.nInputPlane *
 					modules[i].SpatialConvolution.kW * modules[i].SpatialConvolution.kH;
 				printf("%f seconds for module %d, %f Gflops/s\n", t, i+1, flops * 1e-9 / t);
 				th_convtot += t;
@@ -46,6 +46,6 @@ THFloatTensor *nn_Sequential_updateOutput(struct module *module, THFloatTensor *
 		if(th_debug > 1)
 			printf("  %d) %d %d %ld %ld %ld %ld\n", i+1, modules[i].type, input->nDimension, input->size[0], input->size[1], input->size[2], input->size[3]);
 	}
-	THFloatTensor_set(module->output, input);
+	THNTensor_set(module->output, input);
 	return module->output;
 }

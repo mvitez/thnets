@@ -1,18 +1,5 @@
 #include "../thnets.h"
 
-void pyload_Slice(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_Slice_updateOutput;
-	f->module.type = MT_Slice;
-	struct pyelement *el;
-	if( (el = findelement(f->params, "index", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		struct Slice *p = &f->module.Slice;
-		p->from = el->ivect[0];
-		p->to = el->ivect[1];
-	}
-}
-
 #ifdef ONNX
 void onnxload_Slice(const void *graph, struct module *m, int nodeidx)
 {
@@ -31,9 +18,9 @@ void onnxload_Slice(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_Slice_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Slice_updateOutput(struct module *module, THNTensor *input)
 {
 	struct Slice *p = &module->Slice;
-	THFloatTensor_slice(module->output, input, p->axis, p->from, p->to);
+	THNTensor_slice(module->output, input, p->axis, p->from, p->to);
 	return module->output;
 }

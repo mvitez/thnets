@@ -3,10 +3,10 @@
 
 static void nnfree_SpatialFullConvolution(struct module *mod)
 {
-	THFloatTensor_free(mod->SpatialFullConvolution.bias);
-	THFloatTensor_free(mod->SpatialFullConvolution.weight);
-	THFloatTensor_free(mod->SpatialFullConvolution.ones);
-	THFloatTensor_free(mod->SpatialFullConvolution.columns);
+	THNTensor_free(mod->SpatialFullConvolution.bias);
+	THNTensor_free(mod->SpatialFullConvolution.weight);
+	THNTensor_free(mod->SpatialFullConvolution.ones);
+	THNTensor_free(mod->SpatialFullConvolution.columns);
 }
 
 int nnload_SpatialFullConvolution(struct module *mod, struct nnmodule *n)
@@ -28,41 +28,9 @@ int nnload_SpatialFullConvolution(struct module *mod, struct nnmodule *n)
 	m->nOutputPlane = TableGetNumber(t, "nOutputPlane");
 	m->bias = TableGetTensor(t, "bias");
 	m->weight = TableGetTensor(t, "weight");
-	m->columns = THFloatTensor_new();
-	m->ones = THFloatTensor_new();
+	m->columns = THNTensor_new();
+	m->ones = THNTensor_new();
 	return 0;
-}
-
-void pyload_SpatialConvolutionTransposed(struct pyfunction *f)
-{
-	f->module.updateOutput = nn_SpatialFullConvolution_updateOutput;
-	f->module.nnfree = nnfree_SpatialFullConvolution;
-	f->module.type = MT_SpatialFullConvolution;
-	struct SpatialFullConvolution *p = &f->module.SpatialFullConvolution;
-	struct pyelement *el;
-	p->weight = pygettensor(f->params, "", 0);
-	p->bias = pygettensor(f->params, "", 1);
-	p->nOutputPlane = (int)p->weight->size[1];
-	p->nInputPlane = (int)p->weight->size[0];
-	p->kH = (int)p->weight->size[2];
-	p->kW = (int)p->weight->size[3];
-	if( (el = findelement(f->params, "padding", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->padH = el->ivect[0];
-		p->padW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "output_padding", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->adjH = el->ivect[0];
-		p->adjW = el->ivect[1];
-	}
-	if( (el = findelement(f->params, "stride", 0)) && el->type == ELTYPE_INTVECT)
-	{
-		p->dH = el->ivect[0];
-		p->dW = el->ivect[1];
-	}
-	p->columns = THFloatTensor_new();
-	p->ones = THFloatTensor_new();
 }
 
 #ifdef ONNX
@@ -74,8 +42,8 @@ void onnxload_SpatialConvolutionTransposed(const void *graph, struct module *m, 
 	struct SpatialFullConvolution *p = &m->SpatialFullConvolution;
 	p->weight = onnx_gettensor(graph, nodeidx, 1);
 	p->bias = onnx_gettensor(graph, nodeidx, 2);
-	p->columns = THFloatTensor_new();
-	p->ones = THFloatTensor_new();
+	p->columns = THNTensor_new();
+	p->ones = THNTensor_new();
 	p->nOutputPlane = (int)p->weight->size[1];
 	p->nInputPlane = (int)p->weight->size[0];
 	if(p->weight->nDimension == 5)
@@ -153,7 +121,7 @@ static void col2im(const float *data_col, const int channels,
 	}
 }
 
-THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THNTensor *input)
 {
 	int dW = module->SpatialFullConvolution.dW;
 	int dH = module->SpatialFullConvolution.dH;
@@ -164,11 +132,11 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 	int adjW = module->SpatialFullConvolution.adjW;
 	int adjH = module->SpatialFullConvolution.adjH;
 
-	THFloatTensor *weight = module->SpatialFullConvolution.weight;
-	THFloatTensor *bias = module->SpatialFullConvolution.bias;
-	THFloatTensor *output = module->output;
-	THFloatTensor *columns = module->SpatialFullConvolution.columns;
-	THFloatTensor *ones = module->SpatialFullConvolution.ones;
+	THNTensor *weight = module->SpatialFullConvolution.weight;
+	THNTensor *bias = module->SpatialFullConvolution.bias;
+	THNTensor *output = module->output;
+	THNTensor *columns = module->SpatialFullConvolution.columns;
+	THNTensor *ones = module->SpatialFullConvolution.ones;
 
 	int nInputPlane = (int)weight->size[0];
 	int nOutputPlane = (int)weight->size[1];
@@ -183,7 +151,7 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 			THError("input channels and nInputPlane dont match");
 		// Force batch
 		batch = 0;
-		THFloatTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
+		THNTensor_resize4d(input, 1, input->size[0], input->size[1], input->size[2]);
 	} else if(input->size[1] != nInputPlane)
 		THError("input channels and nInputPlane dont match");
 
@@ -196,10 +164,10 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 	long batchSize = input->size[0];
 
 	// Resize output
-	THFloatTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);
+	THNTensor_resize4d(output, batchSize, nOutputPlane, outputHeight, outputWidth);
 
 	// Resize temporary columns
-	THFloatTensor_resize2d(columns, nOutputPlane*kW*kH, inputHeight*inputWidth);
+	THNTensor_resize2d(columns, nOutputPlane*kW*kH, inputHeight*inputWidth);
 
 	// Define a buffer of ones, for bias accumulation
 	// Note: this buffer can be shared with other modules, it only ever gets increased,
@@ -207,8 +175,8 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 	if (ones->nDimension != 2 || ones->size[0]*ones->size[1] < outputHeight*outputWidth)
 	{
 		// Resize plane and fill with ones...
-		THFloatTensor_resize2d(ones, outputHeight, outputWidth);
-		THFloatTensor_fill(ones, 1);
+		THNTensor_resize2d(ones, outputHeight, outputWidth);
+		THNTensor_fill(ones, 1);
 	}
 
 	int elt;
@@ -218,8 +186,8 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 		// Matrix mulitply per output:
 
 		// Helpers
-		THFloatTensor *input_n = THFloatTensor_newSelect(input, 0, elt);
-		THFloatTensor *output_n = THFloatTensor_newSelect(output, 0, elt);
+		THNTensor *input_n = THNTensor_newSelect(input, 0, elt);
+		THNTensor *output_n = THNTensor_newSelect(output, 0, elt);
 
 		// M,N,K are dims of matrix A and B
 		// (see http://docs.nvidia.com/cuda/cublas/#cublas-lt-t-gt-gemm)
@@ -232,17 +200,17 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 			'n', 't',
 			n, m, k,
 			1,
-			THFloatTensor_data(input_n), n,
-			THFloatTensor_data(weight), m,
+			THNTensor_data(input_n), n,
+			THNTensor_data(weight), m,
 			0,
-			THFloatTensor_data(columns), n
+			THNTensor_data(columns), n
 		);
 
 		// Unpack columns back into input:
 		col2im(
-			THFloatTensor_data(columns),
+			THNTensor_data(columns),
 			nOutputPlane, (int)outputHeight, (int)outputWidth, kH, kW, padH, padW, dH, dW,
-			THFloatTensor_data(output_n)
+			THNTensor_data(output_n)
 		);
 
 		// Do Bias after:
@@ -258,21 +226,21 @@ THFloatTensor *nn_SpatialFullConvolution_updateOutput(struct module *module, THF
 				't', 'n',
 				n_, m_, k_,
 				1,
-				THFloatTensor_data(ones), k_,
-				THFloatTensor_data(bias), k_,
+				THNTensor_data(ones), k_,
+				THNTensor_data(bias), k_,
 				11,
-				THFloatTensor_data(output_n), n_
+				THNTensor_data(output_n), n_
 			);
 
-		THFloatTensor_free(input_n);
-		THFloatTensor_free(output_n);
+		THNTensor_free(input_n);
+		THNTensor_free(output_n);
 	}
 
 	// Resize output
 	if (batch == 0)
 	{
-		THFloatTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
-		THFloatTensor_resize3d(input, nInputPlane, inputHeight, inputWidth);
+		THNTensor_resize3d(output, nOutputPlane, outputHeight, outputWidth);
+		THNTensor_resize3d(input, nInputPlane, inputHeight, inputWidth);
 	}
 	return output;
 }

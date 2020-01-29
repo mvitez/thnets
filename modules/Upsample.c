@@ -16,7 +16,7 @@ void onnxload_Upsample(const void *graph, struct module *m, int nodeidx)
 }
 #endif
 
-THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *input)
+THNTensor *nn_Upsample_updateOutput(struct module *module, THNTensor *input)
 {
 	if(module->Upsample.height_scale != 2 || module->Upsample.width_scale != 2)
 		THError("Only 2x upsampling is supported\n");
@@ -24,7 +24,7 @@ THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *in
 	int str0, str1, str2, str3;
 	if(input->nDimension == 4)
 	{
-		THFloatTensor_resize4d(module->output, input->size[0], input->size[1], input->size[2] * 2, input->size[3] * 2);
+		THNTensor_resize4d(module->output, input->size[0], input->size[1], input->size[2] * 2, input->size[3] * 2);
 		w = input->size[3];
 		h = input->size[2];
 		np = input->size[1];
@@ -35,7 +35,7 @@ THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *in
 		str3 = input->stride[3];
 	} else if(input->nDimension == 3)
 	{
-		THFloatTensor_resize3d(module->output, input->size[0], input->size[1] * 2, input->size[2] * 2);
+		THNTensor_resize3d(module->output, input->size[0], input->size[1] * 2, input->size[2] * 2);
 		w = input->size[2];
 		h = input->size[1];
 		np = input->size[0];
@@ -48,8 +48,8 @@ THFloatTensor *nn_Upsample_updateOutput(struct module *module, THFloatTensor *in
 		THError("Only 3D and 4D input is supported\n");
 		return 0; // Just to avoid warnings, THError exits in any case
 	}
-	float *in = THFloatTensor_data(input);
-	float *out = THFloatTensor_data(module->output);
+	float *in = THNTensor_data(input);
+	float *out = THNTensor_data(module->output);
 	for(b = 0; b < nb; b++)
 		for(p = 0; p < np; p++)
 		{
